@@ -1,14 +1,15 @@
 <!DOCTYPE html>
 <html lang="pt">
 <head>
-<!-- TAGS DO PWA -->
+ <!-- TAGS DO PWA -->
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#0f172a">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
-    <title>Monofy - Studio</title>
+    <title>Monofy - Studio</title> 
+
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -39,26 +40,49 @@
         /* Tipografia Académica */
         @import url('https://fonts.googleapis.com/css2?family=Tinos:ital,wght@0,400;0,700;1,400;1,700&display=swap');
 
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; overscroll-behavior-y: none; }
         .hidden-state { display: none !important; }
 
-        /* Scrollbar Invisível/Elegante */
-        ::-webkit-scrollbar { width: 6px; height: 6px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, 0.4); border-radius: 10px; }
-        .dark ::-webkit-scrollbar-thumb { background: rgba(71, 85, 105, 0.6); }
+        /* Scrollbar Melhorada e Visível */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.05); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, 0.6); border-radius: 10px; }
+        .dark ::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.02); }
+        .dark ::-webkit-scrollbar-thumb { background: rgba(71, 85, 105, 0.8); }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(100, 116, 139, 1); }
 
-        /* 
-           CANVAS & A4 PAGE 
-           O A4 fica no centro exato da tela.
+        /* Margens CSS Variáveis para Controlo Dinâmico */
+        :root {
+            --page-mt: 2.54cm;
+            --page-mr: 2.54cm;
+            --page-mb: 2.54cm;
+            --page-ml: 3.00cm;
+            --doc-zoom: 1;
+        }
+
+        /* CANVAS OTIMIZADO PARA MOBILE SCROLL
+        */
+        #main-canvas {
+            -webkit-overflow-scrolling: touch; /* ESSENCIAL PARA MOBILE SCROLL SUAVE */
+            touch-action: pan-x pan-y;
+            overflow-y: scroll;
+            overflow-x: hidden;
+        }
+
+        #print-area {
+            zoom: var(--doc-zoom); /* Aplica o zoom nativo compatível com Chrome/Safari/Novo Firefox */
+            transform-origin: top center;
+            transition: zoom 0.1s ease-out;
+        }
+
+        /* A4 PAGE FORMAT
         */
         .a4-page {
             background: white !important;
             width: 210mm;
             min-height: 297mm;
             box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-            /* Margens APA adaptadas UPDS: Esq 3cm, restantes 2.54cm */
-            padding: 2.54cm 2.54cm 2.54cm 3cm;
+            padding: var(--page-mt) var(--page-mr) var(--page-mb) var(--page-ml) !important;
             font-family: 'Tinos', 'Times New Roman', Times, serif;
             font-size: 12pt;
             line-height: 2; /* Espaçamento Duplo */
@@ -68,6 +92,24 @@
             box-sizing: border-box;
             page-break-after: always;
             margin: 0 auto;
+            transition: padding 0.3s ease;
+        }
+
+        /* Capa Específica da UPDS com Moldura */
+        .a4-cover-page {
+            padding: 1cm !important; 
+            display: flex;
+            flex-direction: column;
+        }
+
+        .cover-border {
+            border: 6px double #000066; 
+            flex-grow: 1;
+            padding: calc(var(--page-mt) - 1cm) calc(var(--page-mr) - 1cm) calc(var(--page-mb) - 1cm) calc(var(--page-ml) - 1cm); 
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            box-sizing: border-box;
         }
 
         /* Regras APA 7ª Edição */
@@ -77,6 +119,30 @@
         .a4-page h3 { font-size: 12pt; font-weight: bold; font-style: italic; text-align: left; margin-top: 24pt; margin-bottom: 12pt; text-indent: 0; }
         .a4-page .hanging-indent { padding-left: 1.27cm; text-indent: -1.27cm; margin-bottom: 12pt; text-align: left; }
         .a4-page img { max-width: 100%; height: auto; display: block; margin: 12pt auto; }
+
+        /* Quebra de Página Manual (Marcador Visual) */
+        .page-break-marker {
+            page-break-after: always;
+            border: 0;
+            border-top: 2px dashed #cbd5e1;
+            margin: 2rem 0;
+            display: block;
+            text-align: center;
+            position: relative;
+        }
+        .page-break-marker::after {
+            content: '✂ Quebra de Página (Página Seguinte)';
+            position: absolute;
+            top: -12px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: white;
+            padding: 0 10px;
+            color: #94a3b8;
+            font-family: -apple-system, sans-serif;
+            font-size: 12px;
+            font-style: normal;
+        }
 
         /* Índice */
         .toc-list { list-style: none; padding: 0; margin-top: 24pt; }
@@ -97,19 +163,20 @@
         }
         .dock-btn:hover .dock-tooltip { opacity: 1; transform: translateY(0); }
 
-        /* Oculta os painéis flutuantes no telemóvel inicialmente */
         @media (max-width: 1023px) {
             .mobile-hidden { transform: translateY(150%); opacity: 0; pointer-events: none; }
             .mobile-visible { transform: translateY(0); opacity: 1; pointer-events: auto; }
         }
 
-        /* Regras Nativas de Impressão PDF */
         @media print {
             body { background: white; }
             body * { visibility: hidden; }
             #print-area, #print-area * { visibility: visible; }
-            #print-area { position: absolute; left: 0; top: 0; width: 100%; padding: 0; margin: 0; display: block; }
-            .a4-page { box-shadow: none; margin: 0; border: none; padding: 2.54cm 2.54cm 2.54cm 3cm !important; width: 210mm; min-height: 297mm; }
+            #print-area { position: absolute; left: 0; top: 0; width: 100%; padding: 0; margin: 0; display: block; zoom: 1 !important; transform: none !important;}
+            .a4-page { box-shadow: none; margin: 0; border: none; padding: var(--page-mt) var(--page-mr) var(--page-mb) var(--page-ml) !important; width: 210mm; min-height: 297mm; }
+            .a4-cover-page { padding: 1cm !important; }
+            .page-break-marker { border: none; margin: 0; }
+            .page-break-marker::after { display: none; }
             @page { size: A4; margin: 0; }
             .hide-on-print { display: none !important; }
         }
@@ -138,51 +205,108 @@
     <div id="app-screen" class="relative h-full w-full opacity-0 pointer-events-none transition-opacity duration-500">
 
         <!-- MARCA D'ÁGUA MONOFY -->
-        <div class="fixed top-4 right-6 md:top-8 md:right-10 z-[10] pointer-events-none select-none hide-on-print">
+        <div class="fixed bottom-28 right-4 lg:bottom-6 lg:right-10 z-[10] pointer-events-none select-none hide-on-print">
             <h1 class="text-2xl md:text-4xl font-black tracking-[0.4em] text-white/80 dark:text-white/10 drop-shadow-md">MONOFY</h1>
         </div>
 
-        <div id="main-canvas" class="absolute inset-0 overflow-auto pt-8 pb-40 flex flex-col items-center custom-scrollbar">
+        <!-- NOTA: absolute inset-0 força ocupação do ecrã; overscroll-behavior para scroll perfeito -->
+        <div id="main-canvas" class="absolute inset-0 pt-8 pb-40 flex flex-col items-center custom-scrollbar">
             
-            <div id="print-area" class="flex flex-col gap-10">
+            <!-- Grupo de Controlos Flutuantes (Margens e Zoom) -->
+            <div class="fixed top-6 right-6 lg:top-8 lg:right-10 z-[40] hide-on-print flex flex-col items-end gap-3">
                 
-                <!-- CAPA (Com margens inline rigorosas para Word) -->
-                <div class="a4-page" style="display: flex; flex-direction: column;">
-                    <div id="word-cover" style="text-align: center; font-family: 'Times New Roman', serif; display: flex; flex-direction: column; flex-grow: 1;">
+                <!-- Indicador de Página Atual -->
+                <div id="page-tracker" class="bg-slate-900/80 dark:bg-slate-800/80 backdrop-blur-md text-white px-4 py-2 rounded-2xl shadow-xl flex items-center gap-2 text-xs font-bold border border-white/10">
+                    <i data-lucide="file-text" class="w-4 h-4 text-primary-400"></i>
+                    <span>Pág. <span id="current-page-num">1</span> de <span id="total-pages-num">1</span></span>
+                </div>
+
+                <!-- Botão Flutuante Margens -->
+                <button onclick="toggleMarginSettings()" class="p-3 bg-white/90 dark:bg-slate-850/90 backdrop-blur shadow-xl rounded-2xl border border-slate-200/50 dark:border-slate-700/50 text-slate-600 dark:text-slate-300 hover:text-primary-600 dark:hover:text-primary-400 transition-colors group relative">
+                    <i data-lucide="ruler"></i>
+                    <span class="absolute right-full mr-3 top-1/2 -translate-y-1/2 bg-slate-800 text-white text-xs px-2 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition whitespace-nowrap pointer-events-none">Ajustar Margens</span>
+                </button>
+
+                <!-- Painel de Configuração de Margens -->
+                <div id="margin-settings-panel" class="hidden-state bg-white/95 dark:bg-slate-850/95 backdrop-blur-2xl p-5 rounded-3xl shadow-2xl border border-slate-200/50 dark:border-slate-700/50 w-72">
+                    <div class="flex justify-between items-center mb-4 border-b border-slate-100 dark:border-slate-700 pb-2">
+                        <h4 class="font-bold text-sm text-slate-800 dark:text-white flex items-center gap-2"><i data-lucide="sliders" class="w-4 h-4"></i> Margens (cm)</h4>
+                    </div>
+                    <div class="space-y-4">
+                        <div>
+                            <div class="flex justify-between text-xs font-bold text-slate-500 mb-1"><span>Superior</span> <input type="number" step="0.1" id="val-mt" class="w-12 text-right bg-transparent outline-none" oninput="updateMarginFromInput('mt')"></div>
+                            <input type="range" id="sl-mt" min="1" max="5" step="0.1" class="w-full accent-primary-600" oninput="updateMarginFromSlider('mt')">
+                        </div>
+                        <div>
+                            <div class="flex justify-between text-xs font-bold text-slate-500 mb-1"><span>Inferior</span> <input type="number" step="0.1" id="val-mb" class="w-12 text-right bg-transparent outline-none" oninput="updateMarginFromInput('mb')"></div>
+                            <input type="range" id="sl-mb" min="1" max="5" step="0.1" class="w-full accent-primary-600" oninput="updateMarginFromSlider('mb')">
+                        </div>
+                        <div>
+                            <div class="flex justify-between text-xs font-bold text-slate-500 mb-1"><span>Esq. (Encadernação)</span> <input type="number" step="0.1" id="val-ml" class="w-12 text-right bg-transparent outline-none text-primary-600" oninput="updateMarginFromInput('ml')"></div>
+                            <input type="range" id="sl-ml" min="1" max="6" step="0.1" class="w-full accent-primary-600" oninput="updateMarginFromSlider('ml')">
+                        </div>
+                        <div>
+                            <div class="flex justify-between text-xs font-bold text-slate-500 mb-1"><span>Direita</span> <input type="number" step="0.1" id="val-mr" class="w-12 text-right bg-transparent outline-none" oninput="updateMarginFromInput('mr')"></div>
+                            <input type="range" id="sl-mr" min="1" max="5" step="0.1" class="w-full accent-primary-600" oninput="updateMarginFromSlider('mr')">
+                        </div>
+                    </div>
+                    <button onclick="resetMargins()" class="w-full mt-4 text-xs font-bold text-slate-500 hover:text-slate-800 dark:hover:text-white transition py-2 bg-slate-100 dark:bg-slate-800 rounded-lg">Restaurar UPDS</button>
+                </div>
+
+                <!-- Painel de Zoom Visível -->
+                <div class="flex flex-col items-center bg-white/90 dark:bg-slate-850/90 backdrop-blur shadow-xl rounded-2xl border border-slate-200/50 dark:border-slate-700/50 overflow-hidden">
+                    <button onclick="changeZoom(0.1)" class="p-3 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors" title="Zoom In"><i data-lucide="zoom-in" class="w-4 h-4"></i></button>
+                    <span id="zoom-level-text" class="text-xs font-bold py-1 w-full text-center text-slate-600 dark:text-slate-400">100%</span>
+                    <button onclick="changeZoom(-0.1)" class="p-3 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors" title="Zoom Out"><i data-lucide="zoom-out" class="w-4 h-4"></i></button>
+                </div>
+            </div>
+
+            <div id="print-area" class="flex flex-col gap-10 w-full items-center">
+                
+                <!-- CAPA (Com Moldura UPDS Oficial) -->
+                <div class="a4-page a4-cover-page">
+                    <div id="word-cover" class="cover-border" style="text-align: center; font-family: 'Times New Roman', serif;">
                         
-                        <!-- Instituição Centralizada no Topo -->
-                        <div style="margin-top: 1cm; text-align: center;">
-                            <p style="font-weight: bold; text-transform: uppercase; margin: 0; text-indent: 0; line-height: 1.2; text-align: center !important;" id="out-university">UNIVERSIDAD PRIVADA DOMINGO SAVIO</p>
-                            <p style="text-transform: uppercase; margin: 0; text-indent: 0; line-height: 1.2; text-align: center !important;" id="out-faculty">FACULTAD DE CIENCIAS EMPRESARIALES</p>
-                            <p style="text-transform: uppercase; margin: 0; text-indent: 0; line-height: 1.2; text-align: center !important;" id="out-career">CARRERA DE INGENIERÍA COMERCIAL</p>
+                        <div style="margin-top: 0; text-align: center;">
+                            <p style="font-size: 16pt; font-weight: bold; text-transform: uppercase; margin: 0; text-indent: 0; line-height: 1.2; text-align: center !important;" id="out-university">UNIVERSIDAD PRIVADA DOMINGO SAVIO</p>
+                            <p style="font-size: 14pt; font-weight: bold; text-transform: uppercase; margin: 0; text-indent: 0; line-height: 1.2; text-align: center !important;" id="out-faculty">FACULTAD DE CIENCIAS EMPRESARIALES</p>
+                            <p style="font-size: 14pt; font-weight: bold; text-transform: uppercase; margin: 0; text-indent: 0; line-height: 1.2; text-align: center !important;" id="out-career">CARRERA DE INGENIERÍA COMERCIAL</p>
                         </div>
                         
-                        <div style="margin-top: 2.5cm; text-align: center;">
+                        <div style="margin-top: 1.5cm; text-align: center;">
                             <img id="out-logo" src="https://upload.wikimedia.org/wikipedia/commons/thumb/1/1a/UPDS_Logo.png/600px-UPDS_Logo.png" alt="Logotipo" class="hide-on-word" style="max-height: 140px; display: inline-block; margin: 0 auto;" />
                         </div>
 
-                        <div style="margin-top: 2.5cm; padding: 0 1cm; text-align: center;">
-                            <h2 style="font-size: 14pt; font-weight: bold; text-transform: uppercase; margin: 0; text-align: center; text-indent: 0; line-height: 1.5;" id="out-title">TÍTULO DA MONOGRAFIA</h2>
-                            <p style="font-style: italic; margin-top: 1cm; text-align: center !important; text-indent: 0;" id="out-type">TRABAJO DE GRADO PARA OPTAR AL TÍTULO DE LICENCIATURA</p>
+                        <div style="margin-top: 1.5cm; text-align: center;">
+                            <p style="font-size: 14pt; font-weight: bold; text-transform: uppercase; margin: 0; text-indent: 0; text-align: center !important;">MONOGRAFÍA</p>
+                            <h2 style="font-size: 14pt; font-weight: bold; text-transform: uppercase; margin: 12pt 0 0 0; text-align: center; text-indent: 0; line-height: 1.5;" id="out-title">TÍTULO DA MONOGRAFIA</h2>
                         </div>
 
-                        <div style="margin-top: 3cm; text-align: right; width: 100%;">
-                            <div style="display: inline-block; text-align: left; min-width: 50%;">
-                                <p style="margin: 0; text-indent: 0; text-align: left !important;"><strong>Estudiante:</strong> <span id="out-student">Nome</span></p>
-                                <p style="margin: 0; text-indent: 0; text-align: left !important;"><strong>Docente:</strong> <span id="out-professor">Nome</span></p>
-                            </div>
+                        <div style="margin-top: 2cm; margin-left: 15%; text-align: left; width: 85%;">
+                            <table style="width: 100%; border: none; font-size: 12pt; text-indent: 0;">
+                                <tr>
+                                    <td style="font-weight: bold; vertical-align: top; width: 100px; padding-bottom: 8px;">Asignatura:</td>
+                                    <td id="out-subject" style="vertical-align: top; padding-bottom: 8px;">Metodología de la Investigación</td>
+                                </tr>
+                                <tr>
+                                    <td style="font-weight: bold; vertical-align: top; padding-bottom: 8px;">Docente:</td>
+                                    <td id="out-professor" style="vertical-align: top; padding-bottom: 8px;">Nome do Docente</td>
+                                </tr>
+                                <tr>
+                                    <td style="font-weight: bold; vertical-align: top;">Estudiantes:</td>
+                                    <td id="out-student" style="vertical-align: top; white-space: pre-wrap;">Nome do Estudante</td>
+                                </tr>
+                            </table>
                         </div>
 
-                        <!-- Cidade e Ano fixados no fim da página (margin-top: auto) -->
-                        <div style="margin-top: auto; padding-top: 3cm; padding-bottom: 0.5cm; text-align: center;">
-                            <p style="margin: 0; text-indent: 0; text-align: center !important;" id="out-location">Santa Cruz, Bolivia</p>
-                            <p style="margin: 0; text-indent: 0; text-align: center !important;" id="out-year">2024</p>
+                        <div style="margin-top: auto; padding-top: 1.5cm; padding-bottom: 0.5cm; text-align: center;">
+                            <p style="font-size: 12pt; margin: 0; text-indent: 0; text-align: center !important;" id="out-location">Cobija-Pando-Bolivia</p>
+                            <p style="font-size: 12pt; margin: 0; text-indent: 0; text-align: center !important;" id="out-year">2023</p>
                         </div>
 
                     </div>
                 </div>
 
-                <!-- CONTEÚDO IA INJETADO AQUI -->
                 <div id="generated-content" class="w-full flex flex-col items-center gap-[2.5rem] m-0 p-0">
                     <div class="a4-page flex items-center justify-center opacity-40 hide-on-print border-2 border-dashed border-slate-400 bg-transparent shadow-none">
                         <div class="text-center w-full px-6">
@@ -196,7 +320,8 @@
             </div>
         </div>
 
-        <div id="panel-left" class="fixed lg:absolute left-4 right-4 lg:right-auto top-4 bottom-28 lg:bottom-24 lg:w-[400px] bg-white/90 dark:bg-slate-850/90 backdrop-blur-2xl shadow-2xl rounded-3xl border border-white/40 dark:border-slate-700/50 flex flex-col z-30 transition-transform duration-300 mobile-hidden lg:!transform-none lg:!opacity-100 lg:!pointer-events-auto">
+        <!-- PAINEL ESQUERDO: Dados e Contexto da Monografia (Com Resize Dinâmico) -->
+        <div id="panel-left" class="fixed lg:absolute left-4 right-4 lg:right-auto top-4 bottom-28 lg:bottom-auto lg:h-[85vh] lg:max-h-[90vh] lg:w-[400px] bg-white/90 dark:bg-slate-850/90 backdrop-blur-2xl shadow-2xl rounded-3xl border border-white/40 dark:border-slate-700/50 flex flex-col z-30 transition-transform duration-300 mobile-hidden lg:!transform-none lg:!opacity-100 lg:!pointer-events-auto lg:resize lg:overflow-hidden lg:min-w-[320px] lg:max-w-[50vw] lg:min-h-[400px]">
             
             <div id="panel-left-header" class="p-5 border-b border-slate-200/50 dark:border-slate-800/50 flex justify-between items-center cursor-move lg:hover:bg-slate-50/50 dark:hover:bg-slate-800/50 rounded-t-3xl transition-colors">
                 <h3 class="font-extrabold flex items-center gap-2 text-slate-800 dark:text-white"><i data-lucide="database" class="w-5 h-5 text-primary-500"></i> Dados da Pesquisa</h3>
@@ -206,7 +331,7 @@
                 </div>
             </div>
 
-            <div class="flex-1 overflow-y-auto p-5 space-y-6 custom-scrollbar">
+            <div class="flex-1 overflow-y-auto p-5 space-y-6 custom-scrollbar pb-8">
                 
                 <div id="error-message" class="hidden-state p-4 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 rounded-xl flex items-start gap-2 text-sm border border-red-100 dark:border-red-900/30">
                     <i data-lucide="alert-circle" class="w-5 h-5 shrink-0"></i>
@@ -233,15 +358,20 @@
                         <input type="text" id="in-faculty" placeholder="Faculdade" class="w-full text-sm p-3 bg-white/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 focus:border-primary-500 rounded-xl outline-none transition-colors" value="FACULTAD DE CIENCIAS EMPRESARIALES">
                         <input type="text" id="in-career" placeholder="Carreira" class="w-full text-sm p-3 bg-white/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 focus:border-primary-500 rounded-xl outline-none transition-colors" value="CARRERA DE INGENIERÍA COMERCIAL">
                     </div>
-                    <textarea id="in-title" rows="2" placeholder="Título Principal" class="w-full text-sm p-3 bg-white/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 focus:border-primary-500 rounded-xl outline-none resize-none font-bold text-center transition-colors">O IMPACTO DA INTELIGÊNCIA ARTIFICIAL NA EDUCAÇÃO SUPERIOR</textarea>
+                    <textarea id="in-title" rows="2" placeholder="Título Principal" class="w-full text-sm p-3 bg-white/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 focus:border-primary-500 rounded-xl outline-none resize-none font-bold text-center transition-colors">TÍTULO DA MONOGRAFIA</textarea>
+                    
                     <div class="flex gap-2">
-                        <input type="text" id="in-student" placeholder="Estudante" class="w-full text-sm p-3 bg-white/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 focus:border-primary-500 rounded-xl outline-none transition-colors" value="Nome do Estudante">
-                        <input type="text" id="in-professor" placeholder="Orientador" class="w-full text-sm p-3 bg-white/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 focus:border-primary-500 rounded-xl outline-none transition-colors" value="Nome do Docente">
+                        <input type="text" id="in-subject" placeholder="Asignatura" class="w-full text-sm p-3 bg-white/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 focus:border-primary-500 rounded-xl outline-none transition-colors" value="Metodología de la Investigación">
+                        <input type="text" id="in-professor" placeholder="Docente" class="w-full text-sm p-3 bg-white/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 focus:border-primary-500 rounded-xl outline-none transition-colors" value="Nome do Docente">
                     </div>
+                    
+                    <div>
+                        <textarea id="in-student" rows="2" placeholder="Estudiantes (Um por linha)" class="w-full text-sm p-3 bg-white/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 focus:border-primary-500 rounded-xl outline-none resize-none transition-colors">Nome do Estudante</textarea>
+                    </div>
+
                     <div class="flex gap-2">
-                        <input type="text" id="in-city" placeholder="Cidade" class="w-full text-sm p-3 bg-white/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 focus:border-primary-500 rounded-xl outline-none transition-colors" value="Santa Cruz">
-                        <input type="text" id="in-country" placeholder="País" class="w-full text-sm p-3 bg-white/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 focus:border-primary-500 rounded-xl outline-none transition-colors" value="Bolivia">
-                        <input type="text" id="in-year" placeholder="Ano" class="w-full text-sm p-3 bg-white/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 focus:border-primary-500 rounded-xl outline-none transition-colors" value="2024">
+                        <input type="text" id="in-city" placeholder="Cidade-País" class="w-full text-sm p-3 bg-white/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 focus:border-primary-500 rounded-xl outline-none transition-colors" value="Cobija-Pando-Bolivia">
+                        <input type="text" id="in-year" placeholder="Ano" class="w-full text-sm p-3 bg-white/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 focus:border-primary-500 rounded-xl outline-none transition-colors" value="2023">
                     </div>
                 </div>
 
@@ -252,20 +382,22 @@
                         <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest">Base Textual (Cérebro IA)</h4>
                         <label class="cursor-pointer text-xs font-bold text-purple-600 bg-purple-100 dark:bg-purple-900/40 px-2 py-1.5 rounded-lg hover:bg-purple-200 transition flex items-center gap-1 shadow-sm">
                             <i data-lucide="plus-circle" class="w-3 h-3"></i> Ficheiros
-                            <!-- Aceita múltiplos ficheiros, PDFs e TXTs -->
                             <input type="file" id="multi-file-upload" accept=".txt,.pdf" multiple class="hidden" />
                         </label>
                     </div>
                     
-                    <!-- Lista de Arquivos Carregados -->
                     <div id="uploaded-files-list" class="flex flex-wrap gap-2 empty:hidden"></div>
 
-                    <textarea id="raw-text" placeholder="Cole as suas notas base aqui. A IA lerá isto juntamente com os ficheiros carregados para redigir toda a monografia." class="w-full h-32 text-sm p-4 bg-white/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 focus:border-purple-500 rounded-xl outline-none resize-none custom-scrollbar leading-relaxed"></textarea>
+                    <textarea id="raw-text" placeholder="Cole as suas notas base aqui. A IA lerá isto juntamente com os ficheiros carregados para redigir toda a monografia." class="w-full h-40 text-sm p-4 bg-white/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 focus:border-purple-500 rounded-xl outline-none resize-none custom-scrollbar leading-relaxed"></textarea>
                 </div>
+                
+                <!-- Espaçador para garantir que a scrollbar desce até ao fim absoluto -->
+                <div class="h-6 shrink-0"></div>
             </div>
         </div>
 
-        <div id="panel-right" class="fixed lg:absolute left-4 right-4 lg:left-auto lg:right-4 top-4 bottom-28 lg:bottom-24 lg:w-[320px] bg-white/90 dark:bg-slate-850/90 backdrop-blur-2xl shadow-2xl rounded-3xl border border-white/40 dark:border-slate-700/50 flex flex-col z-30 transition-transform duration-300 mobile-hidden lg:!transform-none lg:!opacity-100 lg:!pointer-events-auto">
+        <!-- PAINEL DIREITO: Assistente e Ações IA (Com Resize Dinâmico) -->
+        <div id="panel-right" class="fixed lg:absolute left-4 right-4 lg:left-auto lg:right-4 top-4 bottom-28 lg:bottom-auto lg:h-[85vh] lg:max-h-[90vh] lg:w-[320px] bg-white/90 dark:bg-slate-850/90 backdrop-blur-2xl shadow-2xl rounded-3xl border border-white/40 dark:border-slate-700/50 flex flex-col z-30 transition-transform duration-300 mobile-hidden lg:!transform-none lg:!opacity-100 lg:!pointer-events-auto lg:resize lg:overflow-hidden lg:min-w-[300px] lg:max-w-[40vw] lg:min-h-[400px]">
             
             <div id="panel-right-header" class="p-5 border-b border-slate-200/50 dark:border-slate-800/50 flex justify-between items-center cursor-move lg:hover:bg-slate-50/50 dark:hover:bg-slate-800/50 rounded-t-3xl transition-colors">
                 <h3 class="font-extrabold flex items-center gap-2 text-slate-800 dark:text-white"><i data-lucide="bot" class="w-5 h-5 text-purple-500"></i> Assistente IA</h3>
@@ -275,7 +407,7 @@
                 </div>
             </div>
 
-            <div class="flex-1 p-5 flex flex-col gap-6 overflow-y-auto custom-scrollbar">
+            <div class="flex-1 p-5 flex flex-col gap-6 overflow-y-auto custom-scrollbar pb-8">
                 
                 <div class="bg-purple-50 dark:bg-purple-900/20 p-4 rounded-2xl border border-purple-100 dark:border-purple-900/30">
                     <p class="text-sm text-purple-800 dark:text-purple-300 leading-relaxed font-medium">
@@ -302,6 +434,8 @@
                         <i data-lucide="printer" class="w-5 h-5"></i> PDF / Imprimir
                     </button>
                 </div>
+                <!-- Espaçador inferior -->
+                <div class="h-2 shrink-0"></div>
             </div>
         </div>
 
@@ -415,7 +549,10 @@
                     <i data-lucide="edit-3" class="w-5 h-5 text-primary-500"></i> Editor de Capítulo
                 </h3>
                 <div class="flex items-center gap-3">
-                    <label class="cursor-pointer px-4 py-2 bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300 rounded-lg hover:bg-slate-300 transition flex items-center gap-2 text-sm font-bold shadow-sm">
+                    <button type="button" onclick="insertPageBreak()" class="cursor-pointer px-4 py-2 bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300 rounded-lg hover:bg-slate-300 dark:hover:bg-slate-700 transition flex items-center gap-2 text-sm font-bold shadow-sm" title="Inserir Quebra de Página">
+                        <i data-lucide="scissors" class="w-4 h-4"></i> <span class="hidden sm:inline">Quebra de Página</span>
+                    </button>
+                    <label class="cursor-pointer px-4 py-2 bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300 rounded-lg hover:bg-slate-300 dark:hover:bg-slate-700 transition flex items-center gap-2 text-sm font-bold shadow-sm" title="Inserir Imagem">
                         <i data-lucide="image-plus" class="w-4 h-4"></i> <span class="hidden sm:inline">Ilustrar</span>
                         <input type="file" id="modal-image-upload" accept="image/*" class="hidden" />
                     </label>
@@ -459,7 +596,8 @@
             isDark: localStorage.getItem('monografia_dark') === 'true',
             history: JSON.parse(localStorage.getItem('monografia_history')) || [],
             logoBase64: localStorage.getItem('monografia_logo') || 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1a/UPDS_Logo.png/600px-UPDS_Logo.png',
-            uploadedContextText: '' // Guarda texto extraído de PDFs e TXTs
+            uploadedContextText: '',
+            margins: JSON.parse(localStorage.getItem('monografia_margins')) || { mt: 2.54, mb: 2.54, ml: 3.0, mr: 2.54 }
         };
 
         document.addEventListener('DOMContentLoaded', () => {
@@ -468,14 +606,18 @@
             document.getElementById('input-apikey').value = state.apiKey;
             document.getElementById('doc-language').value = state.docLanguage;
             if(state.logoBase64 && state.logoBase64.startsWith('data:')) { setCustomLogo(state.logoBase64); }
+            
             renderHistory();
+            applyMarginsToCSS();
 
-            // Tornar painéis arrastáveis no Desktop
+            // Tornar painéis arrastáveis e redimensionáveis no Desktop
             makeDraggable('panel-left', 'panel-left-header');
             makeDraggable('panel-right', 'panel-right-header');
+            initPinchZoom();
+            initPageTracker();
         });
 
-        // Lógica de Arrastar (Drag and Drop)
+        // Lógica de Arrastar com Limite de Teto e Laterais (Evita perder janelas)
         function makeDraggable(elementId, headerId) {
             const el = document.getElementById(elementId);
             const header = document.getElementById(headerId);
@@ -484,7 +626,7 @@
             let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
             
             header.onmousedown = function(e) {
-                if(window.innerWidth < 1024) return; // Desativa drag no mobile
+                if(window.innerWidth < 1024) return; // Desativa drag no mobile (tablets e telemóveis)
                 e.preventDefault();
                 pos3 = e.clientX;
                 pos4 = e.clientY;
@@ -499,17 +641,162 @@
                 pos3 = e.clientX;
                 pos4 = e.clientY;
                 
-                // Transição suave para absolute placement
-                el.style.top = (el.offsetTop - pos2) + "px";
-                el.style.left = (el.offsetLeft - pos1) + "px";
+                let newTop = el.offsetTop - pos2;
+                let newLeft = el.offsetLeft - pos1;
+
+                // Limite do "Teto" (Impede perder a janela no topo)
+                if (newTop < 16) {
+                    newTop = 16; 
+                }
+                
+                // Limites inferioes e laterais (Garante que pelo menos uma parte da janela fica visível no ecrã)
+                const maxTop = window.innerHeight - 100;
+                if (newTop > maxTop) newTop = maxTop;
+                
+                const maxLeft = window.innerWidth - 100;
+                const minLeft = -el.offsetWidth + 100;
+                if (newLeft > maxLeft) newLeft = maxLeft;
+                if (newLeft < minLeft) newLeft = minLeft;
+
+                el.style.top = newTop + "px";
+                el.style.left = newLeft + "px";
+                
+                // Remove restrições de CSS que impedem o reposicionamento absoluto total
                 el.style.right = 'auto';
                 el.style.bottom = 'auto';
-                el.classList.remove('lg:bottom-24'); // Remove restrição bottom Tailwind
+                el.classList.remove('lg:bottom-24');
             }
 
             function closeDragElement() {
                 document.onmouseup = null;
                 document.onmousemove = null;
+            }
+        }
+
+        // ==========================================
+        // Controlo de Margens e Zoom
+        // ==========================================
+        function toggleMarginSettings() {
+            const panel = document.getElementById('margin-settings-panel');
+            if(panel.classList.contains('hidden-state')) {
+                panel.classList.remove('hidden-state');
+                ['mt', 'mb', 'ml', 'mr'].forEach(side => {
+                    document.getElementById(`val-${side}`).value = state.margins[side];
+                    document.getElementById(`sl-${side}`).value = state.margins[side];
+                });
+            } else {
+                panel.classList.add('hidden-state');
+            }
+        }
+
+        function updateMarginFromSlider(side) {
+            const val = document.getElementById(`sl-${side}`).value;
+            document.getElementById(`val-${side}`).value = val;
+            saveMarginState(side, parseFloat(val));
+        }
+
+        function updateMarginFromInput(side) {
+            const val = document.getElementById(`val-${side}`).value;
+            document.getElementById(`sl-${side}`).value = val;
+            saveMarginState(side, parseFloat(val));
+        }
+
+        function saveMarginState(side, value) {
+            state.margins[side] = value;
+            localStorage.setItem('monografia_margins', JSON.stringify(state.margins));
+            applyMarginsToCSS();
+        }
+
+        function applyMarginsToCSS() {
+            document.documentElement.style.setProperty('--page-mt', `${state.margins.mt}cm`);
+            document.documentElement.style.setProperty('--page-mb', `${state.margins.mb}cm`);
+            document.documentElement.style.setProperty('--page-ml', `${state.margins.ml}cm`);
+            document.documentElement.style.setProperty('--page-mr', `${state.margins.mr}cm`);
+        }
+
+        function resetMargins() {
+            state.margins = { mt: 2.54, mb: 2.54, ml: 3.0, mr: 2.54 };
+            localStorage.setItem('monografia_margins', JSON.stringify(state.margins));
+            applyMarginsToCSS();
+            ['mt', 'mb', 'ml', 'mr'].forEach(side => {
+                document.getElementById(`val-${side}`).value = state.margins[side];
+                document.getElementById(`sl-${side}`).value = state.margins[side];
+            });
+        }
+
+        let currentZoom = 1;
+        function changeZoom(delta) {
+            setZoom(currentZoom + delta);
+        }
+
+        function setZoom(val) {
+            currentZoom = Math.max(0.4, Math.min(val, 3)); 
+            document.documentElement.style.setProperty('--doc-zoom', currentZoom);
+            document.getElementById('zoom-level-text').innerText = Math.round(currentZoom * 100) + '%';
+        }
+
+        function initPinchZoom() {
+            const canvas = document.getElementById('main-canvas');
+            let initialDistance = null;
+            let initialZoom = 1;
+
+            canvas.addEventListener('touchstart', (e) => {
+                if (e.touches.length === 2) {
+                    initialDistance = Math.hypot(
+                        e.touches[0].pageX - e.touches[1].pageX,
+                        e.touches[0].pageY - e.touches[1].pageY
+                    );
+                    initialZoom = currentZoom;
+                }
+            }, { passive: false });
+
+            canvas.addEventListener('touchmove', (e) => {
+                if (e.touches.length === 2 && initialDistance) {
+                    e.preventDefault(); 
+                    const currentDistance = Math.hypot(
+                        e.touches[0].pageX - e.touches[1].pageX,
+                        e.touches[0].pageY - e.touches[1].pageY
+                    );
+                    const scale = currentDistance / initialDistance;
+                    setZoom(initialZoom * scale);
+                }
+            }, { passive: false });
+
+            canvas.addEventListener('touchend', (e) => {
+                if (e.touches.length < 2) {
+                    initialDistance = null;
+                }
+            });
+        }
+
+        // ==========================================
+        // Page Tracker
+        // ==========================================
+        function initPageTracker() {
+            const canvas = document.getElementById('main-canvas');
+            canvas.addEventListener('scroll', updatePageTrackerDisplay);
+            setTimeout(updatePageTrackerDisplay, 500); 
+        }
+
+        function updatePageTrackerDisplay() {
+            const pages = document.querySelectorAll('.a4-page');
+            let currentPage = 1;
+            let minDistance = Infinity;
+            
+            pages.forEach((page, index) => {
+                const rect = page.getBoundingClientRect();
+                const distance = Math.abs(rect.top - (window.innerHeight / 3)); 
+                if (distance < minDistance) {
+                    minDistance = distance;
+                    currentPage = index + 1;
+                }
+            });
+            
+            const curEl = document.getElementById('current-page-num');
+            const totEl = document.getElementById('total-pages-num');
+            if(curEl && totEl) {
+                curEl.innerText = currentPage;
+                totEl.innerText = pages.length;
             }
         }
 
@@ -552,11 +839,9 @@
             }
         }
 
-        // Toggle Inteligente dos Painéis
         function togglePanelVisibility(panelId) {
             const panel = document.getElementById(panelId);
             if(window.innerWidth < 1024) {
-                // Comportamento Mobile
                 if(panel.classList.contains('mobile-hidden')) {
                     document.getElementById('panel-left').classList.add('mobile-hidden');
                     document.getElementById('panel-right').classList.add('mobile-hidden');
@@ -565,7 +850,6 @@
                     panel.classList.add('mobile-hidden');
                 }
             } else {
-                // Comportamento Desktop (Minimizar)
                 if(panel.classList.contains('hidden-state')) {
                     panel.classList.remove('hidden-state');
                 } else {
@@ -574,7 +858,6 @@
             }
         }
         
-        // Proxy para mobile close
         function toggleMobilePanels(side) { togglePanelVisibility(`panel-${side}`); }
 
         function toggleDarkMode() {
@@ -608,14 +891,18 @@
         // 3. CARREGAMENTO DE FICHEIROS E DADOS (PDF/TXT)
         // ==========================================
         function updateCoverPage() {
-            const fields = ['university', 'faculty', 'career', 'title', 'student', 'professor'];
-            fields.forEach(f => { document.getElementById(`out-${f}`).innerText = document.getElementById(`in-${f}`).value; });
+            const fields = ['university', 'faculty', 'career', 'title', 'subject', 'student', 'professor'];
+            fields.forEach(f => { 
+                const el = document.getElementById(`out-${f}`);
+                if (el) el.innerText = document.getElementById(`in-${f}`).value; 
+            });
             document.getElementById('out-location').innerText = document.getElementById('in-city').value;
             document.getElementById('out-year').innerText = document.getElementById('in-year').value;
         }
 
-        ['in-university', 'in-faculty', 'in-career', 'in-title', 'in-student', 'in-professor', 'in-city', 'in-year'].forEach(id => {
-            document.getElementById(id).addEventListener('input', updateCoverPage);
+        ['in-university', 'in-faculty', 'in-career', 'in-title', 'in-subject', 'in-student', 'in-professor', 'in-city', 'in-year'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.addEventListener('input', updateCoverPage);
         });
 
         document.getElementById('logo-upload').addEventListener('change', function(e) {
@@ -638,7 +925,6 @@
             document.getElementById('logo-icon').classList.add('hidden-state');
         }
 
-        // Upload Multi-Ficheiros (Extrator PDF & TXT)
         document.getElementById('multi-file-upload').addEventListener('change', async function(e) {
             const files = e.target.files;
             const listDiv = document.getElementById('uploaded-files-list');
@@ -661,7 +947,6 @@
                     
                     state.uploadedContextText += `\n\n--- DOCUMENTO DE REFERÊNCIA: ${file.name} ---\n${text}\n--- FIM DO DOCUMENTO ---`;
                     
-                    // Sucesso visual
                     const el = document.getElementById(fileId);
                     el.classList.add('bg-green-100', 'text-green-700', 'border-green-200', 'dark:bg-green-900/40', 'dark:text-green-400');
                     el.innerHTML = `<i data-lucide="check" class="w-3 h-3"></i> ${file.name}`;
@@ -676,7 +961,6 @@
             }
         });
 
-        // Helper para usar o pdf.js para ler texto (Client-Side)
         async function extractTextFromPDF(file) {
             const arrayBuffer = await file.arrayBuffer();
             const pdf = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
@@ -821,16 +1105,48 @@
                 `;
             });
 
+            // Botão Adicionar Nova Seção Manual
+            finalHtml += `
+                <div class="w-full flex justify-center mt-4 mb-10 hide-on-print">
+                     <button onclick="addNewSection()" class="flex items-center gap-2 px-6 py-4 bg-white/80 dark:bg-slate-800/80 backdrop-blur-md border-2 border-dashed border-primary-300 dark:border-primary-700/50 text-primary-600 dark:text-primary-400 rounded-2xl hover:bg-primary-50 dark:hover:bg-primary-900/30 transition-all font-bold shadow-sm hover:shadow-md hover:-translate-y-0.5">
+                         <i data-lucide="plus-circle" class="w-5 h-5"></i> Adicionar Nova Página/Seção
+                     </button>
+                </div>
+            `;
+
             container.innerHTML = finalHtml;
             lucide.createIcons();
+            
+            // Atualiza o contador de páginas imediatamente após gerar novo conteúdo
+            setTimeout(updatePageTrackerDisplay, 100);
         }
 
-        // --- 6. EDITOR MODAL & IA SPECÍFICA ---
+        function addNewSection() {
+            const newId = 'sec-' + Date.now();
+            state.generatedSections.push({
+                id: newId,
+                title: 'Novo Capítulo',
+                content: '<p>Comece a desenvolver o seu texto aqui...</p>'
+            });
+            renderSections();
+            
+            // Scroll to end and open editor
+            const container = document.getElementById('main-canvas');
+            container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+            setTimeout(() => openEditModal(newId), 500);
+        }
+
         function openEditModal(id) {
             const section = state.generatedSections.find(s => s.id === id);
             state.editingSectionId = id;
             document.getElementById('modal-edit-title').value = section.title;
-            document.getElementById('modal-edit-content').value = section.content.replace(/<p>/g, '').replace(/<\/p>/g, '\n\n').trim();
+            
+            // Conservar Page breaks e Imagens
+            let contentForEdit = section.content;
+            if(!contentForEdit.includes('<hr class="page-break-marker">') && !contentForEdit.includes('<p class=')) {
+                contentForEdit = contentForEdit.replace(/<p>/g, '').replace(/<\/p>/g, '\n\n').trim();
+            }
+            document.getElementById('modal-edit-content').value = contentForEdit;
             
             const modal = document.getElementById('edit-modal');
             const content = document.getElementById('edit-modal-content');
@@ -845,6 +1161,16 @@
             setTimeout(() => { modal.classList.add('hidden-state'); state.editingSectionId = null; }, 300); 
         }
 
+        function insertPageBreak() {
+            const textarea = document.getElementById('modal-edit-content');
+            const breakTag = `\n\n<hr class="page-break-marker">\n\n`;
+            const startPos = textarea.selectionStart;
+            const endPos = textarea.selectionEnd;
+            textarea.value = textarea.value.substring(0, startPos) + breakTag + textarea.value.substring(endPos, textarea.value.length);
+            textarea.focus();
+            textarea.selectionEnd = startPos + breakTag.length;
+        }
+
         document.getElementById('modal-image-upload').addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (file) {
@@ -852,7 +1178,6 @@
                 reader.onload = function(evt) {
                     const base64Img = evt.target.result;
                     const textarea = document.getElementById('modal-edit-content');
-                    // Imagem responsiva centrada estilo APA Figure
                     const imgTag = `\n\n<div style="text-align: center; margin-top: 12pt; margin-bottom: 12pt;"><img src="${base64Img}" alt="Ilustração" style="max-width: 100%; height: auto; display: inline-block; margin: 0 auto;" /></div>\n\n`;
                     const startPos = textarea.selectionStart;
                     const endPos = textarea.selectionEnd;
@@ -874,8 +1199,11 @@
                 blocks.forEach(block => {
                     const trimmed = block.trim();
                     if(trimmed === '') return;
-                    if(trimmed.startsWith('<div') || trimmed.includes('<p class=')) { formattedParts.push(trimmed); } 
-                    else { formattedParts.push(`<p>${trimmed}</p>`); }
+                    if(trimmed.startsWith('<div') || trimmed.includes('<p class=') || trimmed.includes('<hr ')) { 
+                        formattedParts.push(trimmed); 
+                    } else { 
+                        formattedParts.push(`<p>${trimmed}</p>`); 
+                    }
                 });
 
                 state.generatedSections[index].content = formattedParts.join('');
@@ -890,7 +1218,7 @@
         }
 
         window.improveChapterWithAI = async function() {
-            if (!state.apiKey) { alert('Erro: Configure a Chave API.'); return; }
+            if (!state.apiKey) { showError('Erro: Configure a Chave API nas definições.'); return; }
             
             const btnImprove = document.getElementById('btn-improve-ai');
             const textImprove = document.getElementById('text-improve-ai');
@@ -927,7 +1255,7 @@
                 contentArea.value = improvedText.replace(/<p>/g, '').replace(/<\/p>/g, '\n\n').trim();
 
             } catch (err) {
-                console.error(err); alert('Erro na IA.');
+                console.error(err); showError('Erro na IA ao tentar melhorar o capítulo.');
             } finally {
                 btnImprove.disabled = false;
                 btnImprove.classList.remove('opacity-50', 'cursor-wait');
@@ -973,10 +1301,11 @@
             if(!doc) return;
             
             document.getElementById('in-title').value = doc.title;
-            ['uni', 'fac', 'car', 'stu', 'prof', 'city', 'country', 'year'].forEach(f => {
-                const map = {uni:'university', fac:'faculty', car:'career', stu:'student', prof:'professor'};
+            ['uni', 'fac', 'car', 'sub', 'stu', 'prof', 'city', 'year'].forEach(f => {
+                const map = {uni:'university', fac:'faculty', car:'career', sub:'subject', stu:'student', prof:'professor'};
                 const elemId = map[f] || f;
-                document.getElementById(`in-${elemId}`).value = doc.cover[f] || '';
+                const el = document.getElementById(`in-${elemId}`);
+                if(el) el.value = doc.cover[f] || '';
             });
             
             if(doc.logo) setCustomLogo(doc.logo);
@@ -990,22 +1319,26 @@
             switchTab('generator');
         }
 
-        // --- 8. EXPORTAÇÕES (WORD & PDF Native Print) ---
         window.exportPDF = function() { window.print(); }
 
         window.exportWord = function() {
             let printArea = document.getElementById('print-area').innerHTML;
             const docTitle = document.getElementById('in-title').value || 'Monografia';
 
-            // Clean flexbox for strict MS Word Support
             printArea = printArea.replace(/class="toc-item"/g, 'style="margin-bottom: 12pt; text-indent: 0;"');
             printArea = printArea.replace(/class="toc-dots"/g, 'style="display:none;"');
 
-            const header = `<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+            const mt = state.margins.mt + 'cm';
+            const mr = state.margins.mr + 'cm';
+            const mb = state.margins.mb + 'cm';
+            const ml = state.margins.ml + 'cm';
+
+            const header = `<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='[http://www.w3.org/TR/REC-html40](http://www.w3.org/TR/REC-html40)'>
             <head><meta charset='utf-8'><title>Monografia</title>
                 <style>
                     body { font-family: 'Times New Roman', serif; font-size: 12pt; line-height: 2; color: black; }
-                    .a4-page { page-break-after: always; padding: 2.54cm 2.54cm 2.54cm 3cm; }
+                    .a4-page { page-break-after: always; padding: ${mt} ${mr} ${mb} ${ml}; }
+                    .cover-border { border: 6px double #000066; padding: 1.54cm 1.54cm 1.54cm 2cm; height: 95%; display: block; }
                     p { text-indent: 1.27cm; text-align: justify; margin: 0; line-height: 200%; }
                     h1 { text-align: center; font-weight: bold; font-size: 12pt; margin-top: 24pt; margin-bottom: 12pt; text-indent: 0;}
                     h2 { text-align: left; font-weight: bold; font-size: 12pt; margin-top: 24pt; margin-bottom: 12pt; text-indent: 0;}
@@ -1018,6 +1351,7 @@
                     .uppercase-text { text-transform: uppercase; }
                     .hide-on-word { display: none !important; }
                     .hide-on-print { display: none !important; }
+                    .page-break-marker { page-break-after: always; display: block; margin: 0; padding: 0; border: none; }
                 </style>
             </head><body>`;
             
