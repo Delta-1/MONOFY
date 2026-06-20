@@ -526,8 +526,8 @@
             <div class="flex-1 p-5 flex flex-col gap-6 overflow-y-auto custom-scrollbar pb-8">
                 
                 <div class="bg-purple-50 dark:bg-purple-900/20 p-4 rounded-2xl border border-purple-100 dark:border-purple-900/30">
-                    <p class="text-sm text-purple-800 dark:text-purple-300 leading-relaxed font-medium">
-                        Olá! Eu vou formatar e expandir a sua pesquisa gerando uma monografia com Índice automático, Margens UPDS e Referências em APA 7.
+                    <p class="text-sm text-purple-800 dark:text-purple-300 leading-relaxed font-medium" id="assistant-intro-text">
+                        Olá! Eu vou formatar e expandir a sua pesquisa gerando uma monografia com Índice automático, margens e referências no modelo ativo.
                     </p>
                 </div>
 
@@ -1052,6 +1052,9 @@
             document.documentElement.style.setProperty('--doc-paragraph-indent', `${tpl.recuoParagrafo}cm`);
 
             document.getElementById('print-area').classList.toggle('norm-no-frame', !tpl.capaMoldura);
+
+            const introEl = document.getElementById('assistant-intro-text');
+            if (introEl) introEl.innerText = `Olá! Eu vou formatar e expandir a sua pesquisa gerando uma monografia com Índice automático, margens do modelo "${tpl.nome}" e Referências em ${tpl.estiloCitacao}.`;
 
             renderNormTemplatesList();
         }
@@ -1746,19 +1749,25 @@
             document.getElementById('text-generate').innerText = 'A processar...';
             btnGenerate.disabled = true;
 
-            const systemPrompt = `Actúa como un profesor universitario y revisor experto en Normas APA 7ma edición.
+            const activeTpl = getActiveNormTemplate();
+            const citStyle = state.citationStyle;
+            const refRulesByStyle = citStyle === 'ABNT'
+                ? `Genera una lista bibliográfica en NORMAS ABNT (NBR 6023). Formato: SOBRENOME, Nome. Título: subtítulo. Edición. Local: Editora, Año. Las citas en el texto deben ser (SOBRENOME, año).`
+                : `Genera una lista bibliográfica APA 7 válida. Formato: Autor, A. (Año). Título. Fuente/Editorial. Las citas en el texto deben ser (Autor, año).`;
+
+            const systemPrompt = `Actúa como un profesor universitario y revisor experto en Normas ${citStyle} (modelo "${activeTpl.nome}").
             IDIOMA DE SALIDA OBLIGATORIO: ${state.docLanguage}. Escribe TODO estrictamente en este idioma.
             TÍTULO DEL TRABAJO: ${document.getElementById('in-title').value}
-            
+
             TAREA: Toma las notas del usuario y el material de referencia, expándelo analíticamente y redacta una monografía académica formal.
-            
-            REGLAS CRÍTICAS APA 7 Y ESTRUCTURA:
+
+            REGLAS CRÍTICAS Y ESTRUCTURA:
             1. NO GENERE LA TABLA DE CONTENIDO (Índice).
             2. DEBES CREAR obligatoriamente estas secciones: Resumen, Introducción, Marco Teórico (crea subtópicos), Conclusión, Referencias.
             3. JERARQUÍA DE TÍTULOS: Usa <h1> para Títulos Nivel 1, <h2> Nivel 2, <h3> Nivel 3.
             4. PÁRRAFOS: Usa <p> para separar ideas.
-            5. REFERENCIAS BIBLIOGRÁFICAS (MUY IMPORTANTE): Genera una lista bibliográfica APA válida. Envuelve CADA referencia obligatoriamente en <p class="hanging-indent"> para lograr la sangría francesa requerida por APA 7.
-            
+            5. REFERENCIAS BIBLIOGRÁFICAS (MUY IMPORTANTE): ${refRulesByStyle} Envuelve CADA referencia obligatoriamente en <p class="hanging-indent"> para lograr la sangría francesa.
+
             MATERIAL DE REFERENCIA DEL USUARIO (Extrae argumentos de aquí si los hay):
             ${state.uploadedContextText}
             
@@ -2185,6 +2194,16 @@
 
             printArea = printArea.replace(/class="toc-item"/g, 'style="margin-bottom: 12pt; text-indent: 0;"');
             printArea = printArea.replace(/class="toc-dots"/g, 'style="display:none;"');
+
+            // O Word não confia 100% no CSS page-break-after; insere o marcador nativo do Word
+            // antes de cada página (exceto a primeira) para garantir a quebra real no .doc.
+            let pageCount = 0;
+            printArea = printArea.replace(/<div class="a4-page/g, () => {
+                pageCount++;
+                return pageCount === 1
+                    ? '<div class="a4-page'
+                    : `<br clear="all" style="mso-special-character:line-break;page-break-before:always">\n<div class="a4-page`;
+            });
 
             const mt = state.margins.mt + 'cm';
             const mr = state.margins.mr + 'cm';
