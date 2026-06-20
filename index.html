@@ -44,6 +44,24 @@
         ];
         const CREDITS_PER_EXPORT = 10;
         const WHATSAPP_SUPPORT_NUMBER = '5519989765398';
+
+        // Modelos de norma embutidos. Margens em cm. recuoParagrafo em cm.
+        const BUILTIN_NORM_TEMPLATES = [
+            {
+                id: 'apa-upds', nome: 'APA 7 (UPDS)', builtin: true,
+                margens: { mt: 2.54, mb: 2.54, ml: 3.0, mr: 2.54 },
+                fonte: "'Tinos', 'Times New Roman', Times, serif", tamanhoFonte: '12pt',
+                espacamento: 2, recuoParagrafo: 1.27,
+                capaMoldura: true, capaAlinhamento: 'center', estiloCitacao: 'APA'
+            },
+            {
+                id: 'abnt', nome: 'ABNT', builtin: true,
+                margens: { mt: 3.0, mb: 2.0, ml: 3.0, mr: 2.0 },
+                fonte: "'Times New Roman', Times, serif", tamanhoFonte: '12pt',
+                espacamento: 1.5, recuoParagrafo: 1.25,
+                capaMoldura: false, capaAlinhamento: 'center', estiloCitacao: 'ABNT'
+            }
+        ];
     </script>
 
     <!-- PDF.js para Extração de Texto de PDFs -->
@@ -74,6 +92,10 @@
             --page-mb: 2.54cm;
             --page-ml: 3.00cm;
             --doc-zoom: 1;
+            --doc-font-family: 'Tinos', 'Times New Roman', Times, serif;
+            --doc-font-size: 12pt;
+            --doc-line-height: 2;
+            --doc-paragraph-indent: 1.27cm;
         }
 
         /* CANVAS OTIMIZADO PARA MOBILE SCROLL
@@ -99,9 +121,9 @@
             min-height: 297mm;
             box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
             padding: var(--page-mt) var(--page-mr) var(--page-mb) var(--page-ml) !important;
-            font-family: 'Tinos', 'Times New Roman', Times, serif;
-            font-size: 12pt;
-            line-height: 2; /* Espaçamento Duplo */
+            font-family: var(--doc-font-family);
+            font-size: var(--doc-font-size);
+            line-height: var(--doc-line-height);
             color: black !important;
             position: relative;
             flex-shrink: 0;
@@ -129,7 +151,8 @@
         }
 
         /* Regras APA 7ª Edição */
-        .a4-page p { text-indent: 1.27cm; margin-bottom: 0; text-align: justify; }
+        .a4-page p { text-indent: var(--doc-paragraph-indent); margin-bottom: 0; text-align: justify; }
+        .norm-no-frame .cover-border { border: none !important; }
         .a4-page h1 { font-size: 12pt; font-weight: bold; text-align: center; margin-top: 24pt; margin-bottom: 12pt; text-indent: 0; }
         .a4-page h2 { font-size: 12pt; font-weight: bold; text-align: left; margin-top: 24pt; margin-bottom: 12pt; text-indent: 0; }
         .a4-page h3 { font-size: 12pt; font-weight: bold; font-style: italic; text-align: left; margin-top: 24pt; margin-bottom: 12pt; text-indent: 0; }
@@ -704,6 +727,19 @@
 
                     <div>
                         <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-3 flex items-center gap-2">
+                            <i data-lucide="ruler" class="w-5 h-5 text-indigo-500"></i> Modelo de Norma (margens, capa, citação)
+                        </label>
+                        <div id="norm-dropzone" class="border-2 border-dashed border-indigo-300 dark:border-indigo-700/50 rounded-2xl p-6 text-center cursor-pointer hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors">
+                            <i data-lucide="upload-cloud" class="w-8 h-8 mx-auto mb-2 text-indigo-400"></i>
+                            <p class="text-sm font-bold text-slate-600 dark:text-slate-300">Arraste um arquivo .txt aqui ou clique para enviar</p>
+                            <p class="text-xs text-slate-400 mt-1">Define margens, fonte, moldura da capa e estilo de citação do seu modelo</p>
+                            <input type="file" id="norm-file-input" accept=".txt" class="hidden">
+                        </div>
+                        <div id="norm-templates-list" class="mt-4 space-y-2"></div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-3 flex items-center gap-2">
                             <i data-lucide="key" class="w-5 h-5 text-amber-500"></i> Chave API (Provider Inteligência)
                         </label>
                         <input type="password" id="input-apikey" placeholder="Cole a sua chave aqui..." class="w-full p-4 font-mono text-sm border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 rounded-xl outline-none shadow-inner">
@@ -749,7 +785,10 @@
             margins: JSON.parse(localStorage.getItem('monografia_margins')) || { mt: 2.54, mb: 2.54, ml: 3.0, mr: 2.54 },
             references: [],
             isDemo: false,
-            animStyle: localStorage.getItem('monografia_anim_style') || 'fade'
+            animStyle: localStorage.getItem('monografia_anim_style') || 'fade',
+            customNormTemplates: JSON.parse(localStorage.getItem('monografia_norm_templates')) || [],
+            activeNormTemplateId: localStorage.getItem('monografia_active_norm') || 'apa-upds',
+            citationStyle: 'APA'
         };
 
         document.addEventListener('DOMContentLoaded', () => {
@@ -760,7 +799,7 @@
             if(state.logoBase64 && state.logoBase64.startsWith('data:')) { setCustomLogo(state.logoBase64); }
             
             renderHistory();
-            applyMarginsToCSS();
+            applyNormTemplate(getActiveNormTemplate());
             applyWatermarkStamps();
             document.getElementById('anim-style').value = state.animStyle;
 
@@ -935,6 +974,129 @@
                 document.getElementById(`val-${side}`).value = state.margins[side];
                 document.getElementById(`sl-${side}`).value = state.margins[side];
             });
+        }
+
+        // ==========================================
+        // MODELOS DE NORMA (APA / ABNT / personalizados via .txt)
+        // ==========================================
+        function getAllNormTemplates() {
+            return [...BUILTIN_NORM_TEMPLATES, ...state.customNormTemplates];
+        }
+
+        function getActiveNormTemplate() {
+            return getAllNormTemplates().find(t => t.id === state.activeNormTemplateId) || BUILTIN_NORM_TEMPLATES[0];
+        }
+
+        // Formato do .txt esperado: linhas "chave: valor". Chaves aceitas:
+        // nome, margem_superior, margem_inferior, margem_esquerda, margem_direita (cm),
+        // fonte, tamanho_fonte, espacamento, recuo_paragrafo (cm),
+        // capa_moldura (sim/nao), capa_alinhamento (centro/esquerda), estilo_citacao (APA/ABNT)
+        function parseNormTemplateTxt(text, fallbackName) {
+            const lines = text.split(/\r?\n/);
+            const raw = {};
+            lines.forEach(line => {
+                const idx = line.indexOf(':');
+                if (idx === -1) return;
+                const key = line.substring(0, idx).trim().toLowerCase();
+                const value = line.substring(idx + 1).trim();
+                if (key) raw[key] = value;
+            });
+
+            const toBool = (v, def) => {
+                if (v === undefined) return def;
+                return ['sim', 'true', '1', 'yes'].includes(v.toLowerCase());
+            };
+            const toNum = (v, def) => {
+                const n = parseFloat((v || '').replace(',', '.'));
+                return isNaN(n) ? def : n;
+            };
+
+            return {
+                id: 'custom-' + Date.now(),
+                nome: raw['nome'] || fallbackName || 'Modelo Personalizado',
+                builtin: false,
+                margens: {
+                    mt: toNum(raw['margem_superior'], 2.54),
+                    mb: toNum(raw['margem_inferior'], 2.54),
+                    ml: toNum(raw['margem_esquerda'], 3.0),
+                    mr: toNum(raw['margem_direita'], 2.54)
+                },
+                fonte: raw['fonte'] ? `'${raw['fonte']}', serif` : "'Times New Roman', serif",
+                tamanhoFonte: raw['tamanho_fonte'] ? `${toNum(raw['tamanho_fonte'], 12)}pt` : '12pt',
+                espacamento: toNum(raw['espacamento'], 2),
+                recuoParagrafo: toNum(raw['recuo_paragrafo'], 1.27),
+                capaMoldura: toBool(raw['capa_moldura'], false),
+                capaAlinhamento: (raw['capa_alinhamento'] || 'centro').toLowerCase().startsWith('esq') ? 'left' : 'center',
+                estiloCitacao: (raw['estilo_citacao'] || 'APA').toUpperCase()
+            };
+        }
+
+        function applyNormTemplate(tpl) {
+            state.activeNormTemplateId = tpl.id;
+            state.citationStyle = tpl.estiloCitacao || 'APA';
+            localStorage.setItem('monografia_active_norm', tpl.id);
+
+            state.margins = { ...tpl.margens };
+            localStorage.setItem('monografia_margins', JSON.stringify(state.margins));
+            applyMarginsToCSS();
+            ['mt', 'mb', 'ml', 'mr'].forEach(side => {
+                const valEl = document.getElementById(`val-${side}`);
+                const slEl = document.getElementById(`sl-${side}`);
+                if (valEl) valEl.value = state.margins[side];
+                if (slEl) slEl.value = state.margins[side];
+            });
+
+            document.documentElement.style.setProperty('--doc-font-family', tpl.fonte);
+            document.documentElement.style.setProperty('--doc-font-size', tpl.tamanhoFonte);
+            document.documentElement.style.setProperty('--doc-line-height', tpl.espacamento);
+            document.documentElement.style.setProperty('--doc-paragraph-indent', `${tpl.recuoParagrafo}cm`);
+
+            document.getElementById('print-area').classList.toggle('norm-no-frame', !tpl.capaMoldura);
+
+            renderNormTemplatesList();
+        }
+
+        function handleNormTemplateFile(file) {
+            if (!file.name.toLowerCase().endsWith('.txt')) {
+                alert('Por favor, envie um arquivo .txt');
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const tpl = parseNormTemplateTxt(e.target.result, file.name.replace(/\.txt$/i, ''));
+                state.customNormTemplates.push(tpl);
+                localStorage.setItem('monografia_norm_templates', JSON.stringify(state.customNormTemplates));
+                applyNormTemplate(tpl);
+                alert(`Modelo "${tpl.nome}" importado e aplicado!`);
+            };
+            reader.readAsText(file);
+        }
+
+        function deleteNormTemplate(id) {
+            if (!confirm('Remover este modelo personalizado?')) return;
+            state.customNormTemplates = state.customNormTemplates.filter(t => t.id !== id);
+            localStorage.setItem('monografia_norm_templates', JSON.stringify(state.customNormTemplates));
+            if (state.activeNormTemplateId === id) applyNormTemplate(BUILTIN_NORM_TEMPLATES[0]);
+            else renderNormTemplatesList();
+        }
+
+        function renderNormTemplatesList() {
+            const list = document.getElementById('norm-templates-list');
+            if (!list) return;
+            const templates = getAllNormTemplates();
+            list.innerHTML = templates.map(t => `
+                <div class="flex items-center justify-between gap-3 p-3 rounded-xl border ${t.id === state.activeNormTemplateId ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20' : 'border-slate-200 dark:border-slate-700'}">
+                    <div>
+                        <p class="font-bold text-sm text-slate-800 dark:text-white">${t.nome} ${t.id === state.activeNormTemplateId ? '<span class="text-primary-600">(ativo)</span>' : ''}</p>
+                        <p class="text-xs text-slate-400">${t.builtin ? 'Modelo embutido' : 'Importado'} · margens ${t.margens.mt}/${t.margens.mr}/${t.margens.mb}/${t.margens.ml}cm · citação ${t.estiloCitacao}</p>
+                    </div>
+                    <div class="flex items-center gap-2 shrink-0">
+                        <button onclick='applyNormTemplate(${JSON.stringify(t).replace(/'/g, "&apos;")})' class="px-3 py-2 bg-slate-900 dark:bg-primary-600 text-white rounded-lg text-xs font-bold hover:-translate-y-0.5 transition">Usar</button>
+                        ${!t.builtin ? `<button onclick="deleteNormTemplate('${t.id}')" class="p-2 text-slate-400 hover:text-red-500 rounded-lg"><i data-lucide="trash-2" class="w-4 h-4"></i></button>` : ''}
+                    </div>
+                </div>
+            `).join('');
+            lucide.createIcons();
         }
 
         let currentZoom = 1;
@@ -1490,6 +1652,27 @@
             }
         });
 
+        // Upload / drag-and-drop do arquivo .txt de modelo de norma
+        const normDropzone = document.getElementById('norm-dropzone');
+        const normFileInput = document.getElementById('norm-file-input');
+        normDropzone.addEventListener('click', () => normFileInput.click());
+        normFileInput.addEventListener('change', (e) => {
+            if (e.target.files[0]) handleNormTemplateFile(e.target.files[0]);
+            e.target.value = '';
+        });
+        normDropzone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            normDropzone.classList.add('bg-indigo-50', 'dark:bg-indigo-900/30');
+        });
+        normDropzone.addEventListener('dragleave', () => {
+            normDropzone.classList.remove('bg-indigo-50', 'dark:bg-indigo-900/30');
+        });
+        normDropzone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            normDropzone.classList.remove('bg-indigo-50', 'dark:bg-indigo-900/30');
+            if (e.dataTransfer.files[0]) handleNormTemplateFile(e.dataTransfer.files[0]);
+        });
+
         function setCustomLogo(base64) {
             state.logoBase64 = base64;
             document.getElementById('out-logo').src = base64;
@@ -1673,10 +1856,19 @@
         function generateReferencesPage() {
             const sorted = [...state.references].sort((a, b) => a.author.localeCompare(b.author));
             const items = sorted.map(ref => {
-                // Formato APA 7 básico: Autor. (Ano). Título. Fonte/Editora.
-                let entry = `${ref.author}. (${ref.year}). ${ref.title}.`;
-                if (ref.source) entry += ` ${ref.source}.`;
-                if (ref.url) entry += ` ${ref.url}`;
+                let entry;
+                if (state.citationStyle === 'ABNT') {
+                    // ABNT: SOBRENOME, Nome. Título. Editora/Fonte, ano.
+                    entry = `${ref.author.toUpperCase()}. ${ref.title}.`;
+                    if (ref.source) entry += ` ${ref.source}.`;
+                    entry += ` ${ref.year}.`;
+                    if (ref.url) entry += ` ${ref.url}`;
+                } else {
+                    // APA 7: Autor. (Ano). Título. Fonte/Editora.
+                    entry = `${ref.author}. (${ref.year}). ${ref.title}.`;
+                    if (ref.source) entry += ` ${ref.source}.`;
+                    if (ref.url) entry += ` ${ref.url}`;
+                }
                 return `<p class="hanging-indent">${entry}</p>`;
             }).join('');
             return `<div class="a4-page"><h1 style="text-align:center; text-indent:0;">Referências</h1>${items}</div>`;
@@ -1700,7 +1892,9 @@
 
             addReference({ author, year, title, source, url });
 
-            const citationText = ` (${author}, ${year})`;
+            const citationText = state.citationStyle === 'ABNT'
+                ? ` (${author.toUpperCase()}, ${year})`
+                : ` (${author}, ${year})`;
             const el = document.getElementById(`apa-content-${pageKey}`);
             if (el) el.insertAdjacentHTML('beforeend', citationText);
             scheduleSyncSection(sectionId, true);
@@ -1997,17 +2191,26 @@
             const mb = state.margins.mb + 'cm';
             const ml = state.margins.ml + 'cm';
 
+            const tpl = getActiveNormTemplate();
+            const wordFontFamily = tpl.fonte.replace(/'/g, '').split(',')[0];
+            const wordLineHeightPct = (tpl.espacamento * 100) + '%';
+            const wordIndent = tpl.recuoParagrafo + 'cm';
+            const coverBorderCss = tpl.capaMoldura
+                ? `.cover-border { border: 6px double #000066; padding: 1.54cm 1.54cm 1.54cm 2cm; height: 95%; display: block; }`
+                : `.cover-border { border: none; padding: 0; height: 95%; display: block; }`;
+
             const header = `<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='[http://www.w3.org/TR/REC-html40](http://www.w3.org/TR/REC-html40)'>
             <head><meta charset='utf-8'><title>Monografia</title>
                 <style>
-                    body { font-family: 'Times New Roman', serif; font-size: 12pt; line-height: 2; color: black; }
+                    body { font-family: '${wordFontFamily}', serif; font-size: ${tpl.tamanhoFonte}; line-height: ${tpl.espacamento}; color: black; }
                     .a4-page { page-break-after: always; padding: ${mt} ${mr} ${mb} ${ml}; }
-                    .cover-border { border: 6px double #000066; padding: 1.54cm 1.54cm 1.54cm 2cm; height: 95%; display: block; }
-                    p { text-indent: 1.27cm; text-align: justify; margin: 0; line-height: 200%; }
+                    ${coverBorderCss}
+                    .watermark-stamp { display: none !important; }
+                    p { text-indent: ${wordIndent}; text-align: justify; margin: 0; line-height: ${wordLineHeightPct}; }
                     h1 { text-align: center; font-weight: bold; font-size: 12pt; margin-top: 24pt; margin-bottom: 12pt; text-indent: 0;}
                     h2 { text-align: left; font-weight: bold; font-size: 12pt; margin-top: 24pt; margin-bottom: 12pt; text-indent: 0;}
                     h3 { text-align: left; font-weight: bold; font-style: italic; font-size: 12pt; margin-top: 24pt; margin-bottom: 12pt; text-indent: 0;}
-                    .hanging-indent { padding-left: 1.27cm; text-indent: -1.27cm; text-align: left; margin: 0; line-height: 200%;}
+                    .hanging-indent { padding-left: ${wordIndent}; text-indent: -${wordIndent}; text-align: left; margin: 0; line-height: ${wordLineHeightPct};}
                     .toc-list { list-style: none; padding: 0; }
                     .center-text { text-align: center; text-indent: 0; }
                     .bold-text { font-weight: bold; }
