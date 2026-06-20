@@ -36,7 +36,7 @@
         const SUPABASE_URL = 'https://yfqzoukrjatcgmyshtpz.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlmcXpvdWtyamF0Y2dteXNodHB6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE5NTgyMjMsImV4cCI6MjA5NzUzNDIyM30.GBbEwI-1AnrJ6kllFrXkjTc1Bf76bGz8d8TGnaiYoAw';
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-        const EDGE_FN_CHECKOUT = `${SUPABASE_URL}/functions/v1/create-checkout-session`;
+        const EDGE_FN_CHECKOUT = `${SUPABASE_URL}/functions/v1/create-payment-preference`;
         const CREDIT_PACKS_UI = [
             { id: 'pack_10', credits: 10, price: 'R$ 90,00' },
             { id: 'pack_20', credits: 20, price: 'R$ 170,00', highlight: true },

@@ -1,11 +1,11 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
-// Mapeia pacotes de créditos para os Price IDs criados no Stripe
-const CREDIT_PACKS: Record<string, { priceId: string; credits: number }> = {
-  pack_10: { priceId: "price_1TkVyVC9cy5307IIWTqBnn14", credits: 10 },
-  pack_20: { priceId: "price_1TkVyWC9cy5307II2w30vV4B", credits: 20 },
-  pack_30: { priceId: "price_1TkVyXC9cy5307IIs2fdWwP9", credits: 30 },
+// Pacotes de créditos (preços em BRL)
+const CREDIT_PACKS: Record<string, { title: string; price: number; credits: number }> = {
+  pack_10: { title: "Monofy - 10 créditos", price: 90.0, credits: 10 },
+  pack_20: { title: "Monofy - 20 créditos", price: 170.0, credits: 20 },
+  pack_30: { title: "Monofy - 30 créditos", price: 250.0, credits: 30 },
 };
 
 const corsHeaders = {
@@ -44,35 +44,42 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    const stripeSecret = Deno.env.get("STRIPE_SECRET_KEY")!;
-    const params = new URLSearchParams();
-    params.set("mode", "payment");
-    params.set("line_items[0][price]", pack.priceId);
-    params.set("line_items[0][quantity]", "1");
-    params.set("success_url", successUrl);
-    params.set("cancel_url", cancelUrl);
-    params.set("customer_email", user.email ?? "");
-    params.set("metadata[user_id]", user.id);
-    params.set("metadata[credits]", String(pack.credits));
+    const mpAccessToken = Deno.env.get("MP_ACCESS_TOKEN")!;
+    const notificationUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/payment-webhook`;
 
-    const stripeRes = await fetch("https://api.stripe.com/v1/checkout/sessions", {
+    const mpRes = await fetch("https://api.mercadopago.com/checkout/preferences", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${stripeSecret}`,
-        "Content-Type": "application/x-www-form-urlencoded",
+        Authorization: `Bearer ${mpAccessToken}`,
+        "Content-Type": "application/json",
       },
-      body: params.toString(),
+      body: JSON.stringify({
+        items: [
+          {
+            title: pack.title,
+            quantity: 1,
+            unit_price: pack.price,
+            currency_id: "BRL",
+          },
+        ],
+        payer: { email: user.email ?? undefined },
+        metadata: { user_id: user.id, credits: pack.credits },
+        external_reference: `${user.id}:${pack.credits}`,
+        back_urls: { success: successUrl, failure: cancelUrl, pending: cancelUrl },
+        auto_return: "approved",
+        notification_url: notificationUrl,
+      }),
     });
 
-    const session = await stripeRes.json();
-    if (!stripeRes.ok) {
-      return new Response(JSON.stringify({ error: session }), {
+    const preference = await mpRes.json();
+    if (!mpRes.ok) {
+      return new Response(JSON.stringify({ error: preference }), {
         status: 502,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    return new Response(JSON.stringify({ url: session.url }), {
+    return new Response(JSON.stringify({ url: preference.init_point }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {
