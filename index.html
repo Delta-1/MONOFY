@@ -489,8 +489,12 @@
                 </div>
 
                 <div class="space-y-3 pt-6 border-t border-slate-200/50 dark:border-slate-800/50">
+                    <button onclick="saveCurrentWork()" class="w-full flex items-center justify-center gap-3 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-900/30 text-emerald-700 dark:text-emerald-400 font-bold py-3.5 rounded-xl transition-all shadow-sm hover:shadow-md mb-2">
+                        <i data-lucide="save" class="w-5 h-5"></i> Salvar Trabalho
+                    </button>
+
                     <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest text-center mb-4">Exportar Formato</h4>
-                    
+
                     <button onclick="exportWord()" id="btn-export-word" disabled class="w-full flex items-center justify-center gap-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-blue-600 dark:text-blue-400 font-bold py-3.5 rounded-xl transition-all shadow-sm hover:shadow-md disabled:opacity-50">
                         <i data-lucide="file-down" class="w-5 h-5"></i> Word (.doc)
                     </button>
@@ -623,9 +627,6 @@
                     <button onclick="saveMyProfile()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 rounded-xl transition-all">Salvar Alterações</button>
                 </div>
 
-                <button onclick="addNewSection(); switchTab('generator');" class="w-full flex items-center justify-center gap-2 px-6 py-4 bg-white/80 dark:bg-slate-800/80 border-2 border-dashed border-primary-300 dark:border-primary-700/50 text-primary-600 dark:text-primary-400 rounded-2xl hover:bg-primary-50 dark:hover:bg-primary-900/30 transition-all font-bold">
-                    <i data-lucide="plus-circle" class="w-5 h-5"></i> Adicionar Nova Página (sem IA)
-                </button>
 
                 <a href="https://wa.me/5519989765398?text=Ol%C3%A1!%20Quero%20adquirir%20minha%20licen%C3%A7a%20Monofy" target="_blank" id="whatsapp-support-link" class="w-full flex items-center justify-center gap-2 px-6 py-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-900/40 text-green-700 dark:text-green-400 rounded-2xl hover:bg-green-100 transition-all font-bold">
                     <i data-lucide="message-circle" class="w-5 h-5"></i> Falar com Suporte (WhatsApp) para Licença
@@ -670,6 +671,9 @@
                         <div class="mt-4 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-900/50 rounded-xl">
                             <p class="text-sm text-amber-800 dark:text-amber-200">Requer a configuração de uma Chave API válida para processamento de texto no cliente, protegendo a sua privacidade.</p>
                         </div>
+                        <a href="https://wa.me/5519989765398?text=Ol%C3%A1!%20N%C3%A3o%20tenho%20uma%20chave%20de%20API%2C%20quero%20comprar%20uma%20diretamente%20com%20voc%C3%AAs" target="_blank" class="mt-3 flex items-center justify-center gap-2 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-900/40 text-green-700 dark:text-green-400 rounded-xl hover:bg-green-100 transition-all font-bold text-sm">
+                            <i data-lucide="message-circle" class="w-4 h-4"></i> Não tem uma chave? Fale com o Suporte
+                        </a>
                     </div>
 
                     <div class="pt-6 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center">
@@ -687,56 +691,8 @@
 
     </div>
 
-    <!-- WIDGET DE EDIÇÃO: fica ao lado da página, sem cobrir o documento -->
-    <div id="edit-modal" class="hidden-state fixed right-4 top-4 bottom-28 lg:bottom-6 z-[100] w-full sm:w-[440px] opacity-0 transition-opacity duration-300 pointer-events-none">
-        <div class="bg-white dark:bg-slate-850 w-full h-full rounded-[2rem] shadow-2xl flex flex-col overflow-hidden transform translate-x-4 transition-transform duration-300 border border-slate-200 dark:border-white/10 pointer-events-auto" id="edit-modal-content">
-
-            <div class="px-5 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-900/50 shrink-0">
-                <h3 class="font-extrabold text-slate-800 dark:text-white flex items-center gap-2 text-sm">
-                    <i data-lucide="edit-3" class="w-4 h-4 text-primary-500"></i> Editor de Capítulo
-                </h3>
-                <button onclick="closeEditModal()" class="p-2 bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400 rounded-full hover:bg-red-200 transition">
-                    <i data-lucide="x" class="w-4 h-4"></i>
-                </button>
-            </div>
-
-            <div class="px-5 py-3 border-b border-slate-100 dark:border-slate-800 flex items-center gap-2 flex-wrap shrink-0 bg-white dark:bg-slate-850">
-                <button type="button" onclick="insertPageBreak()" class="cursor-pointer px-3 py-2 bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300 rounded-lg hover:bg-slate-300 dark:hover:bg-slate-700 transition flex items-center gap-1.5 text-xs font-bold shadow-sm" title="Inserir Quebra de Página">
-                    <i data-lucide="scissors" class="w-3.5 h-3.5"></i> Quebra
-                </button>
-                <button type="button" onclick="insertTable()" class="cursor-pointer px-3 py-2 bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300 rounded-lg hover:bg-slate-300 dark:hover:bg-slate-700 transition flex items-center gap-1.5 text-xs font-bold shadow-sm" title="Inserir Tabela APA">
-                    <i data-lucide="table" class="w-3.5 h-3.5"></i> Tabela
-                </button>
-                <button type="button" onclick="insertCitation()" class="cursor-pointer px-3 py-2 bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300 rounded-lg hover:bg-slate-300 dark:hover:bg-slate-700 transition flex items-center gap-1.5 text-xs font-bold shadow-sm" title="Inserir Citação APA">
-                    <i data-lucide="quote" class="w-3.5 h-3.5"></i> Citação
-                </button>
-                <label class="cursor-pointer px-3 py-2 bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300 rounded-lg hover:bg-slate-300 dark:hover:bg-slate-700 transition flex items-center gap-1.5 text-xs font-bold shadow-sm" title="Inserir Imagem">
-                    <i data-lucide="image-plus" class="w-3.5 h-3.5"></i> Imagem
-                    <input type="file" id="modal-image-upload" accept="image/*" class="hidden" />
-                </label>
-            </div>
-
-            <div class="flex-1 overflow-y-auto p-5 flex flex-col gap-4 bg-white dark:bg-slate-850 custom-scrollbar">
-                <div>
-                    <input type="text" id="modal-edit-title" class="w-full text-2xl font-bold p-3 bg-transparent border-b-2 border-slate-200 dark:border-slate-700 focus:border-primary-500 outline-none text-slate-900 dark:text-white transition-colors" placeholder="Título">
-                </div>
-                <div class="flex-1 flex flex-col relative">
-                    <textarea id="modal-edit-content" class="flex-1 w-full p-4 text-base bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl focus:border-primary-500 outline-none resize-none text-slate-800 dark:text-slate-200 custom-scrollbar leading-relaxed"></textarea>
-                </div>
-            </div>
-
-            <div class="px-6 py-5 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 flex flex-col sm:flex-row justify-between gap-3 shrink-0">
-                <!-- Botão de Melhoria IA Segmentada -->
-                <button id="btn-improve-ai" onclick="improveChapterWithAI()" class="w-full sm:w-auto px-6 py-3 font-bold bg-purple-600 text-white hover:bg-purple-700 rounded-xl transition flex items-center justify-center gap-2 shadow-lg shadow-purple-500/30 hover:-translate-y-0.5">
-                    <i data-lucide="sparkles" class="w-4 h-4"></i> <span id="text-improve-ai">Refinar com IA</span>
-                </button>
-                
-                <button onclick="saveModalEdit()" class="w-full sm:w-auto px-8 py-3 font-bold bg-primary-600 text-white hover:bg-primary-700 rounded-xl shadow-lg transition flex items-center justify-center gap-2 hover:-translate-y-0.5">
-                    <i data-lucide="save" class="w-4 h-4"></i> Guardar (Aplica APA)
-                </button>
-            </div>
-        </div>
-    </div>
+    <!-- Input de imagem compartilhado, usado pela ferramenta de edição inline -->
+    <input type="file" id="inline-image-upload" accept="image/*" class="hidden" />
 
     <script>
         // ==========================================
@@ -1590,7 +1546,7 @@
             }
         }
 
-        function insertCitation() {
+        function insertCitationInline(sectionId, pageKey) {
             const author = prompt('Sobrenome do autor (ex: Silva):');
             if (!author) return;
             const year = prompt('Ano da publicação (ex: 2023):');
@@ -1601,19 +1557,16 @@
 
             addReference({ author, year, title, source, url });
 
-            const citationText = `(${author}, ${year})`;
-            const textarea = document.getElementById('modal-edit-content');
-            const startPos = textarea.selectionStart;
-            const endPos = textarea.selectionEnd;
-            textarea.value = textarea.value.substring(0, startPos) + citationText + textarea.value.substring(endPos, textarea.value.length);
-            textarea.focus();
-            textarea.selectionEnd = startPos + citationText.length;
+            const citationText = ` (${author}, ${year})`;
+            const el = document.getElementById(`apa-content-${pageKey}`);
+            if (el) el.insertAdjacentHTML('beforeend', citationText);
+            scheduleSyncSection(sectionId, true);
         }
 
         // ==========================================
         // INSERIR TABELA (Formato APA: número/título acima, nota abaixo)
         // ==========================================
-        function insertTable() {
+        function insertTableInline(sectionId, pageKey) {
             const rows = parseInt(prompt('Quantas linhas (incluindo cabeçalho)?', '3'), 10) || 3;
             const cols = parseInt(prompt('Quantas colunas?', '3'), 10) || 3;
             const tableNum = (document.querySelectorAll('#print-area table.apa-table').length || 0) + 1;
@@ -1630,18 +1583,64 @@
                 rowsHtml += `<tr>${cellsHtml}</tr>`;
             }
 
-            const tableHtml = `\n\n<div style="margin: 18pt 0; text-indent: 0;">
+            const tableHtml = `<div style="margin: 18pt 0; text-indent: 0;">
 <p style="text-indent: 0; margin-bottom: 4pt;"><i>Tabla ${tableNum}</i></p>
 <p style="text-indent: 0; font-weight: bold; margin-bottom: 8pt;">${caption}</p>
 <table class="apa-table" style="width: 100%; border-collapse: collapse; border-top: 2px solid #000; border-bottom: 2px solid #000; font-size: 11pt;">${rowsHtml}</table>
 <p style="text-indent: 0; font-size: 10pt; margin-top: 6pt;"><i>Nota.</i> Fonte: elaboração própria.</p>
-</div>\n\n`;
+</div>`;
 
-            const textarea = document.getElementById('modal-edit-content');
-            const startPos = textarea.selectionStart;
-            const endPos = textarea.selectionEnd;
-            textarea.value = textarea.value.substring(0, startPos) + tableHtml + textarea.value.substring(endPos, textarea.value.length);
-            textarea.focus();
+            const el = document.getElementById(`apa-content-${pageKey}`);
+            if (el) el.insertAdjacentHTML('beforeend', tableHtml);
+            scheduleSyncSection(sectionId, true);
+        }
+
+        function insertPageBreakInline(sectionId, pageKey) {
+            const el = document.getElementById(`apa-content-${pageKey}`);
+            if (el) el.insertAdjacentHTML('beforeend', '<hr class="page-break-marker">');
+            syncSectionFromDOM(sectionId);
+            renderSections();
+        }
+
+        // ==========================================
+        // SINCRONIZAÇÃO DA EDIÇÃO DIRETA (contenteditable -> state)
+        // ==========================================
+        const _syncTimers = {};
+        function scheduleSyncSection(sectionId, immediate) {
+            if (immediate) { syncSectionFromDOM(sectionId); return; }
+            clearTimeout(_syncTimers[sectionId]);
+            _syncTimers[sectionId] = setTimeout(() => syncSectionFromDOM(sectionId), 500);
+        }
+
+        function syncSectionFromDOM(sectionId) {
+            const idx = state.generatedSections.findIndex(s => s.id === sectionId);
+            if (idx === -1) return;
+
+            const chunks = Array.from(document.querySelectorAll(`.apa-content[data-section-id="${sectionId}"]`)).map(el => el.innerHTML);
+            state.generatedSections[idx].content = chunks.join('<hr class="page-break-marker">');
+
+            const titleEl = document.querySelector(`[data-section-title="${sectionId}"]`);
+            if (titleEl) state.generatedSections[idx].title = titleEl.innerText.trim();
+
+            if (state.history.length > 0) {
+                state.history[0].sections = state.generatedSections;
+                state.history[0].references = state.references;
+                localStorage.setItem('monografia_history', JSON.stringify(state.history));
+            }
+        }
+
+        function saveCurrentWork() {
+            state.generatedSections.forEach(s => syncSectionFromDOM(s.id));
+            const title = document.getElementById('in-title').value || 'Monografia';
+            if (state.history.length > 0) {
+                state.history[0].sections = state.generatedSections;
+                state.history[0].references = state.references;
+                state.history[0].title = title;
+                localStorage.setItem('monografia_history', JSON.stringify(state.history));
+            } else {
+                saveDocumentToHistory(title, state.generatedSections, state.references);
+            }
+            alert('Trabalho salvo no histórico!');
         }
 
         function renderSections() {
@@ -1653,13 +1652,18 @@
             state.generatedSections.forEach(section => {
                 const pageChunks = splitContentIntoPages(section.content);
                 pageChunks.forEach((chunk, idx) => {
+                    const pageKey = `${section.id}__${idx}`;
                     finalHtml += `
                         <div class="a4-page group relative" data-section-id="${section.id}" data-page-index="${idx}">
-                            <button onclick="openEditModal('${section.id}')" class="absolute left-6 top-6 p-3 bg-slate-900 dark:bg-primary-600 text-white rounded-xl opacity-100 lg:opacity-0 group-hover:opacity-100 transition shadow-2xl hide-on-print flex items-center gap-2 font-bold text-sm z-10 hover:-translate-y-1">
-                                <i data-lucide="edit-3" class="w-4 h-4 text-blue-300"></i> Editar
-                            </button>
-                            ${idx === 0 ? `<h1 style="text-indent: 0;">${section.title}</h1>` : ''}
-                            <div class="apa-content">${chunk}</div>
+                            <div class="absolute left-6 top-6 flex gap-1.5 opacity-100 lg:opacity-0 group-hover:opacity-100 transition hide-on-print z-10">
+                                <button onclick="insertTableInline('${section.id}', '${pageKey}')" title="Inserir Tabela" class="p-2.5 bg-slate-900 dark:bg-primary-600 text-white rounded-lg shadow-xl hover:-translate-y-0.5"><i data-lucide="table" class="w-3.5 h-3.5"></i></button>
+                                <button onclick="insertCitationInline('${section.id}', '${pageKey}')" title="Inserir Citação APA" class="p-2.5 bg-slate-900 dark:bg-primary-600 text-white rounded-lg shadow-xl hover:-translate-y-0.5"><i data-lucide="quote" class="w-3.5 h-3.5"></i></button>
+                                <button onclick="insertPageBreakInline('${section.id}', '${pageKey}')" title="Quebra de Página" class="p-2.5 bg-slate-900 dark:bg-primary-600 text-white rounded-lg shadow-xl hover:-translate-y-0.5"><i data-lucide="scissors" class="w-3.5 h-3.5"></i></button>
+                                <button onclick="triggerImageInsert('${section.id}', '${pageKey}')" title="Inserir Imagem" class="p-2.5 bg-slate-900 dark:bg-primary-600 text-white rounded-lg shadow-xl hover:-translate-y-0.5"><i data-lucide="image-plus" class="w-3.5 h-3.5"></i></button>
+                                <button onclick="refineInline('${section.id}', '${pageKey}')" title="Refinar com IA" class="p-2.5 bg-purple-600 text-white rounded-lg shadow-xl hover:-translate-y-0.5"><i data-lucide="sparkles" class="w-3.5 h-3.5"></i></button>
+                            </div>
+                            ${idx === 0 ? `<h1 contenteditable="true" data-section-title="${section.id}" oninput="scheduleSyncSection('${section.id}')" style="text-indent: 0; outline: none;">${section.title}</h1>` : ''}
+                            <div class="apa-content" id="apa-content-${pageKey}" contenteditable="true" data-section-id="${section.id}" oninput="scheduleSyncSection('${section.id}')" style="outline: none; min-height: 2em;">${chunk}</div>
                         </div>
                     `;
                 });
@@ -1693,113 +1697,30 @@
                 content: '<p>Comece a desenvolver o seu texto aqui...</p>'
             });
             renderSections();
-            
-            // Scroll to end and open editor
+
+            // Rola até o fim e foca o conteúdo da nova página para já começar a digitar
             const container = document.getElementById('main-canvas');
             container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
-            setTimeout(() => openEditModal(newId), 500);
+            setTimeout(() => {
+                const el = document.getElementById(`apa-content-${newId}__0`);
+                if (el) el.focus();
+            }, 500);
         }
 
-        function openEditModal(id) {
-            const section = state.generatedSections.find(s => s.id === id);
-            state.editingSectionId = id;
-            document.getElementById('modal-edit-title').value = section.title;
-            
-            // Conservar Page breaks e Imagens
-            let contentForEdit = section.content;
-            if(!contentForEdit.includes('<hr class="page-break-marker">') && !contentForEdit.includes('<p class=')) {
-                contentForEdit = contentForEdit.replace(/<p>/g, '').replace(/<\/p>/g, '\n\n').trim();
-            }
-            document.getElementById('modal-edit-content').value = contentForEdit;
-            
-            const modal = document.getElementById('edit-modal');
-            const content = document.getElementById('edit-modal-content');
-            modal.classList.remove('hidden-state');
-            setTimeout(() => { modal.classList.remove('opacity-0'); content.classList.remove('translate-x-4'); }, 10);
-        }
-
-        function closeEditModal() {
-            const modal = document.getElementById('edit-modal');
-            const content = document.getElementById('edit-modal-content');
-            modal.classList.add('opacity-0'); content.classList.add('translate-x-4');
-            setTimeout(() => { modal.classList.add('hidden-state'); state.editingSectionId = null; }, 300);
-        }
-
-        function insertPageBreak() {
-            const textarea = document.getElementById('modal-edit-content');
-            const breakTag = `\n\n<hr class="page-break-marker">\n\n`;
-            const startPos = textarea.selectionStart;
-            const endPos = textarea.selectionEnd;
-            textarea.value = textarea.value.substring(0, startPos) + breakTag + textarea.value.substring(endPos, textarea.value.length);
-            textarea.focus();
-            textarea.selectionEnd = startPos + breakTag.length;
-        }
-
-        document.getElementById('modal-image-upload').addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(evt) {
-                    const base64Img = evt.target.result;
-                    const textarea = document.getElementById('modal-edit-content');
-                    const imgTag = `\n\n<div style="text-align: center; margin-top: 12pt; margin-bottom: 12pt;"><img src="${base64Img}" alt="Ilustração" style="max-width: 100%; height: auto; display: inline-block; margin: 0 auto;" /></div>\n\n`;
-                    const startPos = textarea.selectionStart;
-                    const endPos = textarea.selectionEnd;
-                    textarea.value = textarea.value.substring(0, startPos) + imgTag + textarea.value.substring(endPos, textarea.value.length);
-                };
-                reader.readAsDataURL(file);
-            }
-        });
-
-        window.saveModalEdit = function() {
-            const id = state.editingSectionId;
-            const index = state.generatedSections.findIndex(s => s.id === id);
-            if (index !== -1) {
-                state.generatedSections[index].title = document.getElementById('modal-edit-title').value;
-                let rawContent = document.getElementById('modal-edit-content').value;
-                
-                let formattedParts = [];
-                const blocks = rawContent.split(/\n\n/);
-                blocks.forEach(block => {
-                    const trimmed = block.trim();
-                    if(trimmed === '') return;
-                    if(trimmed.startsWith('<div') || trimmed.includes('<p class=') || trimmed.includes('<hr ')) { 
-                        formattedParts.push(trimmed); 
-                    } else { 
-                        formattedParts.push(`<p>${trimmed}</p>`); 
-                    }
-                });
-
-                state.generatedSections[index].content = formattedParts.join('');
-                
-                if(state.history.length > 0) {
-                    state.history[0].sections = state.generatedSections;
-                    state.history[0].references = state.references;
-                    localStorage.setItem('monografia_history', JSON.stringify(state.history));
-                }
-            }
-            closeEditModal();
-            renderSections();
-        }
-
-        window.improveChapterWithAI = async function() {
+        async function refineInline(sectionId, pageKey) {
             if (!state.apiKey) { showError('Erro: Configure a Chave API nas definições.'); return; }
-            
-            const btnImprove = document.getElementById('btn-improve-ai');
-            const textImprove = document.getElementById('text-improve-ai');
-            const contentArea = document.getElementById('modal-edit-content');
-            const title = document.getElementById('modal-edit-title').value;
-            const currentContent = contentArea.value.trim();
-
+            const el = document.getElementById(`apa-content-${pageKey}`);
+            if (!el) return;
+            const currentContent = el.innerText.trim();
             if (!currentContent) return;
 
-            btnImprove.disabled = true;
-            btnImprove.classList.add('opacity-50', 'cursor-wait');
-            textImprove.innerText = 'A processar...';
+            const instruction = prompt('O que você quer que a IA faça com este trecho? (ex: "deixar mais formal", "expandir com mais detalhes")', 'Melhorar a redação e coerência');
+            if (!instruction) return;
 
+            el.style.opacity = '0.5';
             const systemPrompt = `Actúa como un profesor universitario experto en Normas APA 7.
             IDIOMA DE SALIDA: ${state.docLanguage}.
-            TAREA: Toma el texto del capítulo "${title}" y MEJÓRALO. Expande las ideas, mejora coherencia y añade vocabulario avanzado.
+            INSTRUÇÃO DO USUÁRIO: ${instruction}
             REGLAS: Usa <p> para separar párrafos. Devuelve ÚNICAMENTE el código HTML crudo sin markdown.`;
 
             try {
@@ -1807,26 +1728,46 @@
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        contents: [{ parts: [{ text: `${systemPrompt}\n\nTEXTO A MEJORAR:\n${currentContent}` }] }],
-                        generationConfig: { temperature: 0.4 } 
+                        contents: [{ parts: [{ text: `${systemPrompt}\n\nTEXTO:\n${currentContent}` }] }],
+                        generationConfig: { temperature: 0.4 }
                     })
                 });
-
                 const data = await response.json();
                 if (data.error) throw new Error(data.error.message);
-
                 let improvedText = data.candidates[0].content.parts[0].text;
                 improvedText = improvedText.replace(/```html/gi, '').replace(/```/g, '').trim();
-                contentArea.value = improvedText.replace(/<p>/g, '').replace(/<\/p>/g, '\n\n').trim();
-
+                el.innerHTML = improvedText;
+                scheduleSyncSection(sectionId, true);
             } catch (err) {
-                console.error(err); showError('Erro na IA ao tentar melhorar o capítulo.');
+                console.error(err); showError('Erro na IA ao tentar melhorar o texto.');
             } finally {
-                btnImprove.disabled = false;
-                btnImprove.classList.remove('opacity-50', 'cursor-wait');
-                textImprove.innerText = 'Refinar com IA';
+                el.style.opacity = '1';
             }
         }
+
+        let _pendingImageTarget = null;
+        function triggerImageInsert(sectionId, pageKey) {
+            _pendingImageTarget = { sectionId, pageKey };
+            document.getElementById('inline-image-upload').click();
+        }
+
+        document.getElementById('inline-image-upload').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file && _pendingImageTarget) {
+                const { sectionId, pageKey } = _pendingImageTarget;
+                const reader = new FileReader();
+                reader.onload = function(evt) {
+                    const base64Img = evt.target.result;
+                    const imgTag = `<div style="text-align: center; margin-top: 12pt; margin-bottom: 12pt;"><img src="${base64Img}" alt="Ilustração" style="max-width: 100%; height: auto; display: inline-block; margin: 0 auto;" /></div>`;
+                    const el = document.getElementById(`apa-content-${pageKey}`);
+                    if (el) el.insertAdjacentHTML('beforeend', imgTag);
+                    scheduleSyncSection(sectionId, true);
+                };
+                reader.readAsDataURL(file);
+            }
+            e.target.value = '';
+        });
+
 
         // --- 7. HISTÓRICO ---
         function saveDocumentToHistory(title, sections, references) {
