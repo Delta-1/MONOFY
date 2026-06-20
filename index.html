@@ -377,7 +377,10 @@
                         <div class="text-center w-full px-6">
                             <i data-lucide="file-signature" class="w-16 h-16 mx-auto mb-4"></i>
                             <p class="font-sans text-lg font-bold" style="text-indent: 0;">O documento formatado aparecerá aqui.</p>
-                            <p class="font-sans text-sm mt-2" style="text-indent: 0;">Configure a IA e os dados nos painéis laterais.</p>
+                            <p class="font-sans text-sm mt-2 mb-6" style="text-indent: 0;">Configure a IA e os dados nos painéis laterais, ou comece manualmente.</p>
+                            <button onclick="addNewSection()" class="hide-on-print mx-auto flex items-center gap-2 px-6 py-4 bg-primary-600 text-white rounded-2xl hover:bg-primary-700 transition-all font-bold shadow-lg hover:-translate-y-0.5">
+                                <i data-lucide="plus-circle" class="w-5 h-5"></i> Adicionar Primeira Página (sem IA)
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -1697,6 +1700,8 @@
                 content: '<p>Comece a desenvolver o seu texto aqui...</p>'
             });
             renderSections();
+            document.getElementById('btn-export-word').disabled = false;
+            document.getElementById('btn-export-pdf').disabled = false;
 
             // Rola até o fim e foca o conteúdo da nova página para já começar a digitar
             const container = document.getElementById('main-canvas');
