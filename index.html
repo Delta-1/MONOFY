@@ -226,9 +226,10 @@
             80% { transform: scale(0.97, 1.03) skewX(2deg) translateY(2px); }
             100% { opacity: 1; transform: scale(1, 1) skewX(0) translateY(0); border-radius: 0; }
         }
-        .a4-page.anim-fade { animation: anim-fade-in 0.45s ease-out both; }
-        .a4-page.anim-3d { animation: anim-3d-in 0.55s cubic-bezier(0.22, 1, 0.36, 1) both; }
-        .a4-page.anim-mac { animation: anim-mac-in 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+        /* Aplicadas nos painéis flutuantes (Dados/Assistente) quando são abertos */
+        .panel-anim-fade { animation: anim-fade-in 0.3s ease-out both; }
+        .panel-anim-3d { animation: anim-3d-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) both; }
+        .panel-anim-mac { animation: anim-mac-in 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
 
         @media print {
             body { background: white; }
@@ -282,7 +283,7 @@
         </div>
 
         <!-- BADGE DE UTILIZADOR + SALDO DE CRÉDITOS -->
-        <div class="fixed top-6 left-6 lg:top-8 lg:left-10 z-[40] hide-on-print">
+        <div class="fixed top-6 left-6 lg:top-28 lg:left-10 z-[40] hide-on-print">
             <div class="bg-white/90 dark:bg-slate-850/90 backdrop-blur-md shadow-xl rounded-2xl border border-slate-200/50 dark:border-slate-700/50 flex items-center gap-3 px-4 py-2.5">
                 <img id="user-avatar" src="" class="w-7 h-7 rounded-full hidden-state object-cover">
                 <i data-lucide="user-circle" id="user-avatar-fallback" class="w-6 h-6 text-slate-400"></i>
@@ -302,7 +303,7 @@
         <div id="main-canvas" class="absolute inset-0 pt-8 pb-40 flex flex-col items-center custom-scrollbar">
             
             <!-- Grupo de Controlos Flutuantes (Margens e Zoom) -->
-            <div class="fixed top-6 right-6 lg:top-8 lg:right-10 z-[40] hide-on-print flex flex-col items-end gap-3">
+            <div class="fixed top-6 right-6 lg:top-28 lg:right-10 z-[40] hide-on-print flex flex-col items-end gap-3">
                 
                 <!-- Indicador de Página Atual -->
                 <div id="page-tracker" class="bg-slate-900/80 dark:bg-slate-800/80 backdrop-blur-md text-white px-4 py-2 rounded-2xl shadow-xl flex items-center gap-2 text-xs font-bold border border-white/10">
@@ -413,7 +414,7 @@
         </div>
 
         <!-- PAINEL ESQUERDO: Dados e Contexto da Monografia (Com Resize Dinâmico) -->
-        <div id="panel-left" class="fixed lg:absolute left-4 right-4 lg:right-auto top-4 bottom-28 lg:bottom-auto lg:h-[85vh] lg:max-h-[90vh] lg:w-[400px] bg-white/90 dark:bg-slate-850/90 backdrop-blur-2xl shadow-2xl rounded-3xl border border-white/40 dark:border-slate-700/50 flex flex-col z-30 transition-transform duration-300 mobile-hidden lg:!transform-none lg:!opacity-100 lg:!pointer-events-auto lg:overflow-hidden lg:min-w-[320px] lg:max-w-[50vw] lg:min-h-[400px]">
+        <div id="panel-left" class="fixed lg:absolute left-4 right-4 lg:right-auto top-4 bottom-28 lg:bottom-auto lg:h-[85vh] lg:max-h-[90vh] lg:w-[400px] bg-white/95 dark:bg-slate-850/95 backdrop-blur-sm shadow-2xl rounded-3xl border border-white/40 dark:border-slate-700/50 flex flex-col z-30 transition-transform duration-300 mobile-hidden lg:!transform-none lg:!opacity-100 lg:!pointer-events-auto lg:overflow-hidden lg:min-w-[320px] lg:max-w-[50vw] lg:min-h-[400px]">
             
             <div id="panel-left-header" class="p-5 border-b border-slate-200/50 dark:border-slate-800/50 flex justify-between items-center cursor-move lg:hover:bg-slate-50/50 dark:hover:bg-slate-800/50 rounded-t-3xl transition-colors">
                 <h3 class="font-extrabold flex items-center gap-2 text-slate-800 dark:text-white"><i data-lucide="database" class="w-5 h-5 text-primary-500"></i> Dados da Pesquisa</h3>
@@ -489,7 +490,7 @@
         </div>
 
         <!-- PAINEL DIREITO: Assistente e Ações IA (Com Resize Dinâmico) -->
-        <div id="panel-right" class="fixed lg:absolute left-4 right-4 lg:left-auto lg:right-4 top-4 bottom-28 lg:bottom-auto lg:h-[85vh] lg:max-h-[90vh] lg:w-[320px] bg-white/90 dark:bg-slate-850/90 backdrop-blur-2xl shadow-2xl rounded-3xl border border-white/40 dark:border-slate-700/50 flex flex-col z-30 transition-transform duration-300 mobile-hidden lg:!transform-none lg:!opacity-100 lg:!pointer-events-auto lg:overflow-hidden lg:min-w-[300px] lg:max-w-[40vw] lg:min-h-[400px]">
+        <div id="panel-right" class="fixed lg:absolute left-4 right-4 lg:left-auto lg:right-4 top-4 bottom-28 lg:bottom-auto lg:h-[85vh] lg:max-h-[90vh] lg:w-[320px] bg-white/95 dark:bg-slate-850/95 backdrop-blur-sm shadow-2xl rounded-3xl border border-white/40 dark:border-slate-700/50 flex flex-col z-30 transition-transform duration-300 mobile-hidden lg:!transform-none lg:!opacity-100 lg:!pointer-events-auto lg:overflow-hidden lg:min-w-[300px] lg:max-w-[40vw] lg:min-h-[400px]">
             
             <div id="panel-right-header" class="p-5 border-b border-slate-200/50 dark:border-slate-800/50 flex justify-between items-center cursor-move lg:hover:bg-slate-50/50 dark:hover:bg-slate-800/50 rounded-t-3xl transition-colors">
                 <h3 class="font-extrabold flex items-center gap-2 text-slate-800 dark:text-white"><i data-lucide="bot" class="w-5 h-5 text-purple-500"></i> Assistente IA</h3>
@@ -768,6 +769,8 @@
             makeDraggable('panel-right', 'panel-right-header');
             makeResizable('panel-left', { minW: 320, maxW: 0.5, minH: 400 });
             makeResizable('panel-right', { minW: 300, maxW: 0.4, minH: 400 });
+            applyPanelAnimation('panel-left');
+            applyPanelAnimation('panel-right');
             initPinchZoom();
             initPageTracker();
         });
@@ -1379,13 +1382,14 @@
                 if(panel.classList.contains('mobile-hidden')) {
                     document.getElementById('panel-left').classList.add('mobile-hidden');
                     document.getElementById('panel-right').classList.add('mobile-hidden');
-                    setTimeout(() => panel.classList.remove('mobile-hidden'), 50);
+                    setTimeout(() => { panel.classList.remove('mobile-hidden'); applyPanelAnimation(panelId); }, 50);
                 } else {
                     panel.classList.add('mobile-hidden');
                 }
             } else {
                 if(panel.classList.contains('hidden-state')) {
                     panel.classList.remove('hidden-state');
+                    applyPanelAnimation(panelId);
                 } else {
                     panel.classList.add('hidden-state');
                 }
@@ -1400,11 +1404,15 @@
             state.isDark ? document.documentElement.classList.add('dark') : document.documentElement.classList.remove('dark');
         }
 
-        function applyPageAnimations() {
-            document.querySelectorAll('#print-area .a4-page').forEach(page => {
-                page.classList.remove('anim-fade', 'anim-3d', 'anim-mac');
-                page.classList.add(`anim-${state.animStyle}`);
-            });
+        // Anima a abertura de um painel flutuante (Dados da Pesquisa / Assistente IA)
+        // de acordo com o estilo escolhido em Ajustes.
+        function applyPanelAnimation(panelId) {
+            const el = document.getElementById(panelId);
+            if (!el) return;
+            el.classList.remove('panel-anim-fade', 'panel-anim-3d', 'panel-anim-mac');
+            // Força reflow para a animação poder rodar de novo mesmo se a classe já tiver sido usada
+            void el.offsetWidth;
+            el.classList.add(`panel-anim-${state.animStyle}`);
         }
 
         function saveSettings(event) {
@@ -1811,8 +1819,8 @@
             // Botão Adicionar Nova Seção Manual
             finalHtml += `
                 <div class="w-full flex justify-center mt-4 mb-10 hide-on-print">
-                     <button onclick="addNewSection()" class="flex items-center gap-2 px-6 py-4 bg-white/80 dark:bg-slate-800/80 backdrop-blur-md border-2 border-dashed border-primary-300 dark:border-primary-700/50 text-primary-600 dark:text-primary-400 rounded-2xl hover:bg-primary-50 dark:hover:bg-primary-900/30 transition-all font-bold shadow-sm hover:shadow-md hover:-translate-y-0.5">
-                         <i data-lucide="plus-circle" class="w-5 h-5"></i> Adicionar Nova Página/Seção
+                     <button onclick="addNewSection()" title="Adicionar Nova Página/Seção" class="w-14 h-14 flex items-center justify-center bg-primary-600 text-white rounded-full hover:bg-primary-700 transition-all shadow-lg hover:-translate-y-0.5">
+                         <i data-lucide="plus" class="w-6 h-6"></i>
                      </button>
                 </div>
             `;
@@ -1820,7 +1828,6 @@
             container.innerHTML = finalHtml;
             lucide.createIcons();
             applyWatermarkStamps();
-            applyPageAnimations();
 
             // Atualiza o contador de páginas imediatamente após gerar novo conteúdo
             setTimeout(updatePageTrackerDisplay, 100);
