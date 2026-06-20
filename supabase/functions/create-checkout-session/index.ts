@@ -3,9 +3,9 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 
 // Mapeia pacotes de créditos para os Price IDs criados no Stripe
 const CREDIT_PACKS: Record<string, { priceId: string; credits: number }> = {
-  pack_10: { priceId: "price_1TkSAMC9cy5307IIpWuMCliO", credits: 10 },
-  pack_30: { priceId: "price_1TkSANC9cy5307IIwvs9N27t", credits: 30 },
-  pack_100: { priceId: "price_1TkSAOC9cy5307IIHj6TwpJR", credits: 100 },
+  pack_10: { priceId: "price_1TkVyVC9cy5307IIWTqBnn14", credits: 10 },
+  pack_20: { priceId: "price_1TkVyWC9cy5307II2w30vV4B", credits: 20 },
+  pack_30: { priceId: "price_1TkVyXC9cy5307IIs2fdWwP9", credits: 30 },
 };
 
 const corsHeaders = {

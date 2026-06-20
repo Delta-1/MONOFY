@@ -38,10 +38,12 @@
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         const EDGE_FN_CHECKOUT = `${SUPABASE_URL}/functions/v1/create-checkout-session`;
         const CREDIT_PACKS_UI = [
-            { id: 'pack_10', credits: 10, price: 'R$ 9,90' },
-            { id: 'pack_30', credits: 30, price: 'R$ 24,90', highlight: true },
-            { id: 'pack_100', credits: 100, price: 'R$ 69,90' }
+            { id: 'pack_10', credits: 10, price: 'R$ 90,00' },
+            { id: 'pack_20', credits: 20, price: 'R$ 170,00', highlight: true },
+            { id: 'pack_30', credits: 30, price: 'R$ 250,00' }
         ];
+        const CREDITS_PER_EXPORT = 10;
+        const WHATSAPP_SUPPORT_NUMBER = '5519989765398';
     </script>
 
     <!-- PDF.js para Extração de Texto de PDFs -->
@@ -242,6 +244,8 @@
                     <button type="button" onclick="signUpWithEmail()" class="w-1/2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold py-3 rounded-xl transition-all text-sm">Criar Conta</button>
                 </div>
             </form>
+
+            <button type="button" onclick="enterDemoMode()" class="w-full text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 font-medium text-xs underline">Ver demonstração sem criar conta</button>
         </div>
     </div>
 
@@ -532,6 +536,16 @@
                     <span class="dock-tooltip">Créditos</span>
                 </button>
 
+                <button onclick="switchTab('myprofile')" class="dock-btn relative flex items-center justify-center w-12 h-12 lg:w-14 lg:h-14 rounded-full text-emerald-500 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 transition-all active:scale-95 bg-transparent" id="dock-tab-myprofile">
+                    <i data-lucide="user" class="dock-icon w-5 h-5 lg:w-6 lg:h-6"></i>
+                    <span class="dock-tooltip">Perfil</span>
+                </button>
+
+                <button onclick="switchTab('admin')" class="dock-btn hidden-state relative flex items-center justify-center w-12 h-12 lg:w-14 lg:h-14 rounded-full text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 transition-all active:scale-95 bg-transparent" id="dock-tab-admin">
+                    <i data-lucide="shield" class="dock-icon w-5 h-5 lg:w-6 lg:h-6"></i>
+                    <span class="dock-tooltip">Admin</span>
+                </button>
+
                 <div class="w-px h-6 bg-slate-300 dark:bg-slate-600 mx-1"></div>
 
                 <!-- Mobile/Desktop Toggle Direita -->
@@ -570,7 +584,7 @@
                 <div class="bg-amber-500 dark:bg-amber-700/60 rounded-[2rem] p-8 md:p-10 text-white shadow-xl overflow-hidden relative border border-amber-400/50">
                     <div class="relative z-10">
                         <h2 class="text-3xl font-extrabold mb-3">Créditos Monofy</h2>
-                        <p class="text-amber-50 max-w-lg text-sm leading-relaxed">Cada exportação em PDF sai com a marca d'água "MONOFY". Use 1 crédito para remover a marca d'água de uma exportação. Saldo atual: <strong id="credits-balance-big">0</strong>.</p>
+                        <p class="text-amber-50 max-w-lg text-sm leading-relaxed">Cada exportação em PDF sai com a marca d'água "MONOFY". Use 10 créditos para remover a marca d'água de uma exportação (cada pacote de 10 créditos = 1 exportação sem marca). Saldo atual: <strong id="credits-balance-big">0</strong>.</p>
                     </div>
                     <i data-lucide="coins" class="absolute -right-4 -bottom-4 w-48 h-48 text-white opacity-10"></i>
                 </div>
@@ -583,6 +597,50 @@
                     <h4 class="font-bold text-slate-700 dark:text-slate-200 mb-2 flex items-center gap-2"><i data-lucide="receipt" class="w-4 h-4"></i> Histórico de Transações</h4>
                     <div id="credit-history-list" class="space-y-2"></div>
                 </div>
+            </div>
+        </div>
+
+        <!-- Tab: Meu Perfil -->
+        <div id="tab-myprofile" class="hidden-state absolute inset-0 z-40 bg-slate-100/95 dark:bg-slate-900/95 backdrop-blur-2xl overflow-y-auto pt-10 pb-32 px-4 custom-scrollbar">
+            <div class="max-w-2xl mx-auto space-y-8">
+                <div class="bg-emerald-600 rounded-[2rem] p-8 md:p-10 text-white shadow-xl">
+                    <h2 class="text-3xl font-extrabold mb-3">Meu Perfil</h2>
+                    <p class="text-emerald-50 text-sm">Atualize sua foto e nome de exibição.</p>
+                </div>
+
+                <div class="bg-white/80 dark:bg-slate-850/80 backdrop-blur p-8 rounded-3xl shadow-xl border border-white/40 dark:border-slate-700 space-y-6">
+                    <div class="flex items-center gap-5">
+                        <label class="cursor-pointer relative">
+                            <img id="myprofile-avatar-preview" src="" class="w-20 h-20 rounded-full object-cover bg-slate-200 dark:bg-slate-700 hidden-state">
+                            <i data-lucide="user-circle" id="myprofile-avatar-fallback" class="w-20 h-20 text-slate-300"></i>
+                            <div class="absolute -bottom-1 -right-1 bg-emerald-600 text-white p-1.5 rounded-full"><i data-lucide="camera" class="w-3 h-3"></i></div>
+                            <input type="file" id="myprofile-avatar-upload" accept="image/*" class="hidden" />
+                        </label>
+                        <div class="flex-1">
+                            <input type="text" id="myprofile-name" placeholder="Seu nome" class="w-full text-lg font-bold p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none">
+                        </div>
+                    </div>
+                    <button onclick="saveMyProfile()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 rounded-xl transition-all">Salvar Alterações</button>
+                </div>
+
+                <button onclick="addNewSection(); switchTab('generator');" class="w-full flex items-center justify-center gap-2 px-6 py-4 bg-white/80 dark:bg-slate-800/80 border-2 border-dashed border-primary-300 dark:border-primary-700/50 text-primary-600 dark:text-primary-400 rounded-2xl hover:bg-primary-50 dark:hover:bg-primary-900/30 transition-all font-bold">
+                    <i data-lucide="plus-circle" class="w-5 h-5"></i> Adicionar Nova Página (sem IA)
+                </button>
+
+                <a href="https://wa.me/5519989765398?text=Ol%C3%A1!%20Quero%20adquirir%20minha%20licen%C3%A7a%20Monofy" target="_blank" id="whatsapp-support-link" class="w-full flex items-center justify-center gap-2 px-6 py-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-900/40 text-green-700 dark:text-green-400 rounded-2xl hover:bg-green-100 transition-all font-bold">
+                    <i data-lucide="message-circle" class="w-5 h-5"></i> Falar com Suporte (WhatsApp) para Licença
+                </a>
+            </div>
+        </div>
+
+        <!-- Tab: Admin -->
+        <div id="tab-admin" class="hidden-state absolute inset-0 z-40 bg-slate-100/95 dark:bg-slate-900/95 backdrop-blur-2xl overflow-y-auto pt-10 pb-32 px-4 custom-scrollbar">
+            <div class="max-w-4xl mx-auto space-y-8">
+                <div class="bg-red-600 rounded-[2rem] p-8 md:p-10 text-white shadow-xl">
+                    <h2 class="text-3xl font-extrabold mb-3 flex items-center gap-2"><i data-lucide="shield" class="w-7 h-7"></i> Painel Admin</h2>
+                    <p class="text-red-50 text-sm">Gerencie os créditos de qualquer usuário.</p>
+                </div>
+                <div id="admin-users-list" class="bg-white/80 dark:bg-slate-850/80 backdrop-blur rounded-3xl shadow-xl border border-white/40 dark:border-slate-700 divide-y divide-slate-100 dark:divide-slate-800"></div>
             </div>
         </div>
 
@@ -694,7 +752,8 @@
             logoBase64: localStorage.getItem('monografia_logo') || 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1a/UPDS_Logo.png/600px-UPDS_Logo.png',
             uploadedContextText: '',
             margins: JSON.parse(localStorage.getItem('monografia_margins')) || { mt: 2.54, mb: 2.54, ml: 3.0, mr: 2.54 },
-            references: []
+            references: [],
+            isDemo: false
         };
 
         document.addEventListener('DOMContentLoaded', () => {
@@ -938,17 +997,31 @@
         }
 
         async function signOut() {
-            await supabaseClient.auth.signOut();
+            if (!state.isDemo) await supabaseClient.auth.signOut();
             state.session = null;
             state.profile = null;
+            state.isDemo = false;
             document.getElementById('app-screen').classList.add('opacity-0', 'pointer-events-none');
             document.getElementById('login-screen').classList.remove('hidden-state', 'opacity-0', 'pointer-events-none');
+        }
+
+        function enterDemoMode() {
+            state.isDemo = true;
+            document.getElementById('user-email-display').innerText = 'Modo Demonstração';
+            document.getElementById('user-credits-display').innerText = '0';
+            document.getElementById('btn-export-pdf').title = 'Exportação desativada no modo demonstração';
+            document.getElementById('login-screen').classList.add('opacity-0', 'pointer-events-none');
+            setTimeout(() => {
+                document.getElementById('login-screen').classList.add('hidden-state');
+                document.getElementById('app-screen').classList.remove('opacity-0', 'pointer-events-none');
+                updateCoverPage();
+            }, 400);
         }
 
         async function loadProfile() {
             const { data, error } = await supabaseClient
                 .from('profiles')
-                .select('credits, email, full_name, avatar_url')
+                .select('credits, email, full_name, avatar_url, role')
                 .eq('id', state.session.user.id)
                 .single();
             if (!error && data) {
@@ -961,7 +1034,88 @@
                     document.getElementById('user-avatar').classList.remove('hidden-state');
                     document.getElementById('user-avatar-fallback').classList.add('hidden-state');
                 }
+                if (data.role === 'admin') {
+                    document.getElementById('dock-tab-admin').classList.remove('hidden-state');
+                }
             }
+        }
+
+        // ==========================================
+        // MEU PERFIL (nome / avatar)
+        // ==========================================
+        function renderMyProfileTab() {
+            if (!state.profile) return;
+            document.getElementById('myprofile-name').value = state.profile.full_name || '';
+            if (state.profile.avatar_url) {
+                document.getElementById('myprofile-avatar-preview').src = state.profile.avatar_url;
+                document.getElementById('myprofile-avatar-preview').classList.remove('hidden-state');
+                document.getElementById('myprofile-avatar-fallback').classList.add('hidden-state');
+            }
+        }
+
+        document.getElementById('myprofile-avatar-upload').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                state.profile._pendingAvatar = evt.target.result;
+                document.getElementById('myprofile-avatar-preview').src = evt.target.result;
+                document.getElementById('myprofile-avatar-preview').classList.remove('hidden-state');
+                document.getElementById('myprofile-avatar-fallback').classList.add('hidden-state');
+            };
+            reader.readAsDataURL(file);
+        });
+
+        async function saveMyProfile() {
+            const fullName = document.getElementById('myprofile-name').value.trim();
+            const updates = { full_name: fullName };
+            if (state.profile._pendingAvatar) updates.avatar_url = state.profile._pendingAvatar;
+
+            const { error } = await supabaseClient.from('profiles').update(updates).eq('id', state.session.user.id);
+            if (error) { alert('Erro ao salvar perfil.'); return; }
+
+            Object.assign(state.profile, updates);
+            document.getElementById('user-email-display').innerText = fullName || state.profile.email;
+            if (updates.avatar_url) {
+                document.getElementById('user-avatar').src = updates.avatar_url;
+                document.getElementById('user-avatar').classList.remove('hidden-state');
+                document.getElementById('user-avatar-fallback').classList.add('hidden-state');
+            }
+            alert('Perfil atualizado!');
+        }
+
+        // ==========================================
+        // PAINEL ADMIN
+        // ==========================================
+        async function renderAdminTab() {
+            const list = document.getElementById('admin-users-list');
+            list.innerHTML = '<p class="p-6 text-slate-400">Carregando...</p>';
+            const { data, error } = await supabaseClient
+                .from('profiles')
+                .select('id, email, full_name, credits, role')
+                .order('email');
+
+            if (error || !data) { list.innerHTML = '<p class="p-6 text-red-500">Erro ao carregar usuários.</p>'; return; }
+
+            list.innerHTML = data.map(u => `
+                <div class="flex items-center justify-between gap-4 p-5 flex-wrap">
+                    <div>
+                        <p class="font-bold text-slate-800 dark:text-white">${u.full_name || u.email}</p>
+                        <p class="text-xs text-slate-400">${u.email} ${u.role === 'admin' ? '· <span class="text-red-500 font-bold">ADMIN</span>' : ''}</p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <input type="number" id="admin-credits-${u.id}" value="${u.credits}" class="w-24 p-2 text-center border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 rounded-lg outline-none">
+                        <button onclick="adminSetCredits('${u.id}')" class="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-bold hover:bg-red-700">Aplicar</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function adminSetCredits(userId) {
+            const newCredits = parseInt(document.getElementById(`admin-credits-${userId}`).value, 10) || 0;
+            const { data, error } = await supabaseClient.rpc('admin_set_credits', { p_target_user_id: userId, p_new_credits: newCredits });
+            if (error || !data) { alert('Erro: ' + (error?.message || 'falha desconhecida')); return; }
+            alert('Créditos atualizados!');
         }
 
         async function onAuthenticated(session) {
@@ -1022,6 +1176,7 @@
         }
 
         async function buyCredits(packId) {
+            if (state.isDemo) { alert('Modo demonstração: crie uma conta para comprar créditos.'); return; }
             const errEl = document.getElementById('credits-error');
             errEl.classList.add('hidden-state');
             try {
@@ -1080,20 +1235,25 @@
         );
 
         async function handleExportPDF() {
+            if (state.isDemo) { alert('Modo demonstração: exportação desativada. Crie uma conta para exportar de verdade.'); return; }
             if (!state.profile) { alert('Aguarde o carregamento do seu perfil.'); return; }
             const credits = state.profile.credits || 0;
+            const canRemove = credits >= CREDITS_PER_EXPORT;
             const removeWatermark = confirm(
-                credits > 0
-                    ? `Quer remover a marca d'água "MONOFY" desta exportação? Isso vai consumir 1 crédito (saldo atual: ${credits}).\n\nOK = Exportar SEM marca d'água\nCancelar = Exportar COM marca d'água (grátis)`
-                    : `Você não tem créditos para remover a marca d'água (saldo: 0). A exportação será feita com a marca d'água "MONOFY". Compre créditos na aba Créditos.`
+                canRemove
+                    ? `Quer remover a marca d'água "MONOFY" desta exportação? Isso vai consumir ${CREDITS_PER_EXPORT} créditos (saldo atual: ${credits}).\n\nOK = Exportar SEM marca d'água\nCancelar = Exportar COM marca d'água (grátis)`
+                    : `Você precisa de ${CREDITS_PER_EXPORT} créditos para remover a marca d'água (saldo atual: ${credits}). A exportação será feita com a marca d'água "MONOFY". Compre créditos na aba Créditos.`
             );
 
-            if (removeWatermark && credits > 0) {
+            if (removeWatermark && canRemove) {
+                const confirmDownload = confirm(`Confirmar: baixar agora vai usar ${CREDITS_PER_EXPORT} créditos do seu saldo. Quer continuar?`);
+                if (!confirmDownload) return;
+
                 const { data: success, error } = await supabaseClient.rpc('consume_credit', { p_user_id: state.session.user.id });
                 if (error || !success) {
-                    alert('Não foi possível consumir o crédito. Tente novamente.');
+                    alert('Não foi possível consumir os créditos. Tente novamente.');
                 } else {
-                    state.profile.credits -= 1;
+                    state.profile.credits -= CREDITS_PER_EXPORT;
                     document.getElementById('user-credits-display').innerText = state.profile.credits;
                     document.body.classList.add('watermark-removed');
                 }
@@ -1106,16 +1266,26 @@
         });
 
         function switchTab(tabId) {
-            const allTabs = ['generator', 'profile', 'settings', 'credits'];
+            if (state.isDemo && (tabId === 'credits' || tabId === 'myprofile')) {
+                alert('Modo demonstração: crie uma conta para acessar isto.');
+                return;
+            }
+            if (tabId === 'admin' && (!state.profile || state.profile.role !== 'admin')) {
+                return;
+            }
+
+            const allTabs = ['generator', 'profile', 'settings', 'credits', 'myprofile', 'admin'];
             allTabs.forEach(t => {
                 const btn = document.getElementById(`dock-tab-${t}`);
                 if(btn) {
                     if(t === tabId) {
                         btn.classList.add('bg-primary-600', 'text-white');
-                        btn.classList.remove('bg-transparent', 'text-slate-500', 'dark:text-slate-400', 'text-amber-500', 'dark:text-amber-400');
+                        btn.classList.remove('bg-transparent', 'text-slate-500', 'dark:text-slate-400', 'text-amber-500', 'dark:text-amber-400', 'text-emerald-500', 'dark:text-emerald-400', 'text-red-500', 'dark:text-red-400');
                     } else {
                         btn.classList.remove('bg-primary-600', 'text-white');
                         if (t === 'credits') { btn.classList.add('bg-transparent', 'text-amber-500', 'dark:text-amber-400'); }
+                        else if (t === 'myprofile') { btn.classList.add('bg-transparent', 'text-emerald-500', 'dark:text-emerald-400'); }
+                        else if (t === 'admin') { btn.classList.add('bg-transparent', 'text-red-500', 'dark:text-red-400'); }
                         else { btn.classList.add('bg-transparent', 'text-slate-500', 'dark:text-slate-400'); }
                     }
                 }
@@ -1134,6 +1304,12 @@
             } else if (tabId === 'credits') {
                 document.getElementById('tab-credits').classList.remove('hidden-state');
                 renderCreditsTab();
+            } else if (tabId === 'myprofile') {
+                document.getElementById('tab-myprofile').classList.remove('hidden-state');
+                renderMyProfileTab();
+            } else if (tabId === 'admin') {
+                document.getElementById('tab-admin').classList.remove('hidden-state');
+                renderAdminTab();
             }
         }
 
