@@ -2220,15 +2220,28 @@
 
             const header = `<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='[http://www.w3.org/TR/REC-html40](http://www.w3.org/TR/REC-html40)'>
             <head><meta charset='utf-8'><title>Monografia</title>
+                <!--[if gte mso 9]>
+                <xml>
+                    <w:WordDocument>
+                        <w:View>Print</w:View>
+                        <w:Zoom>100</w:Zoom>
+                        <w:DoNotOptimizeForBrowser/>
+                    </w:WordDocument>
+                </xml>
+                <![endif]-->
                 <style>
+                    /* Define o tamanho real da página (A4) e as margens nativas do Word — mais
+                       confiável do que o padding do div em documentos longos com várias páginas. */
+                    @page Section1 { size: 21.0cm 29.7cm; margin: ${mt} ${mr} ${mb} ${ml}; mso-page-orientation: portrait; }
+                    div.Section1 { page: Section1; }
                     body { font-family: '${wordFontFamily}', serif; font-size: ${tpl.tamanhoFonte}; line-height: ${tpl.espacamento}; color: black; }
                     .a4-page { page-break-after: always; padding: ${mt} ${mr} ${mb} ${ml}; }
                     ${coverBorderCss}
                     .watermark-stamp { display: none !important; }
                     p { text-indent: ${wordIndent}; text-align: justify; margin: 0; line-height: ${wordLineHeightPct}; }
-                    h1 { text-align: center; font-weight: bold; font-size: 12pt; margin-top: 24pt; margin-bottom: 12pt; text-indent: 0;}
-                    h2 { text-align: left; font-weight: bold; font-size: 12pt; margin-top: 24pt; margin-bottom: 12pt; text-indent: 0;}
-                    h3 { text-align: left; font-weight: bold; font-style: italic; font-size: 12pt; margin-top: 24pt; margin-bottom: 12pt; text-indent: 0;}
+                    h1 { text-align: center; font-weight: bold; font-size: ${tpl.tamanhoFonte}; margin-top: 24pt; margin-bottom: 12pt; text-indent: 0;}
+                    h2 { text-align: left; font-weight: bold; font-size: ${tpl.tamanhoFonte}; margin-top: 24pt; margin-bottom: 12pt; text-indent: 0;}
+                    h3 { text-align: left; font-weight: bold; font-style: italic; font-size: ${tpl.tamanhoFonte}; margin-top: 24pt; margin-bottom: 12pt; text-indent: 0;}
                     .hanging-indent { padding-left: ${wordIndent}; text-indent: -${wordIndent}; text-align: left; margin: 0; line-height: ${wordLineHeightPct};}
                     .toc-list { list-style: none; padding: 0; }
                     .center-text { text-align: center; text-indent: 0; }
@@ -2238,10 +2251,13 @@
                     .hide-on-word { display: none !important; }
                     .hide-on-print { display: none !important; }
                     .page-break-marker { page-break-after: always; display: block; margin: 0; padding: 0; border: none; }
+                    table { border-collapse: collapse; width: 100%; }
+                    table, th, td { font-size: ${tpl.tamanhoFonte}; }
+                    img { max-width: 100%; height: auto; }
                 </style>
-            </head><body>`;
-            
-            const sourceHTML = header + printArea + "</body></html>";
+            </head><body><div class="Section1">`;
+
+            const sourceHTML = header + printArea + "</div></body></html>";
             const source = 'data:application/vnd.ms-word;charset=utf-8,' + encodeURIComponent(sourceHTML);
             const fileDownload = document.createElement("a");
             document.body.appendChild(fileDownload); 
