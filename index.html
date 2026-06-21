@@ -1219,7 +1219,15 @@
         function showAuthError(msg) {
             const el = document.getElementById('auth-error');
             el.innerText = msg;
-            el.classList.remove('hidden-state');
+            el.classList.remove('hidden-state', 'bg-green-50', 'dark:bg-green-900/20', 'text-green-700', 'dark:text-green-400');
+            el.classList.add('bg-red-50', 'dark:bg-red-900/20', 'text-red-600', 'dark:text-red-400');
+        }
+
+        function showAuthSuccess(msg) {
+            const el = document.getElementById('auth-error');
+            el.innerText = msg;
+            el.classList.remove('hidden-state', 'bg-red-50', 'dark:bg-red-900/20', 'text-red-600', 'dark:text-red-400');
+            el.classList.add('bg-green-50', 'dark:bg-green-900/20', 'text-green-700', 'dark:text-green-400');
         }
 
         async function signInWithEmail() {
@@ -1235,7 +1243,7 @@
             if (password.length < 6) { showAuthError('A senha precisa ter no mínimo 6 caracteres.'); return; }
             const { error } = await supabaseClient.auth.signUp({ email, password });
             if (error) showAuthError(error.message);
-            else showAuthError('Conta criada! Verifique o seu email para confirmar (ou faça login se a confirmação estiver desativada).');
+            else showAuthSuccess('Conta criada! Verifique o seu email para confirmar (ou faça login se a confirmação estiver desativada).');
         }
 
         async function signOut() {
@@ -2314,7 +2322,80 @@
         // Constrói o HTML do documento direto a partir dos dados (state), em vez de clonar o
         // DOM do editor — assim nenhum atributo/classe do editor (contenteditable, Tailwind,
         // toolbars) vaza para o Word, que não sabe interpretá-los e bagunça a formatação.
-        function buildCleanDocumentHTML() {
+        // O Word não entende display:flex (usado na capa e no índice do site), então aqui
+        // tudo é remontado com <table> — alinhamento e "empurrar pro fim da página" funcionam
+        // de forma muito mais confiável em Word usando células de tabela do que com flexbox.
+        let _cachedLogoDataUri = null;
+        async function getLogoAsDataURI() {
+            if (state.logoBase64 && state.logoBase64.startsWith('data:')) return state.logoBase64;
+            if (_cachedLogoDataUri) return _cachedLogoDataUri;
+            try {
+                const res = await fetch(state.logoBase64);
+                const blob = await res.blob();
+                _cachedLogoDataUri = await new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = () => resolve(reader.result);
+                    reader.onerror = reject;
+                    reader.readAsDataURL(blob);
+                });
+                return _cachedLogoDataUri;
+            } catch (e) {
+                return state.logoBase64; // se falhar, ao menos tenta o link direto
+            }
+        }
+
+        async function buildWordCoverHTML(tpl) {
+            const val = (id) => { const el = document.getElementById(id); return el ? el.innerText : ''; };
+            const logoSrc = await getLogoAsDataURI();
+            const borderStyle = tpl.capaMoldura ? 'border: 6px double #000066;' : '';
+
+            return `<div class="a4-page a4-cover-page">
+                <table style="width:100%; height:24cm; ${borderStyle}" cellpadding="0" cellspacing="0">
+                    <tr><td style="text-align:center; vertical-align:top; padding:1.2cm 1.2cm 0 1.2cm;">
+                        <p style="font-size:16pt; font-weight:bold; text-transform:uppercase; margin:0; text-indent:0;">${val('out-university')}</p>
+                        <p style="font-size:14pt; font-weight:bold; text-transform:uppercase; margin:0; text-indent:0;">${val('out-faculty')}</p>
+                        <p style="font-size:14pt; font-weight:bold; text-transform:uppercase; margin:0; text-indent:0;">${val('out-career')}</p>
+                        <p style="margin-top:24pt; text-indent:0;"><img src="${logoSrc}" style="max-height:120px;" /></p>
+                        <p style="font-size:14pt; font-weight:bold; text-transform:uppercase; margin-top:24pt; margin-bottom:0; text-indent:0;">MONOGRAFÍA</p>
+                        <p style="font-size:14pt; font-weight:bold; text-transform:uppercase; margin-top:6pt; text-indent:0;">${val('out-title')}</p>
+                        <table style="margin:24pt auto 0 auto; width:80%; text-align:left; font-size:12pt;" cellpadding="4">
+                            <tr><td style="font-weight:bold; width:110px; vertical-align:top;">Asignatura:</td><td>${val('out-subject')}</td></tr>
+                            <tr><td style="font-weight:bold; vertical-align:top;">Docente:</td><td>${val('out-professor')}</td></tr>
+                            <tr><td style="font-weight:bold; vertical-align:top;">Estudiantes:</td><td style="white-space:pre-wrap;">${val('out-student')}</td></tr>
+                        </table>
+                    </td></tr>
+                    <tr><td style="text-align:center; vertical-align:bottom; padding:0 1.2cm 1.2cm 1.2cm;">
+                        <p style="margin:0; text-indent:0;">${val('out-location')}</p>
+                        <p style="margin:0; text-indent:0;">${val('out-year')}</p>
+                    </td></tr>
+                </table>
+            </div>`;
+        }
+
+        function buildWordTOC() {
+            let rows = '';
+            let currentPage = 3;
+            state.generatedSections.forEach(sec => {
+                rows += `<tr><td style="padding:3pt 4pt 3pt 0;">${sec.title}</td><td style="border-bottom:1px dotted #000;"></td><td style="padding:3pt 0 3pt 4pt; text-align:right; white-space:nowrap;">${currentPage}</td></tr>`;
+
+                const temp = document.createElement('div');
+                temp.innerHTML = sec.content;
+                temp.querySelectorAll('h2, h3').forEach(heading => {
+                    const indent = heading.tagName === 'H3' ? '2.5cm' : '1.27cm';
+                    rows += `<tr><td style="padding:3pt 4pt 3pt ${indent};">${heading.innerText}</td><td style="border-bottom:1px dotted #000;"></td><td style="padding:3pt 0 3pt 4pt; text-align:right; white-space:nowrap;">${currentPage}</td></tr>`;
+                });
+
+                const words = sec.content.replace(/<[^>]*>?/gm, '').split(/\s+/).length;
+                currentPage += Math.max(1, Math.ceil(words / 280));
+            });
+
+            return `<div class="a4-page">
+                <h1 style="text-align:center; font-weight:bold; margin-bottom:24pt; text-indent:0;">${getTranslatedWord('toc')}</h1>
+                <table style="width:100%; border-collapse:collapse;"><tbody>${rows}</tbody></table>
+            </div>`;
+        }
+
+        async function buildCleanDocumentHTML() {
             const pageBreak = '<br clear="all" style="mso-special-character:line-break;page-break-before:always">\n';
             let pageCount = 0;
             const nextPage = (html) => {
@@ -2322,17 +2403,9 @@
                 return (pageCount === 1 ? '' : pageBreak) + html;
             };
 
-            // Capa: já é markup limpo (sem classes do editor), só removemos o hide-on-word do logo
-            const coverEl = document.querySelector('#print-area > .a4-cover-page');
-            let coverHTML = coverEl ? coverEl.outerHTML.replace(/\s*class="hide-on-word"/g, '') : '';
-            coverHTML = nextPage(coverHTML);
-
-            let tocHTML = generateTOC()
-                .replace(/class="toc-item"/g, 'style="margin-bottom: 12pt; text-indent: 0; display:flex; align-items:flex-end;"')
-                .replace(/class="toc-title"/g, 'style="font-weight:normal;"')
-                .replace(/class="toc-dots"/g, 'style="flex-grow:1; border-bottom:2px dotted #000; margin:0 4px;"')
-                .replace(/class="toc-page"/g, 'style="font-weight:normal;"');
-            tocHTML = nextPage(tocHTML);
+            const tpl = getActiveNormTemplate();
+            let coverHTML = nextPage(await buildWordCoverHTML(tpl));
+            let tocHTML = nextPage(buildWordTOC());
 
             let sectionsHTML = '';
             state.generatedSections.forEach(section => {
@@ -2351,9 +2424,9 @@
             return coverHTML + tocHTML + sectionsHTML + referencesHTML;
         }
 
-        window.exportWord = function() {
+        window.exportWord = async function() {
             const docTitle = document.getElementById('in-title').value || 'Monografia';
-            const printArea = buildCleanDocumentHTML();
+            const printArea = await buildCleanDocumentHTML();
 
             const mt = state.margins.mt + 'cm';
             const mr = state.margins.mr + 'cm';
