@@ -643,6 +643,10 @@
                     <i data-lucide="archive" class="absolute -right-4 -bottom-4 w-48 h-48 text-white opacity-10"></i>
                 </div>
 
+                <button onclick="startNewBlankProject()" class="w-full flex items-center justify-center gap-2 px-6 py-4 bg-white dark:bg-slate-800 border-2 border-dashed border-primary-300 dark:border-primary-700/50 text-primary-600 dark:text-primary-400 rounded-2xl hover:bg-primary-50 dark:hover:bg-primary-900/30 transition-all font-bold shadow-sm">
+                    <i data-lucide="file-plus" class="w-5 h-5"></i> Novo Projeto em Branco
+                </button>
+
                 <div id="history-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
                 
                 <div id="history-empty" class="text-center py-20 px-6 text-slate-500 bg-white/50 dark:bg-slate-850/50 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-3xl hidden-state">
@@ -735,13 +739,16 @@
 
                     <div>
                         <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-3 flex items-center gap-2">
-                            <i data-lucide="sparkles" class="w-5 h-5 text-purple-500"></i> Animação das Páginas
+                            <i data-lucide="sparkles" class="w-5 h-5 text-purple-500"></i> Animação dos Painéis (Dados/Assistente)
                         </label>
-                        <select id="anim-style" class="w-full p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none font-medium shadow-sm">
+                        <select id="anim-style" onchange="previewAnimStyle()" class="w-full p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none font-medium shadow-sm">
                             <option value="fade">Fade (suave)</option>
                             <option value="3d">3D (rotação em perspectiva)</option>
                             <option value="mac">Estilo Mac (distorção elástica)</option>
                         </select>
+                        <div class="mt-3 h-20 flex items-center justify-center bg-slate-100 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+                            <div id="anim-preview-box" class="w-32 h-12 bg-purple-600 rounded-lg flex items-center justify-center text-white text-xs font-bold">Pré-visualização</div>
+                        </div>
                     </div>
 
                     <div>
@@ -1246,11 +1253,19 @@
             else showAuthSuccess('Conta criada! Verifique o seu email para confirmar (ou faça login se a confirmação estiver desativada).');
         }
 
+        function clearLocalApiKey() {
+            state.apiKey = '';
+            localStorage.removeItem('monografia_api_key');
+            const input = document.getElementById('input-apikey');
+            if (input) input.value = '';
+        }
+
         async function signOut() {
             if (!state.isDemo) await supabaseClient.auth.signOut();
             state.session = null;
             state.profile = null;
             state.isDemo = false;
+            clearLocalApiKey(); // a chave de API não pode "vazar" para o próximo login nesta máquina
             document.getElementById('app-screen').classList.add('opacity-0', 'pointer-events-none');
             document.getElementById('login-screen').classList.remove('hidden-state', 'opacity-0', 'pointer-events-none');
         }
@@ -1386,6 +1401,7 @@
                 onAuthenticated(session);
             } else {
                 state.session = null;
+                clearLocalApiKey();
                 document.getElementById('app-screen').classList.add('opacity-0', 'pointer-events-none');
                 document.getElementById('login-screen').classList.remove('hidden-state');
                 document.getElementById('login-screen').classList.add('opacity-0');
@@ -1579,6 +1595,7 @@
                 renderHistory();
             } else if (tabId === 'settings') {
                 document.getElementById('tab-settings').classList.remove('hidden-state');
+                setTimeout(previewAnimStyle, 50);
             } else if (tabId === 'credits') {
                 document.getElementById('tab-credits').classList.remove('hidden-state');
                 renderCreditsTab();
@@ -1621,6 +1638,17 @@
 
         // Anima a abertura de um painel flutuante (Dados da Pesquisa / Assistente IA)
         // de acordo com o estilo escolhido em Ajustes.
+        // Pré-visualização instantânea na própria aba de Ajustes (os painéis reais ficam
+        // escondidos atrás dessa aba, então animá-los ali não dava pra ver — daí a confusão).
+        function previewAnimStyle() {
+            const style = document.getElementById('anim-style').value;
+            const box = document.getElementById('anim-preview-box');
+            if (!box) return;
+            box.classList.remove('panel-anim-fade', 'panel-anim-3d', 'panel-anim-mac');
+            void box.offsetWidth;
+            box.classList.add(`panel-anim-${style}`);
+        }
+
         function applyPanelAnimation(panelId) {
             const el = document.getElementById(panelId);
             if (!el) return;
@@ -1637,6 +1665,8 @@
             localStorage.setItem('monografia_api_key', state.apiKey);
             localStorage.setItem('monografia_lang', state.docLanguage);
             localStorage.setItem('monografia_anim_style', state.animStyle);
+            applyPanelAnimation('panel-left');
+            applyPanelAnimation('panel-right');
 
             const btn = event.currentTarget;
             const originalHTML = btn.innerHTML;
@@ -1878,6 +1908,7 @@
                 document.getElementById('btn-export-pdf').disabled = false;
 
                 renderSections();
+                setTimeout(checkAllSectionsOverflow, 100);
                 state.currentDocWatermarkRemoved = false; // novo trabalho = marca d'água precisa ser paga de novo
                 saveDocumentToHistory(document.getElementById('in-title').value || 'Monografia', state.generatedSections, state.references);
                 updateWatermarkButtonUI();
@@ -1983,7 +2014,7 @@
                 : ` (${author}, ${year})`;
             const el = document.getElementById(`apa-content-${pageKey}`);
             if (el) el.insertAdjacentHTML('beforeend', citationText);
-            scheduleSyncSection(sectionId, true);
+            scheduleSyncSection(sectionId, true); checkAndSplitOverflow(sectionId);
         }
 
         // ==========================================
@@ -2015,7 +2046,7 @@
 
             const el = document.getElementById(`apa-content-${pageKey}`);
             if (el) el.insertAdjacentHTML('beforeend', tableHtml);
-            scheduleSyncSection(sectionId, true);
+            scheduleSyncSection(sectionId, true); checkAndSplitOverflow(sectionId);
         }
 
         function insertPageBreakInline(sectionId, pageKey) {
@@ -2033,7 +2064,7 @@
             const tag = level === '2' ? 'h2' : 'h3';
             const el = document.getElementById(`apa-content-${pageKey}`);
             if (el) el.insertAdjacentHTML('beforeend', `<${tag}>${text}</${tag}>`);
-            scheduleSyncSection(sectionId, true);
+            scheduleSyncSection(sectionId, true); checkAndSplitOverflow(sectionId);
             renderSections(); // re-renderiza para o sumário já refletir o novo título
         }
 
@@ -2084,6 +2115,86 @@
             }
         }
 
+        function checkAllSectionsOverflow() {
+            state.generatedSections.forEach(s => checkAndSplitOverflow(s.id));
+        }
+
+        // Limite de página real (estilo Word): quando o texto de uma página passa da altura
+        // de uma folha A4, o excedente é movido automaticamente para a página seguinte.
+        // Roda ao sair do campo (blur), não durante a digitação, pra não perder o cursor.
+        function checkAndSplitOverflow(sectionId) {
+            let safety = 0;
+            while (safety++ < 50) {
+                const pages = Array.from(document.querySelectorAll(`.a4-page[data-section-id="${sectionId}"]`));
+                let didSplit = false;
+
+                for (const pageDiv of pages) {
+                    const contentEl = pageDiv.querySelector('.apa-content');
+                    if (!contentEl) continue;
+                    if (pageDiv.scrollHeight <= pageDiv.clientHeight + 2) continue;
+
+                    const movedNodes = [];
+                    while (pageDiv.scrollHeight > pageDiv.clientHeight + 2 && contentEl.children.length > 1) {
+                        movedNodes.unshift(contentEl.lastElementChild);
+                        contentEl.removeChild(contentEl.lastElementChild);
+                    }
+                    if (movedNodes.length === 0) continue; // um único elemento gigante; não há como dividir mais
+
+                    const movedHTML = movedNodes.map(n => n.outerHTML).join('');
+                    const pageIdx = parseInt(pageDiv.dataset.pageIndex, 10);
+                    const idx = state.generatedSections.findIndex(s => s.id === sectionId);
+                    if (idx === -1) continue;
+
+                    const chunks = splitContentIntoPages(state.generatedSections[idx].content);
+                    chunks[pageIdx] = contentEl.innerHTML;
+                    if (chunks[pageIdx + 1] !== undefined) {
+                        chunks[pageIdx + 1] = movedHTML + chunks[pageIdx + 1];
+                    } else {
+                        chunks.splice(pageIdx + 1, 0, movedHTML);
+                    }
+                    state.generatedSections[idx].content = chunks.join('<hr class="page-break-marker">');
+
+                    renderSections();
+                    didSplit = true;
+                    break; // DOM foi recriado, precisa reconsultar do zero
+                }
+
+                if (!didSplit) break;
+            }
+        }
+
+        function startNewBlankProject() {
+            if (!confirm('Começar um novo projeto em branco? O trabalho atual continua salvo no histórico (se já foi salvo), mas a tela vai limpar para um documento novo.')) return;
+
+            state.generatedSections = [];
+            state.references = [];
+            state.currentDocWatermarkRemoved = false;
+            document.getElementById('in-title').value = 'TÍTULO DA MONOGRAFIA';
+            document.getElementById('raw-text').value = '';
+            state.uploadedContextText = '';
+            document.getElementById('uploaded-files-list').innerHTML = '';
+            updateCoverPage();
+
+            document.getElementById('generated-content').innerHTML = `
+                <div class="a4-page flex items-center justify-center opacity-40 hide-on-print border-2 border-dashed border-slate-400 bg-transparent shadow-none">
+                    <div class="text-center w-full px-6">
+                        <i data-lucide="file-signature" class="w-16 h-16 mx-auto mb-4"></i>
+                        <p class="font-sans text-lg font-bold" style="text-indent: 0;">O documento formatado aparecerá aqui.</p>
+                        <p class="font-sans text-sm mt-2 mb-6" style="text-indent: 0;">Configure a IA e os dados nos painéis laterais, ou comece manualmente.</p>
+                        <button onclick="addNewSection()" class="hide-on-print mx-auto flex items-center gap-2 px-6 py-4 bg-primary-600 text-white rounded-2xl hover:bg-primary-700 transition-all font-bold shadow-lg hover:-translate-y-0.5">
+                            <i data-lucide="plus-circle" class="w-5 h-5"></i> Adicionar Primeira Página (sem IA)
+                        </button>
+                    </div>
+                </div>
+            `;
+            lucide.createIcons();
+
+            document.getElementById('btn-export-word').disabled = true;
+            document.getElementById('btn-export-pdf').disabled = true;
+            updateWatermarkButtonUI();
+            switchTab('generator');
+        }
+
         function saveCurrentWork() {
             state.generatedSections.forEach(s => syncSectionFromDOM(s.id));
             const title = document.getElementById('in-title').value || 'Monografia';
@@ -2122,7 +2233,7 @@
                                 <button onclick="refineInline('${section.id}', '${pageKey}')" title="Refinar com IA (5 créditos)" class="p-2.5 bg-purple-600 text-white rounded-lg shadow-xl hover:-translate-y-0.5"><i data-lucide="sparkles" class="w-3.5 h-3.5"></i></button>
                             </div>
                             ${idx === 0 ? `<h1 contenteditable="true" data-section-title="${section.id}" oninput="scheduleSyncSection('${section.id}')" style="text-indent: 0; outline: none;">${section.title}</h1>` : ''}
-                            <div class="apa-content" id="apa-content-${pageKey}" contenteditable="true" data-section-id="${section.id}" oninput="scheduleSyncSection('${section.id}')" style="outline: none; min-height: 2em;">${chunk}</div>
+                            <div class="apa-content" id="apa-content-${pageKey}" data-page-index="${idx}" contenteditable="true" data-section-id="${section.id}" oninput="scheduleSyncSection('${section.id}')" onblur="checkAndSplitOverflow('${section.id}')" style="outline: none; min-height: 2em;">${chunk}</div>
                         </div>
                     `;
                 });
@@ -2215,7 +2326,7 @@
                 let improvedText = data.candidates[0].content.parts[0].text;
                 improvedText = improvedText.replace(/```html/gi, '').replace(/```/g, '').trim();
                 el.innerHTML = improvedText;
-                scheduleSyncSection(sectionId, true);
+                scheduleSyncSection(sectionId, true); checkAndSplitOverflow(sectionId);
             } catch (err) {
                 console.error(err); showError('Erro na IA ao tentar melhorar o texto.');
             } finally {
@@ -2239,7 +2350,7 @@
                     const imgTag = `<div style="text-align: center; margin-top: 12pt; margin-bottom: 12pt;"><img src="${base64Img}" alt="Ilustração" style="max-width: 100%; height: auto; display: inline-block; margin: 0 auto;" /></div>`;
                     const el = document.getElementById(`apa-content-${pageKey}`);
                     if (el) el.insertAdjacentHTML('beforeend', imgTag);
-                    scheduleSyncSection(sectionId, true);
+                    scheduleSyncSection(sectionId, true); checkAndSplitOverflow(sectionId);
                 };
                 reader.readAsDataURL(file);
             }
