@@ -1,11 +1,12 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
-// Pacotes de créditos (preços em BRL)
+// Pacotes de créditos (preços em BRL, 1 crédito = R$1, com desconto no pacote de 100)
 const CREDIT_PACKS: Record<string, { title: string; price: number; credits: number }> = {
-  pack_10: { title: "Monofy - 10 créditos", price: 90.0, credits: 10 },
-  pack_20: { title: "Monofy - 20 créditos", price: 170.0, credits: 20 },
-  pack_30: { title: "Monofy - 30 créditos", price: 250.0, credits: 30 },
+  pack_10: { title: "Monofy - 10 créditos", price: 10.0, credits: 10 },
+  pack_20: { title: "Monofy - 20 créditos", price: 20.0, credits: 20 },
+  pack_50: { title: "Monofy - 50 créditos", price: 50.0, credits: 50 },
+  pack_100: { title: "Monofy - 100 créditos", price: 90.0, credits: 100 },
 };
 
 const corsHeaders = {

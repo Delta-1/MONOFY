@@ -38,11 +38,14 @@
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         const EDGE_FN_CHECKOUT = `${SUPABASE_URL}/functions/v1/create-payment-preference`;
         const CREDIT_PACKS_UI = [
-            { id: 'pack_10', credits: 10, price: 'R$ 90,00' },
-            { id: 'pack_20', credits: 20, price: 'R$ 170,00', highlight: true },
-            { id: 'pack_30', credits: 30, price: 'R$ 250,00' }
+            { id: 'pack_10', credits: 10, price: 'R$ 10,00' },
+            { id: 'pack_20', credits: 20, price: 'R$ 20,00' },
+            { id: 'pack_50', credits: 50, price: 'R$ 50,00', highlight: true },
+            { id: 'pack_100', credits: 100, price: 'R$ 90,00' }
         ];
-        const CREDITS_PER_EXPORT = 10;
+        const CREDITS_PER_EXPORT = 10; // remover marca d'água
+        const AI_COST_PER_PAGE = 5;    // usar IA pra refinar 1 página
+        const AI_COST_FULL_DOC = 50;   // gerar a monografia inteira com IA
         const WHATSAPP_SUPPORT_NUMBER = '5519989765398';
 
         // Modelos de norma embutidos. Margens em cm. recuoParagrafo em cm.
@@ -556,6 +559,10 @@
                         <i data-lucide="save" class="w-5 h-5"></i> Salvar Trabalho
                     </button>
 
+                    <button onclick="removeWatermarkForCurrentDoc()" id="btn-remove-watermark-doc" class="w-full flex items-center justify-center gap-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-900/30 text-amber-700 dark:text-amber-400 font-bold py-3.5 rounded-xl transition-all shadow-sm hover:shadow-md mb-4 disabled:opacity-60">
+                        <i data-lucide="droplet-off" class="w-4 h-4"></i> Remover Marca d'Água (10 créditos)
+                    </button>
+
                     <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest text-center mb-4">Exportar Formato</h4>
 
                     <button onclick="exportWord()" id="btn-export-word" disabled class="w-full flex items-center justify-center gap-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-blue-600 dark:text-blue-400 font-bold py-3.5 rounded-xl transition-all shadow-sm hover:shadow-md disabled:opacity-50">
@@ -797,6 +804,7 @@
             margins: JSON.parse(localStorage.getItem('monografia_margins')) || { mt: 2.54, mb: 2.54, ml: 3.0, mr: 2.54 },
             references: [],
             isDemo: false,
+            currentDocWatermarkRemoved: false,
             animStyle: localStorage.getItem('monografia_anim_style') || 'fade',
             customNormTemplates: JSON.parse(localStorage.getItem('monografia_norm_templates')) || [],
             activeNormTemplateId: localStorage.getItem('monografia_active_norm') || 'apa-upds',
@@ -1272,6 +1280,7 @@
                 if (data.role === 'admin') {
                     document.getElementById('dock-tab-admin').classList.remove('hidden-state');
                 }
+                updateWatermarkButtonUI();
             }
         }
 
@@ -1471,34 +1480,55 @@
             if (state.isDemo) { alert('Modo demonstração: exportação desativada. Crie uma conta para exportar de verdade.'); return; }
             if (!state.profile) { alert('Aguarde o carregamento do seu perfil.'); return; }
 
-            if (state.profile.role === 'admin') {
-                document.body.classList.add('watermark-removed');
-                window.print();
+            // A decisão de remover a marca d'água agora é feita uma vez por trabalho, pelo botão
+            // dedicado no painel Assistente — aqui só refletimos o que já foi decidido.
+            const shouldRemove = state.profile.role === 'admin' || state.currentDocWatermarkRemoved;
+            document.body.classList.toggle('watermark-removed', shouldRemove);
+            window.print();
+        }
+
+        // Remove a marca d'água deste trabalho específico (não afeta outros documentos).
+        // Cobra uma única vez por trabalho — exportações seguintes do mesmo trabalho não cobram de novo.
+        async function removeWatermarkForCurrentDoc() {
+            if (state.isDemo) { alert('Modo demonstração: indisponível.'); return; }
+            if (!state.profile) { alert('Aguarde o carregamento do seu perfil.'); return; }
+            if (state.profile.role === 'admin' || state.currentDocWatermarkRemoved) {
+                alert('A marca d\'água já está removida deste trabalho.');
                 return;
             }
+            if (!confirm(`Remover a marca d'água "MONOFY" deste trabalho consome ${CREDITS_PER_EXPORT} créditos (saldo atual: ${state.profile.credits}). Vale só para este trabalho — se criar outro, precisa pagar de novo. Continuar?`)) return;
 
-            const credits = state.profile.credits || 0;
-            const canRemove = credits >= CREDITS_PER_EXPORT;
-            const removeWatermark = confirm(
-                canRemove
-                    ? `Quer remover a marca d'água "MONOFY" desta exportação? Isso vai consumir ${CREDITS_PER_EXPORT} créditos (saldo atual: ${credits}).\n\nOK = Exportar SEM marca d'água\nCancelar = Exportar COM marca d'água (grátis)`
-                    : `Você precisa de ${CREDITS_PER_EXPORT} créditos para remover a marca d'água (saldo atual: ${credits}). A exportação será feita com a marca d'água "MONOFY". Compre créditos na aba Créditos.`
-            );
-
-            if (removeWatermark && canRemove) {
-                const confirmDownload = confirm(`Confirmar: baixar agora vai usar ${CREDITS_PER_EXPORT} créditos do seu saldo. Quer continuar?`);
-                if (!confirmDownload) return;
-
-                const { data: success, error } = await supabaseClient.rpc('consume_credit', { p_user_id: state.session.user.id });
-                if (error || !success) {
-                    alert('Não foi possível consumir os créditos. Tente novamente.');
-                } else {
-                    state.profile.credits -= CREDITS_PER_EXPORT;
-                    document.getElementById('user-credits-display').innerText = state.profile.credits;
-                    document.body.classList.add('watermark-removed');
-                }
+            const { data: success, error } = await supabaseClient.rpc('consume_credits_generic', {
+                p_user_id: state.session.user.id, p_amount: CREDITS_PER_EXPORT, p_reason: 'watermark_removal'
+            });
+            if (error || !success) {
+                showError(`Créditos insuficientes (precisa de ${CREDITS_PER_EXPORT}). Compre créditos na aba Créditos.`);
+                return;
             }
-            window.print();
+            state.profile.credits -= CREDITS_PER_EXPORT;
+            document.getElementById('user-credits-display').innerText = state.profile.credits;
+            state.currentDocWatermarkRemoved = true;
+            persistCurrentDocMeta();
+            updateWatermarkButtonUI();
+            alert('Marca d\'água removida deste trabalho! Pode exportar quantas vezes quiser sem pagar de novo, até criar um novo trabalho.');
+        }
+
+        function persistCurrentDocMeta() {
+            if (state.history.length > 0) {
+                state.history[0].watermarkRemoved = state.currentDocWatermarkRemoved;
+                localStorage.setItem('monografia_history', JSON.stringify(state.history));
+            }
+        }
+
+        function updateWatermarkButtonUI() {
+            const btn = document.getElementById('btn-remove-watermark-doc');
+            if (!btn) return;
+            const unlocked = state.profile && (state.profile.role === 'admin' || state.currentDocWatermarkRemoved);
+            btn.disabled = unlocked;
+            btn.innerHTML = unlocked
+                ? `<i data-lucide="check-circle" class="w-4 h-4"></i> Marca d'água já removida deste trabalho`
+                : `<i data-lucide="droplet-off" class="w-4 h-4"></i> Remover Marca d'Água (${CREDITS_PER_EXPORT} créditos)`;
+            lucide.createIcons();
         }
 
         window.addEventListener('afterprint', () => {
@@ -1755,6 +1785,22 @@
             const rawText = document.getElementById('raw-text').value.trim();
             if (!rawText && !state.uploadedContextText) { showError('Forneça texto ou ficheiros base.'); return; }
 
+            if (state.isDemo) { alert('Modo demonstração: geração com IA desativada. Crie uma conta para usar de verdade.'); return; }
+            if (!state.profile) { alert('Aguarde o carregamento do seu perfil.'); return; }
+            if (!confirm(`Gerar a monografia inteira com IA consome ${AI_COST_FULL_DOC} créditos (saldo atual: ${state.profile.credits}). Continuar?`)) return;
+
+            const { data: aiPaid, error: aiPayError } = await supabaseClient.rpc('consume_credits_generic', {
+                p_user_id: state.session.user.id, p_amount: AI_COST_FULL_DOC, p_reason: 'ai_full_document'
+            });
+            if (aiPayError || !aiPaid) {
+                showError(`Créditos insuficientes para gerar com IA (precisa de ${AI_COST_FULL_DOC}). Compre créditos na aba Créditos.`);
+                return;
+            }
+            if (state.profile.role !== 'admin') {
+                state.profile.credits -= AI_COST_FULL_DOC;
+                document.getElementById('user-credits-display').innerText = state.profile.credits;
+            }
+
             const btnGenerate = document.getElementById('btn-generate');
             document.getElementById('icon-generate').classList.add('hidden-state');
             document.getElementById('icon-loading').classList.remove('hidden-state');
@@ -1824,8 +1870,10 @@
                 document.getElementById('btn-export-pdf').disabled = false;
 
                 renderSections();
+                state.currentDocWatermarkRemoved = false; // novo trabalho = marca d'água precisa ser paga de novo
                 saveDocumentToHistory(document.getElementById('in-title').value || 'Monografia', state.generatedSections, state.references);
-                
+                updateWatermarkButtonUI();
+
                 if(window.innerWidth < 1024) {
                     togglePanelVisibility('panel-left');
                 }
@@ -1851,15 +1899,24 @@
 
         function generateTOC() {
             let tocHtml = `<div class="a4-page"><h1 style="text-align: center; font-weight: bold; margin-bottom: 24pt; text-indent: 0;">${getTranslatedWord('toc')}</h1><ul class="toc-list">`;
-            let currentPage = 3; 
-            
+            let currentPage = 3;
+
             state.generatedSections.forEach(sec => {
                 tocHtml += `<li class="toc-item"><span class="toc-title">${sec.title}</span><span class="toc-dots"></span><span class="toc-page">${currentPage}</span></li>`;
+
+                // Lista também os subtítulos (H2/H3) inseridos dentro do conteúdo da seção
+                const temp = document.createElement('div');
+                temp.innerHTML = sec.content;
+                temp.querySelectorAll('h2, h3').forEach(heading => {
+                    const indent = heading.tagName === 'H3' ? '2.5cm' : '1.27cm';
+                    tocHtml += `<li class="toc-item" style="padding-left:${indent};"><span class="toc-title">${heading.innerText}</span><span class="toc-dots"></span><span class="toc-page">${currentPage}</span></li>`;
+                });
+
                 // Cálculo APA real de páginas (~250 a 300 palavras por pág com interlineado duplo)
                 const words = sec.content.replace(/<[^>]*>?/gm, '').split(/\s+/).length;
-                currentPage += Math.max(1, Math.ceil(words / 280)); 
+                currentPage += Math.max(1, Math.ceil(words / 280));
             });
-            
+
             tocHtml += `</ul></div>`;
             return tocHtml;
         }
@@ -1960,6 +2017,38 @@
             renderSections();
         }
 
+        function insertHeadingInline(sectionId, pageKey) {
+            const level = prompt('Nível do título: digite 2 para Subtítulo (H2) ou 3 para Sub-subtítulo (H3)', '2');
+            if (level !== '2' && level !== '3') return;
+            const text = prompt('Texto do título:');
+            if (!text) return;
+            const tag = level === '2' ? 'h2' : 'h3';
+            const el = document.getElementById(`apa-content-${pageKey}`);
+            if (el) el.insertAdjacentHTML('beforeend', `<${tag}>${text}</${tag}>`);
+            scheduleSyncSection(sectionId, true);
+            renderSections(); // re-renderiza para o sumário já refletir o novo título
+        }
+
+        // Insere uma nova página/seção em branco logo depois da seção indicada,
+        // mantendo o sumário e a exportação cientes da nova ordem.
+        function insertPageAfter(afterSectionId) {
+            const idx = state.generatedSections.findIndex(s => s.id === afterSectionId);
+            if (idx === -1) return;
+            const newId = 'sec-' + Date.now();
+            state.generatedSections.splice(idx + 1, 0, {
+                id: newId,
+                title: 'Novo Capítulo',
+                content: '<p>Comece a desenvolver o seu texto aqui...</p>'
+            });
+            renderSections();
+            document.getElementById('btn-export-word').disabled = false;
+            document.getElementById('btn-export-pdf').disabled = false;
+            setTimeout(() => {
+                const el = document.getElementById(`apa-content-${newId}__0`);
+                if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.focus(); }
+            }, 300);
+        }
+
         // ==========================================
         // SINCRONIZAÇÃO DA EDIÇÃO DIRETA (contenteditable -> state)
         // ==========================================
@@ -1994,9 +2083,11 @@
                 state.history[0].sections = state.generatedSections;
                 state.history[0].references = state.references;
                 state.history[0].title = title;
+                state.history[0].watermarkRemoved = state.currentDocWatermarkRemoved;
                 localStorage.setItem('monografia_history', JSON.stringify(state.history));
             } else {
                 saveDocumentToHistory(title, state.generatedSections, state.references);
+                persistCurrentDocMeta();
             }
             alert('Trabalho salvo no histórico!');
         }
@@ -2018,7 +2109,9 @@
                                 <button onclick="insertCitationInline('${section.id}', '${pageKey}')" title="Inserir Citação APA" class="p-2.5 bg-slate-900 dark:bg-primary-600 text-white rounded-lg shadow-xl hover:-translate-y-0.5"><i data-lucide="quote" class="w-3.5 h-3.5"></i></button>
                                 <button onclick="insertPageBreakInline('${section.id}', '${pageKey}')" title="Quebra de Página" class="p-2.5 bg-slate-900 dark:bg-primary-600 text-white rounded-lg shadow-xl hover:-translate-y-0.5"><i data-lucide="scissors" class="w-3.5 h-3.5"></i></button>
                                 <button onclick="triggerImageInsert('${section.id}', '${pageKey}')" title="Inserir Imagem" class="p-2.5 bg-slate-900 dark:bg-primary-600 text-white rounded-lg shadow-xl hover:-translate-y-0.5"><i data-lucide="image-plus" class="w-3.5 h-3.5"></i></button>
-                                <button onclick="refineInline('${section.id}', '${pageKey}')" title="Refinar com IA" class="p-2.5 bg-purple-600 text-white rounded-lg shadow-xl hover:-translate-y-0.5"><i data-lucide="sparkles" class="w-3.5 h-3.5"></i></button>
+                                <button onclick="insertHeadingInline('${section.id}', '${pageKey}')" title="Inserir Título/Subtítulo" class="p-2.5 bg-indigo-600 text-white rounded-lg shadow-xl hover:-translate-y-0.5"><i data-lucide="heading" class="w-3.5 h-3.5"></i></button>
+                                <button onclick="insertPageAfter('${section.id}')" title="Inserir Nova Página Depois Desta" class="p-2.5 bg-emerald-600 text-white rounded-lg shadow-xl hover:-translate-y-0.5"><i data-lucide="file-plus-2" class="w-3.5 h-3.5"></i></button>
+                                <button onclick="refineInline('${section.id}', '${pageKey}')" title="Refinar com IA (5 créditos)" class="p-2.5 bg-purple-600 text-white rounded-lg shadow-xl hover:-translate-y-0.5"><i data-lucide="sparkles" class="w-3.5 h-3.5"></i></button>
                             </div>
                             ${idx === 0 ? `<h1 contenteditable="true" data-section-title="${section.id}" oninput="scheduleSyncSection('${section.id}')" style="text-indent: 0; outline: none;">${section.title}</h1>` : ''}
                             <div class="apa-content" id="apa-content-${pageKey}" contenteditable="true" data-section-id="${section.id}" oninput="scheduleSyncSection('${section.id}')" style="outline: none; min-height: 2em;">${chunk}</div>
@@ -2070,18 +2163,34 @@
 
         async function refineInline(sectionId, pageKey) {
             if (!state.apiKey) { showApiKeyNeededToast(); return; }
+            if (state.isDemo) { alert('Modo demonstração: refinar com IA está desativado.'); return; }
+            if (!state.profile) { alert('Aguarde o carregamento do seu perfil.'); return; }
             const el = document.getElementById(`apa-content-${pageKey}`);
             if (!el) return;
             const currentContent = el.innerText.trim();
             if (!currentContent) return;
 
-            const instruction = prompt('O que você quer que a IA faça com este trecho? (ex: "deixar mais formal", "expandir com mais detalhes")', 'Melhorar a redação e coerência');
+            const instruction = prompt('O que você quer que a IA faça com este trecho? (ex: "deixar mais formal", "expandir com mais detalhes"). Isso usa a IA para melhorar o seu texto, mantendo-o como base — não substitui por algo do zero.', 'Melhorar a redação e coerência, mantendo as ideias originais');
             if (!instruction) return;
 
+            if (!confirm(`Usar a IA nesta página consome ${AI_COST_PER_PAGE} créditos (saldo atual: ${state.profile.credits}). Continuar?`)) return;
+            const { data: aiPaid, error: aiPayError } = await supabaseClient.rpc('consume_credits_generic', {
+                p_user_id: state.session.user.id, p_amount: AI_COST_PER_PAGE, p_reason: 'ai_refine_page'
+            });
+            if (aiPayError || !aiPaid) {
+                showError(`Créditos insuficientes (precisa de ${AI_COST_PER_PAGE}). Compre créditos na aba Créditos.`);
+                return;
+            }
+            if (state.profile.role !== 'admin') {
+                state.profile.credits -= AI_COST_PER_PAGE;
+                document.getElementById('user-credits-display').innerText = state.profile.credits;
+            }
+
             el.style.opacity = '0.5';
-            const systemPrompt = `Actúa como un profesor universitario experto en Normas APA 7.
+            const systemPrompt = `Actúa como un profesor universitario experto en Normas ${state.citationStyle}.
             IDIOMA DE SALIDA: ${state.docLanguage}.
             INSTRUÇÃO DO USUÁRIO: ${instruction}
+            IMPORTANTE: Use o texto original como BASE. Melhore-o, não o substitua por um texto completamente novo nem remova as ideias que o usuário já escreveu.
             REGLAS: Usa <p> para separar párrafos. Devuelve ÚNICAMENTE el código HTML crudo sin markdown.`;
 
             try {
@@ -2193,29 +2302,58 @@
             updateCoverPage();
             state.generatedSections = doc.sections;
             state.references = doc.references || [];
+            state.currentDocWatermarkRemoved = doc.watermarkRemoved || false;
             renderSections();
-            
+            updateWatermarkButtonUI();
+
             document.getElementById('btn-export-word').disabled = false;
             document.getElementById('btn-export-pdf').disabled = false;
             switchTab('generator');
         }
 
-        window.exportWord = function() {
-            let printArea = document.getElementById('print-area').innerHTML;
-            const docTitle = document.getElementById('in-title').value || 'Monografia';
-
-            printArea = printArea.replace(/class="toc-item"/g, 'style="margin-bottom: 12pt; text-indent: 0;"');
-            printArea = printArea.replace(/class="toc-dots"/g, 'style="display:none;"');
-
-            // O Word não confia 100% no CSS page-break-after; insere o marcador nativo do Word
-            // antes de cada página (exceto a primeira) para garantir a quebra real no .doc.
+        // Constrói o HTML do documento direto a partir dos dados (state), em vez de clonar o
+        // DOM do editor — assim nenhum atributo/classe do editor (contenteditable, Tailwind,
+        // toolbars) vaza para o Word, que não sabe interpretá-los e bagunça a formatação.
+        function buildCleanDocumentHTML() {
+            const pageBreak = '<br clear="all" style="mso-special-character:line-break;page-break-before:always">\n';
             let pageCount = 0;
-            printArea = printArea.replace(/<div class="a4-page/g, () => {
+            const nextPage = (html) => {
                 pageCount++;
-                return pageCount === 1
-                    ? '<div class="a4-page'
-                    : `<br clear="all" style="mso-special-character:line-break;page-break-before:always">\n<div class="a4-page`;
+                return (pageCount === 1 ? '' : pageBreak) + html;
+            };
+
+            // Capa: já é markup limpo (sem classes do editor), só removemos o hide-on-word do logo
+            const coverEl = document.querySelector('#print-area > .a4-cover-page');
+            let coverHTML = coverEl ? coverEl.outerHTML.replace(/\s*class="hide-on-word"/g, '') : '';
+            coverHTML = nextPage(coverHTML);
+
+            let tocHTML = generateTOC()
+                .replace(/class="toc-item"/g, 'style="margin-bottom: 12pt; text-indent: 0; display:flex; align-items:flex-end;"')
+                .replace(/class="toc-title"/g, 'style="font-weight:normal;"')
+                .replace(/class="toc-dots"/g, 'style="flex-grow:1; border-bottom:2px dotted #000; margin:0 4px;"')
+                .replace(/class="toc-page"/g, 'style="font-weight:normal;"');
+            tocHTML = nextPage(tocHTML);
+
+            let sectionsHTML = '';
+            state.generatedSections.forEach(section => {
+                const pageChunks = splitContentIntoPages(section.content);
+                pageChunks.forEach((chunk, idx) => {
+                    const pageHTML = `<div class="a4-page">${idx === 0 ? `<h1>${section.title}</h1>` : ''}${chunk}</div>`;
+                    sectionsHTML += nextPage(pageHTML);
+                });
             });
+
+            let referencesHTML = '';
+            if (state.references && state.references.length > 0) {
+                referencesHTML = nextPage(generateReferencesPage());
+            }
+
+            return coverHTML + tocHTML + sectionsHTML + referencesHTML;
+        }
+
+        window.exportWord = function() {
+            const docTitle = document.getElementById('in-title').value || 'Monografia';
+            const printArea = buildCleanDocumentHTML();
 
             const mt = state.margins.mt + 'cm';
             const mr = state.margins.mr + 'cm';
