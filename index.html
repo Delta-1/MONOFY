@@ -255,6 +255,18 @@
         .panel-anim-mac { animation: anim-mac-in 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
 
         @media print {
+            /* O app inteiro vive numa "casca" de altura fixa com overflow:hidden para permitir
+               rolagem interna na tela. Isso corta a impressão na primeira tela cheia, deixando
+               só a capa visível. Aqui liberamos altura/overflow em toda a cadeia de ancestrais
+               para o navegador poder paginar o documento completo. */
+            html, body, #app-screen, #main-canvas {
+                height: auto !important;
+                min-height: 0 !important;
+                max-height: none !important;
+                overflow: visible !important;
+                position: static !important;
+                display: block !important;
+            }
             body { background: white; }
             body * { visibility: hidden; }
             #print-area, #print-area * { visibility: visible; }
@@ -2001,7 +2013,7 @@
                     const pageKey = `${section.id}__${idx}`;
                     finalHtml += `
                         <div class="a4-page group relative" data-section-id="${section.id}" data-page-index="${idx}">
-                            <div class="absolute left-6 top-6 flex gap-1.5 opacity-100 lg:opacity-0 group-hover:opacity-100 transition hide-on-print z-10">
+                            <div class="absolute left-6 top-6 flex gap-1.5 opacity-100 lg:opacity-0 group-hover:opacity-100 transition hide-on-print hide-on-word z-10">
                                 <button onclick="insertTableInline('${section.id}', '${pageKey}')" title="Inserir Tabela" class="p-2.5 bg-slate-900 dark:bg-primary-600 text-white rounded-lg shadow-xl hover:-translate-y-0.5"><i data-lucide="table" class="w-3.5 h-3.5"></i></button>
                                 <button onclick="insertCitationInline('${section.id}', '${pageKey}')" title="Inserir Citação APA" class="p-2.5 bg-slate-900 dark:bg-primary-600 text-white rounded-lg shadow-xl hover:-translate-y-0.5"><i data-lucide="quote" class="w-3.5 h-3.5"></i></button>
                                 <button onclick="insertPageBreakInline('${section.id}', '${pageKey}')" title="Quebra de Página" class="p-2.5 bg-slate-900 dark:bg-primary-600 text-white rounded-lg shadow-xl hover:-translate-y-0.5"><i data-lucide="scissors" class="w-3.5 h-3.5"></i></button>
@@ -2021,7 +2033,7 @@
 
             // Botão Adicionar Nova Seção Manual
             finalHtml += `
-                <div class="w-full flex justify-center mt-4 mb-10 hide-on-print">
+                <div class="w-full flex justify-center mt-4 mb-10 hide-on-print hide-on-word">
                      <button onclick="addNewSection()" title="Adicionar Nova Página/Seção" class="w-14 h-14 flex items-center justify-center bg-primary-600 text-white rounded-full hover:bg-primary-700 transition-all shadow-lg hover:-translate-y-0.5">
                          <i data-lucide="plus" class="w-6 h-6"></i>
                      </button>
