@@ -590,8 +590,9 @@
             </div>
         </div>
 
-        <!-- Atalho rápido de modo claro/escuro -->
-        <button onclick="toggleDarkMode()" title="Alternar modo claro/escuro" class="fixed bottom-4 right-4 lg:bottom-6 lg:right-6 z-[60] hide-on-print w-12 h-12 flex items-center justify-center bg-white/80 dark:bg-slate-800/80 backdrop-blur-2xl shadow-[0_20px_40px_-10px_rgba(0,0,0,0.3)] rounded-full border border-white/50 dark:border-slate-700/50 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition">
+        <!-- Atalho rápido de modo claro/escuro: só aparece dentro de Ajustes (no painel normal ele
+             ficava atrás do dock inferior no celular). Fica no canto superior, longe do dock. -->
+        <button id="theme-toggle-fixed" onclick="toggleDarkMode()" title="Alternar modo claro/escuro" class="hidden-state fixed top-4 right-4 lg:top-6 lg:right-6 z-[70] hide-on-print w-12 h-12 flex items-center justify-center bg-white/80 dark:bg-slate-800/80 backdrop-blur-2xl shadow-[0_20px_40px_-10px_rgba(0,0,0,0.3)] rounded-full border border-white/50 dark:border-slate-700/50 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition">
             <i data-lucide="moon" class="w-5 h-5 hidden dark:block"></i>
             <i data-lucide="sun" class="w-5 h-5 block dark:hidden"></i>
         </button>
@@ -1609,6 +1610,8 @@
                 const panel = document.getElementById(`tab-${t}`);
                 if(panel) panel.classList.add('hidden-state');
             });
+
+            document.getElementById('theme-toggle-fixed').classList.toggle('hidden-state', tabId !== 'settings');
 
             if (tabId === 'profile') {
                 document.getElementById('tab-profile').classList.remove('hidden-state');
