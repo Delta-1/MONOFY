@@ -327,7 +327,7 @@
         </div>
 
         <!-- BADGE DE UTILIZADOR + SALDO DE CRÉDITOS -->
-        <div class="fixed top-6 left-6 lg:top-28 lg:left-10 z-[40] hide-on-print">
+        <div class="fixed top-6 left-6 lg:top-6 lg:left-10 z-[40] hide-on-print">
             <div class="bg-white/90 dark:bg-slate-850/90 backdrop-blur-md shadow-xl rounded-2xl border border-slate-200/50 dark:border-slate-700/50 flex items-center gap-3 px-4 py-2.5">
                 <img id="user-avatar" src="" class="w-7 h-7 rounded-full hidden-state object-cover">
                 <i data-lucide="user-circle" id="user-avatar-fallback" class="w-6 h-6 text-slate-400"></i>
@@ -347,7 +347,7 @@
         <div id="main-canvas" class="absolute inset-0 pt-8 pb-40 flex flex-col items-center custom-scrollbar">
             
             <!-- Grupo de Controlos Flutuantes (Margens e Zoom) -->
-            <div class="fixed top-6 right-6 lg:top-28 lg:right-10 z-[40] hide-on-print flex flex-col items-end gap-3">
+            <div class="fixed top-6 right-6 lg:top-6 lg:right-10 z-[40] hide-on-print flex flex-col items-end gap-3">
                 
                 <!-- Indicador de Página Atual -->
                 <div id="page-tracker" class="bg-slate-900/80 dark:bg-slate-800/80 backdrop-blur-md text-white px-4 py-2 rounded-2xl shadow-xl flex items-center gap-2 text-xs font-bold border border-white/10">
@@ -458,7 +458,7 @@
         </div>
 
         <!-- PAINEL ESQUERDO: Dados e Contexto da Monografia (Com Resize Dinâmico) -->
-        <div id="panel-left" class="fixed lg:absolute left-4 right-4 lg:right-auto top-4 bottom-28 lg:bottom-auto lg:h-[85vh] lg:max-h-[90vh] lg:w-[400px] bg-white/95 dark:bg-slate-850/95 backdrop-blur-sm shadow-2xl rounded-3xl border border-white/40 dark:border-slate-700/50 flex flex-col z-30 transition-transform duration-300 mobile-hidden lg:!transform-none lg:!opacity-100 lg:!pointer-events-auto lg:overflow-hidden lg:min-w-[320px] lg:max-w-[50vw] lg:min-h-[400px]">
+        <div id="panel-left" class="fixed lg:absolute left-4 right-4 lg:right-auto top-4 lg:top-24 bottom-28 lg:bottom-auto lg:h-[78vh] lg:max-h-[85vh] lg:w-[400px] bg-white/95 dark:bg-slate-850/95 backdrop-blur-sm shadow-2xl rounded-3xl border border-white/40 dark:border-slate-700/50 flex flex-col z-30 transition-transform duration-300 mobile-hidden lg:!transform-none lg:!opacity-100 lg:!pointer-events-auto lg:overflow-hidden lg:min-w-[320px] lg:max-w-[50vw] lg:min-h-[400px]">
             
             <div id="panel-left-header" class="p-5 border-b border-slate-200/50 dark:border-slate-800/50 flex justify-between items-center cursor-move lg:hover:bg-slate-50/50 dark:hover:bg-slate-800/50 rounded-t-3xl transition-colors">
                 <h3 class="font-extrabold flex items-center gap-2 text-slate-800 dark:text-white"><i data-lucide="database" class="w-5 h-5 text-primary-500"></i> Dados da Pesquisa</h3>
@@ -534,7 +534,7 @@
         </div>
 
         <!-- PAINEL DIREITO: Assistente e Ações IA (Com Resize Dinâmico) -->
-        <div id="panel-right" class="fixed lg:absolute left-4 right-4 lg:left-auto lg:right-4 top-4 bottom-28 lg:bottom-auto lg:h-[85vh] lg:max-h-[90vh] lg:w-[320px] bg-white/95 dark:bg-slate-850/95 backdrop-blur-sm shadow-2xl rounded-3xl border border-white/40 dark:border-slate-700/50 flex flex-col z-30 transition-transform duration-300 mobile-hidden lg:!transform-none lg:!opacity-100 lg:!pointer-events-auto lg:overflow-hidden lg:min-w-[300px] lg:max-w-[40vw] lg:min-h-[400px]">
+        <div id="panel-right" class="fixed lg:absolute left-4 right-4 lg:left-auto lg:right-4 top-4 lg:top-24 bottom-28 lg:bottom-auto lg:h-[78vh] lg:max-h-[85vh] lg:w-[320px] bg-white/95 dark:bg-slate-850/95 backdrop-blur-sm shadow-2xl rounded-3xl border border-white/40 dark:border-slate-700/50 flex flex-col z-30 transition-transform duration-300 mobile-hidden lg:!transform-none lg:!opacity-100 lg:!pointer-events-auto lg:overflow-hidden lg:min-w-[300px] lg:max-w-[40vw] lg:min-h-[400px]">
             
             <div id="panel-right-header" class="p-5 border-b border-slate-200/50 dark:border-slate-800/50 flex justify-between items-center cursor-move lg:hover:bg-slate-50/50 dark:hover:bg-slate-800/50 rounded-t-3xl transition-colors">
                 <h3 class="font-extrabold flex items-center gap-2 text-slate-800 dark:text-white"><i data-lucide="bot" class="w-5 h-5 text-purple-500"></i> Assistente IA</h3>
@@ -1164,26 +1164,42 @@
             const canvas = document.getElementById('main-canvas');
             let initialDistance = null;
             let initialZoom = 1;
+            let pinchMidX = 0, pinchMidY = 0;
 
             canvas.addEventListener('touchstart', (e) => {
                 if (e.touches.length === 2) {
+                    const rect = canvas.getBoundingClientRect();
                     initialDistance = Math.hypot(
                         e.touches[0].pageX - e.touches[1].pageX,
                         e.touches[0].pageY - e.touches[1].pageY
                     );
                     initialZoom = currentZoom;
+                    // Ponto médio do beliscão, relativo ao canvas — é onde o zoom precisa "ficar parado"
+                    pinchMidX = (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left;
+                    pinchMidY = (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top;
                 }
             }, { passive: false });
 
             canvas.addEventListener('touchmove', (e) => {
                 if (e.touches.length === 2 && initialDistance) {
-                    e.preventDefault(); 
+                    e.preventDefault();
                     const currentDistance = Math.hypot(
                         e.touches[0].pageX - e.touches[1].pageX,
                         e.touches[0].pageY - e.touches[1].pageY
                     );
                     const scale = currentDistance / initialDistance;
+                    const oldZoom = currentZoom;
+
+                    // O ponto sob os dedos, em coordenadas do conteúdo (antes do novo zoom)
+                    const contentX = canvas.scrollLeft + pinchMidX;
+                    const contentY = canvas.scrollTop + pinchMidY;
+
                     setZoom(initialZoom * scale);
+                    const ratio = currentZoom / oldZoom;
+
+                    // Reajusta o scroll pra manter o mesmo ponto do conteúdo sob os dedos
+                    canvas.scrollLeft = contentX * ratio - pinchMidX;
+                    canvas.scrollTop = contentY * ratio - pinchMidY;
                 }
             }, { passive: false });
 
