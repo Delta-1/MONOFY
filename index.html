@@ -197,16 +197,24 @@
         .toc-page { background: white; padding-left: 8px; }
 
         /* Dock Icon Animations */
-        .dock-icon { transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
+        .dock-btn { transition: background-color 0.35s cubic-bezier(0.25, 0.8, 0.25, 1), transform 0.35s cubic-bezier(0.25, 0.8, 0.25, 1); }
+        .dock-icon { transition: transform 0.35s cubic-bezier(0.25, 0.8, 0.25, 1); }
         .dock-btn:hover .dock-icon { transform: translateY(-4px) scale(1.1); }
-        
+
         .dock-tooltip {
             position: absolute; top: -40px; background: rgba(15, 23, 42, 0.9); color: white;
             padding: 4px 10px; border-radius: 8px; font-size: 12px; font-weight: 600;
-            opacity: 0; pointer-events: none; transition: opacity 0.2s, transform 0.2s;
+            opacity: 0; pointer-events: none; transition: opacity 0.35s cubic-bezier(0.25, 0.8, 0.25, 1), transform 0.35s cubic-bezier(0.25, 0.8, 0.25, 1);
             transform: translateY(10px); backdrop-filter: blur(4px);
         }
         .dock-btn:hover .dock-tooltip { opacity: 1; transform: translateY(0); }
+
+        /* Dock inferior: fica translúcido por padrão pra não cobrir o documento, e some
+           o suficiente pra dar pra ler por baixo; some-CSS via hover numa faixa maior que o
+           próprio dock (sem JS de mousemove, que antes deixava a digitação lenta). */
+        #main-dock-zone { opacity: 0.18; transition: opacity 0.4s ease; }
+        #main-dock-zone:hover, #main-dock-zone:focus-within { opacity: 1; }
+        @media (pointer: coarse) { #main-dock-zone { opacity: 0.55; } }
 
         @media (max-width: 1023px) {
             .mobile-hidden { transform: translateY(150%); opacity: 0; pointer-events: none; }
@@ -579,8 +587,8 @@
             <i data-lucide="sun" class="w-5 h-5 block dark:hidden"></i>
         </button>
 
-        <div id="main-dock" class="fixed bottom-4 lg:bottom-6 left-1/2 transform -translate-x-1/2 z-[60] hide-on-print">
-            <div class="bg-white/80 dark:bg-slate-800/80 backdrop-blur-2xl shadow-[0_20px_40px_-10px_rgba(0,0,0,0.3)] rounded-full px-3 py-2 flex items-center gap-2 border border-white/50 dark:border-slate-700/50">
+        <div id="main-dock-zone" class="fixed inset-x-0 bottom-0 h-28 lg:h-32 z-[60] hide-on-print flex items-end justify-center">
+            <div id="main-dock" class="mb-4 lg:mb-6 bg-white/80 dark:bg-slate-800/80 backdrop-blur-2xl shadow-[0_20px_40px_-10px_rgba(0,0,0,0.3)] rounded-full px-3 py-2 flex items-center gap-2 border border-white/50 dark:border-slate-700/50">
                 
                 <!-- Mobile/Desktop Toggle Esquerda -->
                 <button onclick="togglePanelVisibility('panel-left')" class="dock-btn relative flex items-center justify-center w-10 h-10 lg:w-12 lg:h-12 rounded-full text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition">
@@ -1303,6 +1311,7 @@
                     document.getElementById('dock-tab-admin').classList.remove('hidden-state');
                 }
                 updateWatermarkButtonUI();
+                syncWatermarkRemovedClass();
             }
         }
 
@@ -1499,14 +1508,20 @@
         // em vez de usar um MutationObserver — observar subtree:true disparava a cada tecla digitada
         // nas páginas (contenteditable), deixando a digitação lenta.
 
+        // Reflete o estado de remoção da marca d'água do trabalho atual tanto no editor/visualizador
+        // quanto na exportação — a classe no body é a mesma fonte usada nos dois casos.
+        function syncWatermarkRemovedClass() {
+            const shouldRemove = !!(state.profile && (state.profile.role === 'admin' || state.currentDocWatermarkRemoved));
+            document.body.classList.toggle('watermark-removed', shouldRemove);
+        }
+
         async function handleExportPDF() {
             if (state.isDemo) { alert('Modo demonstração: exportação desativada. Crie uma conta para exportar de verdade.'); return; }
             if (!state.profile) { alert('Aguarde o carregamento do seu perfil.'); return; }
 
             // A decisão de remover a marca d'água agora é feita uma vez por trabalho, pelo botão
             // dedicado no painel Assistente — aqui só refletimos o que já foi decidido.
-            const shouldRemove = state.profile.role === 'admin' || state.currentDocWatermarkRemoved;
-            document.body.classList.toggle('watermark-removed', shouldRemove);
+            syncWatermarkRemovedClass();
             window.print();
         }
 
@@ -1533,7 +1548,8 @@
             state.currentDocWatermarkRemoved = true;
             persistCurrentDocMeta();
             updateWatermarkButtonUI();
-            alert('Marca d\'água removida deste trabalho! Pode exportar quantas vezes quiser sem pagar de novo, até criar um novo trabalho.');
+            syncWatermarkRemovedClass();
+            alert('Marca d\'água removida deste trabalho! Ela já desapareceu aqui no editor e em todas as exportações futuras, sem pagar de novo, até criar um novo trabalho.');
         }
 
         function persistCurrentDocMeta() {
@@ -1553,10 +1569,6 @@
                 : `<i data-lucide="droplet-off" class="w-4 h-4"></i> Remover Marca d'Água (${CREDITS_PER_EXPORT} créditos)`;
             lucide.createIcons();
         }
-
-        window.addEventListener('afterprint', () => {
-            document.body.classList.remove('watermark-removed');
-        });
 
         function switchTab(tabId) {
             if (state.isDemo && (tabId === 'credits' || tabId === 'myprofile')) {
@@ -1883,6 +1895,7 @@
                 state.currentDocWatermarkRemoved = false; // novo trabalho = marca d'água precisa ser paga de novo
                 saveDocumentToHistory(document.getElementById('in-title').value || 'Monografia', state.generatedSections, state.references);
                 updateWatermarkButtonUI();
+                syncWatermarkRemovedClass();
 
                 if(window.innerWidth < 1024) {
                     togglePanelVisibility('panel-left');
@@ -2165,6 +2178,7 @@
             document.getElementById('btn-export-word').disabled = true;
             document.getElementById('btn-export-pdf').disabled = true;
             updateWatermarkButtonUI();
+            syncWatermarkRemovedClass();
             switchTab('generator');
         }
 
@@ -2397,6 +2411,7 @@
             state.currentDocWatermarkRemoved = doc.watermarkRemoved || false;
             renderSections();
             updateWatermarkButtonUI();
+            syncWatermarkRemovedClass();
 
             document.getElementById('btn-export-word').disabled = false;
             document.getElementById('btn-export-pdf').disabled = false;
