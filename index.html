@@ -240,6 +240,12 @@
         .resize-handle.resize-se { right: 0; bottom: 0; width: 16px; height: 16px; cursor: nwse-resize; }
         .resize-handle.resize-sw { left: 0; bottom: 0; width: 16px; height: 16px; cursor: nesw-resize; }
 
+        /* Dock inferior: some pra não poluir a tela, só aparece (fade-in) quando o mouse
+           se aproxima da parte inferior. Em telas touch, fica sempre visível com opacidade média. */
+        .dock-autohide { opacity: 0.12; transform: translateX(-50%) translateY(6px); transition: opacity 0.35s ease, transform 0.35s ease; }
+        .dock-autohide.dock-visible { opacity: 1; transform: translateX(-50%) translateY(0); }
+        @media (pointer: coarse) { .dock-autohide { opacity: 0.55; transform: translateX(-50%) translateY(0); } }
+
         /* Animações de entrada das páginas (configurável em Ajustes) */
         @keyframes anim-fade-in { from { opacity: 0; } to { opacity: 1; } }
         @keyframes anim-3d-in {
@@ -578,7 +584,7 @@
             </div>
         </div>
 
-        <div class="fixed bottom-4 lg:bottom-6 left-1/2 transform -translate-x-1/2 z-[60] hide-on-print">
+        <div id="main-dock" class="fixed bottom-4 lg:bottom-6 left-1/2 transform -translate-x-1/2 z-[60] hide-on-print dock-autohide">
             <div class="bg-white/80 dark:bg-slate-800/80 backdrop-blur-2xl shadow-[0_20px_40px_-10px_rgba(0,0,0,0.3)] rounded-full px-3 py-2 flex items-center gap-2 border border-white/50 dark:border-slate-700/50">
                 
                 <!-- Mobile/Desktop Toggle Esquerda -->
@@ -839,7 +845,21 @@
             applyPanelAnimation('panel-right');
             initPinchZoom();
             initPageTracker();
+            initDockAutoHide();
         });
+
+        // Mostra o dock inferior só quando o mouse se aproxima dele (evita poluir a tela)
+        function initDockAutoHide() {
+            const dock = document.getElementById('main-dock');
+            if (!dock) return;
+            if (window.matchMedia('(pointer: coarse)').matches) return; // touch: deixa sempre visível
+
+            document.addEventListener('mousemove', (e) => {
+                const threshold = window.innerHeight - 140;
+                dock.classList.toggle('dock-visible', e.clientY > threshold);
+            });
+            dock.addEventListener('mouseenter', () => dock.classList.add('dock-visible'));
+        }
 
         // Lógica de Arrastar com Limite de Teto e Laterais (Evita perder janelas)
         function makeDraggable(elementId, headerId) {
