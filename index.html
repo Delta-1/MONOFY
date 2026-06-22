@@ -216,6 +216,15 @@
         #main-dock-zone:hover, #main-dock-zone:focus-within { opacity: 1; }
         @media (pointer: coarse) { #main-dock-zone { opacity: 0.55; } }
 
+        /* No celular a fileira de botões (Dados...Estúdio...Assistente) era mais larga que a tela
+           e os botões das pontas (Dados/Assistente) ficavam cortados fora da viewport. Encolhe
+           tudo (botões, espaçamento, divisórias) só nessa faixa de tela pra caber sem cortar. */
+        @media (max-width: 640px) {
+            #main-dock { gap: 2px; padding-left: 8px; padding-right: 8px; max-width: calc(100vw - 16px); }
+            #main-dock .dock-btn { width: 2.25rem; height: 2.25rem; }
+            #main-dock .w-px.h-6 { margin-left: 2px; margin-right: 2px; }
+        }
+
         @media (max-width: 1023px) {
             .mobile-hidden { transform: translateY(150%); opacity: 0; pointer-events: none; }
             .mobile-visible { transform: translateY(0); opacity: 1; pointer-events: auto; }
