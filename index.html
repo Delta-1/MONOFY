@@ -2436,37 +2436,30 @@
         // O Word não entende display:flex (usado na capa e no índice do site), então aqui
         // tudo é remontado com <table> — alinhamento e "empurrar pro fim da página" funcionam
         // de forma muito mais confiável em Word usando células de tabela do que com flexbox.
-        let _cachedLogoDataUri = null;
         async function getLogoAsDataURI() {
+            // Só usamos o logo no Word se já for base64 (upload do usuário). Logos remotos
+            // (URL externa, ex.: o padrão da UPDS) o Word não consegue carregar de forma
+            // confiável neste tipo de exportação — melhor omitir do que mostrar um ícone quebrado.
             if (state.logoBase64 && state.logoBase64.startsWith('data:')) return state.logoBase64;
-            if (_cachedLogoDataUri) return _cachedLogoDataUri;
-            try {
-                const res = await fetch(state.logoBase64);
-                const blob = await res.blob();
-                _cachedLogoDataUri = await new Promise((resolve, reject) => {
-                    const reader = new FileReader();
-                    reader.onload = () => resolve(reader.result);
-                    reader.onerror = reject;
-                    reader.readAsDataURL(blob);
-                });
-                return _cachedLogoDataUri;
-            } catch (e) {
-                return state.logoBase64; // se falhar, ao menos tenta o link direto
-            }
+            return null;
         }
 
         async function buildWordCoverHTML(tpl) {
             const val = (id) => { const el = document.getElementById(id); return el ? el.innerText : ''; };
             const logoSrc = await getLogoAsDataURI();
+            const logoTag = logoSrc ? `<p style="margin-top:24pt; text-indent:0;"><img src="${logoSrc}" style="max-height:120px;" /></p>` : '';
             const borderStyle = tpl.capaMoldura ? 'border: 6px double #000066;' : '';
 
+            // O Word ignora "height" em tabelas, então pra empurrar localização/ano pra perto do
+            // fim da página usamos um espaçador real (parágrafo vazio com bastante altura de
+            // linha) em vez de depender de vertical-align — isso o Word respeita de verdade.
             return `<div class="a4-page a4-cover-page">
-                <table style="width:100%; height:24cm; ${borderStyle}" cellpadding="0" cellspacing="0">
-                    <tr><td style="text-align:center; vertical-align:top; padding:1.2cm 1.2cm 0 1.2cm;">
+                <table style="width:100%; ${borderStyle}" cellpadding="0" cellspacing="0">
+                    <tr><td style="text-align:center; padding:1.2cm;">
                         <p style="font-size:16pt; font-weight:bold; text-transform:uppercase; margin:0; text-indent:0;">${val('out-university')}</p>
                         <p style="font-size:14pt; font-weight:bold; text-transform:uppercase; margin:0; text-indent:0;">${val('out-faculty')}</p>
                         <p style="font-size:14pt; font-weight:bold; text-transform:uppercase; margin:0; text-indent:0;">${val('out-career')}</p>
-                        <p style="margin-top:24pt; text-indent:0;"><img src="${logoSrc}" style="max-height:120px;" /></p>
+                        ${logoTag}
                         <p style="font-size:14pt; font-weight:bold; text-transform:uppercase; margin-top:24pt; margin-bottom:0; text-indent:0;">MONOGRAFÍA</p>
                         <p style="font-size:14pt; font-weight:bold; text-transform:uppercase; margin-top:6pt; text-indent:0;">${val('out-title')}</p>
                         <table style="margin:24pt auto 0 auto; width:80%; text-align:left; font-size:12pt;" cellpadding="4">
@@ -2474,10 +2467,9 @@
                             <tr><td style="font-weight:bold; vertical-align:top;">Docente:</td><td>${val('out-professor')}</td></tr>
                             <tr><td style="font-weight:bold; vertical-align:top;">Estudiantes:</td><td style="white-space:pre-wrap;">${val('out-student')}</td></tr>
                         </table>
-                    </td></tr>
-                    <tr><td style="text-align:center; vertical-align:bottom; padding:0 1.2cm 1.2cm 1.2cm;">
+                        <p style="margin:0; padding:0; font-size:1pt; line-height:300pt; text-indent:0;">&nbsp;</p>
                         <p style="margin:0; text-indent:0;">${val('out-location')}</p>
-                        <p style="margin:0; text-indent:0;">${val('out-year')}</p>
+                        <p style="margin:0; padding-bottom:0.5cm; text-indent:0;">${val('out-year')}</p>
                     </td></tr>
                 </table>
             </div>`;
@@ -2487,13 +2479,13 @@
             let rows = '';
             let currentPage = 3;
             state.generatedSections.forEach(sec => {
-                rows += `<tr><td style="padding:3pt 4pt 3pt 0;">${sec.title}</td><td style="border-bottom:1px dotted #000;"></td><td style="padding:3pt 0 3pt 4pt; text-align:right; white-space:nowrap;">${currentPage}</td></tr>`;
+                rows += `<tr><td style="padding:3pt 4pt 3pt 0;">${sec.title}</td><td style="border-bottom:1px dotted #000;">&nbsp;</td><td style="padding:3pt 0 3pt 4pt; text-align:right; white-space:nowrap;">${currentPage}</td></tr>`;
 
                 const temp = document.createElement('div');
                 temp.innerHTML = sec.content;
                 temp.querySelectorAll('h2, h3').forEach(heading => {
                     const indent = heading.tagName === 'H3' ? '2.5cm' : '1.27cm';
-                    rows += `<tr><td style="padding:3pt 4pt 3pt ${indent};">${heading.innerText}</td><td style="border-bottom:1px dotted #000;"></td><td style="padding:3pt 0 3pt 4pt; text-align:right; white-space:nowrap;">${currentPage}</td></tr>`;
+                    rows += `<tr><td style="padding:3pt 4pt 3pt ${indent};">${heading.innerText}</td><td style="border-bottom:1px dotted #000;">&nbsp;</td><td style="padding:3pt 0 3pt 4pt; text-align:right; white-space:nowrap;">${currentPage}</td></tr>`;
                 });
 
                 const words = sec.content.replace(/<[^>]*>?/gm, '').split(/\s+/).length;
@@ -2502,7 +2494,10 @@
 
             return `<div class="a4-page">
                 <h1 style="text-align:center; font-weight:bold; margin-bottom:24pt; text-indent:0;">${getTranslatedWord('toc')}</h1>
-                <table style="width:100%; border-collapse:collapse;"><tbody>${rows}</tbody></table>
+                <table style="width:100%; border-collapse:collapse; table-layout:fixed;">
+                    <colgroup><col style="width:65%;"><col style="width:25%;"><col style="width:10%;"></colgroup>
+                    <tbody>${rows}</tbody>
+                </table>
             </div>`;
         }
 
