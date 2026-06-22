@@ -243,11 +243,18 @@
         .resize-handle.resize-se { right: 0; bottom: 0; width: 16px; height: 16px; cursor: nwse-resize; }
         .resize-handle.resize-sw { left: 0; bottom: 0; width: 16px; height: 16px; cursor: nesw-resize; }
 
-        /* Dock inferior: some pra não poluir a tela, só aparece (fade-in) quando o mouse
+        /* Dock inferior: some de verdade pra não poluir a tela, só aparece quando o mouse
            se aproxima da parte inferior. Em telas touch, fica sempre visível com opacidade média. */
-        .dock-autohide { opacity: 0.12; transform: translateX(-50%) translateY(6px); transition: opacity 0.35s ease, transform 0.35s ease; }
+        .dock-autohide { opacity: 0.04; transform: translateX(-50%) translateY(40px); transition: opacity 0.4s ease, transform 0.4s ease; }
         .dock-autohide.dock-visible { opacity: 1; transform: translateX(-50%) translateY(0); }
-        @media (pointer: coarse) { .dock-autohide { opacity: 0.55; transform: translateX(-50%) translateY(0); } }
+        @media (pointer: coarse) { .dock-autohide { opacity: 0.5; transform: translateX(-50%) translateY(0); } }
+
+        /* Brilho pulsante pro botão de "Adicionar Primeira Página" se destacar do resto apagado */
+        @keyframes btn-glow-pulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(59,130,246,0.45), 0 10px 25px -5px rgba(0,0,0,0.25); }
+            50% { box-shadow: 0 0 28px 8px rgba(59,130,246,0.55), 0 10px 25px -5px rgba(0,0,0,0.25); }
+        }
+        .btn-glow { animation: btn-glow-pulse 2.2s ease-in-out infinite; }
 
         /* Animações de entrada das páginas (configurável em Ajustes) */
         @keyframes anim-fade-in { from { opacity: 0; } to { opacity: 1; } }
@@ -445,12 +452,14 @@
                 </div>
 
                 <div id="generated-content" class="w-full flex flex-col items-center gap-[2.5rem] m-0 p-0">
-                    <div class="a4-page flex items-center justify-center opacity-40 hide-on-print border-2 border-dashed border-slate-400 bg-transparent shadow-none">
+                    <div class="a4-page flex items-center justify-center hide-on-print border-2 border-dashed border-slate-400 bg-transparent shadow-none">
                         <div class="text-center w-full px-6">
-                            <i data-lucide="file-signature" class="w-16 h-16 mx-auto mb-4"></i>
-                            <p class="font-sans text-lg font-bold" style="text-indent: 0;">O documento formatado aparecerá aqui.</p>
-                            <p class="font-sans text-sm mt-2 mb-6" style="text-indent: 0;">Configure a IA e os dados nos painéis laterais, ou comece manualmente.</p>
-                            <button onclick="addNewSection()" class="hide-on-print mx-auto flex items-center gap-2 px-6 py-4 bg-primary-600 text-white rounded-2xl hover:bg-primary-700 transition-all font-bold shadow-lg hover:-translate-y-0.5">
+                            <div class="opacity-40">
+                                <i data-lucide="file-signature" class="w-16 h-16 mx-auto mb-4"></i>
+                                <p class="font-sans text-lg font-bold" style="text-indent: 0;">O documento formatado aparecerá aqui.</p>
+                                <p class="font-sans text-sm mt-2 mb-6" style="text-indent: 0;">Configure a IA e os dados nos painéis laterais, ou comece manualmente.</p>
+                            </div>
+                            <button onclick="addNewSection()" class="btn-glow hide-on-print mx-auto flex items-center gap-2 px-6 py-4 bg-primary-600 text-white rounded-2xl hover:bg-primary-700 transition-all font-bold shadow-lg hover:-translate-y-0.5">
                                 <i data-lucide="plus-circle" class="w-5 h-5"></i> Adicionar Primeira Página (sem IA)
                             </button>
                         </div>
@@ -857,11 +866,22 @@
             if (!dock) return;
             if (window.matchMedia('(pointer: coarse)').matches) return; // touch: deixa sempre visível
 
+            let wasVisible = false;
+            const showDock = () => {
+                if (!wasVisible) applyPanelAnimation('main-dock'); // só re-anima quando ele realmente aparece
+                wasVisible = true;
+                dock.classList.add('dock-visible');
+            };
+            const hideDock = () => {
+                wasVisible = false;
+                dock.classList.remove('dock-visible');
+            };
+
             document.addEventListener('mousemove', (e) => {
                 const threshold = window.innerHeight - 140;
-                dock.classList.toggle('dock-visible', e.clientY > threshold);
+                if (e.clientY > threshold) showDock(); else hideDock();
             });
-            dock.addEventListener('mouseenter', () => dock.classList.add('dock-visible'));
+            dock.addEventListener('mouseenter', showDock);
         }
 
         // Lógica de Arrastar com Limite de Teto e Laterais (Evita perder janelas)
@@ -2215,12 +2235,14 @@
             updateCoverPage();
 
             document.getElementById('generated-content').innerHTML = `
-                <div class="a4-page flex items-center justify-center opacity-40 hide-on-print border-2 border-dashed border-slate-400 bg-transparent shadow-none">
+                <div class="a4-page flex items-center justify-center hide-on-print border-2 border-dashed border-slate-400 bg-transparent shadow-none">
                     <div class="text-center w-full px-6">
-                        <i data-lucide="file-signature" class="w-16 h-16 mx-auto mb-4"></i>
-                        <p class="font-sans text-lg font-bold" style="text-indent: 0;">O documento formatado aparecerá aqui.</p>
-                        <p class="font-sans text-sm mt-2 mb-6" style="text-indent: 0;">Configure a IA e os dados nos painéis laterais, ou comece manualmente.</p>
-                        <button onclick="addNewSection()" class="hide-on-print mx-auto flex items-center gap-2 px-6 py-4 bg-primary-600 text-white rounded-2xl hover:bg-primary-700 transition-all font-bold shadow-lg hover:-translate-y-0.5">
+                        <div class="opacity-40">
+                            <i data-lucide="file-signature" class="w-16 h-16 mx-auto mb-4"></i>
+                            <p class="font-sans text-lg font-bold" style="text-indent: 0;">O documento formatado aparecerá aqui.</p>
+                            <p class="font-sans text-sm mt-2 mb-6" style="text-indent: 0;">Configure a IA e os dados nos painéis laterais, ou comece manualmente.</p>
+                        </div>
+                        <button onclick="addNewSection()" class="btn-glow hide-on-print mx-auto flex items-center gap-2 px-6 py-4 bg-primary-600 text-white rounded-2xl hover:bg-primary-700 transition-all font-bold shadow-lg hover:-translate-y-0.5">
                             <i data-lucide="plus-circle" class="w-5 h-5"></i> Adicionar Primeira Página (sem IA)
                         </button>
                     </div>
