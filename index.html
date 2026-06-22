@@ -73,6 +73,9 @@
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
     </script>
 
+    <!-- docx.js: gera arquivos .docx nativos de verdade (não HTML disfarçado) -->
+    <script src="https://unpkg.com/docx@9.7.1/dist/index.umd.cjs"></script>
+
     <style>
         /* Tipografia Académica */
         @import url('https://fonts.googleapis.com/css2?family=Tinos:ital,wght@0,400;0,700;1,400;1,700&display=swap');
@@ -572,7 +575,7 @@
                     <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest text-center mb-4">Exportar Formato</h4>
 
                     <button onclick="exportWord()" id="btn-export-word" disabled class="w-full flex items-center justify-center gap-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-blue-600 dark:text-blue-400 font-bold py-3.5 rounded-xl transition-all shadow-sm hover:shadow-md disabled:opacity-50">
-                        <i data-lucide="file-down" class="w-5 h-5"></i> Word (.doc)
+                        <i data-lucide="file-down" class="w-5 h-5"></i> Word (.docx)
                     </button>
                     
                     <button onclick="handleExportPDF()" id="btn-export-pdf" disabled class="w-full flex items-center justify-center gap-3 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-900/30 text-red-600 dark:text-red-400 font-bold py-3.5 rounded-xl transition-all shadow-sm hover:shadow-md disabled:opacity-50">
@@ -2466,172 +2469,333 @@
             switchTab('generator');
         }
 
-        // Constrói o HTML do documento direto a partir dos dados (state), em vez de clonar o
-        // DOM do editor — assim nenhum atributo/classe do editor (contenteditable, Tailwind,
-        // toolbars) vaza para o Word, que não sabe interpretá-los e bagunça a formatação.
-        // O Word não entende display:flex (usado na capa e no índice do site), então aqui
-        // tudo é remontado com <table> — alinhamento e "empurrar pro fim da página" funcionam
-        // de forma muito mais confiável em Word usando células de tabela do que com flexbox.
-        async function getLogoAsDataURI() {
-            // Só usamos o logo no Word se já for base64 (upload do usuário). Logos remotos
-            // (URL externa, ex.: o padrão da UPDS) o Word não consegue carregar de forma
-            // confiável neste tipo de exportação — melhor omitir do que mostrar um ícone quebrado.
-            if (state.logoBase64 && state.logoBase64.startsWith('data:')) return state.logoBase64;
-            return null;
+        // ==========================================
+        // EXPORTAÇÃO WORD (.docx nativo de verdade, via docx.js)
+        // ==========================================
+        // Em vez de fingir um HTML de .doc (que o Word interpreta de forma inconsistente —
+        // ignora flexbox, ignora altura de tabela, herda espaçamento errado etc.), aqui
+        // construímos o documento .docx real, elemento por elemento, com controle exato de
+        // página, margens, fonte e espaçamento. Isso garante fidelidade real ao visualizador.
+
+        function cmToTwip(cm) { return Math.round(cm * 566.929); }
+        function ptToHalfPt(pt) { return Math.round(pt * 2); }
+
+        function base64ToUint8Array(dataUri) {
+            const base64 = dataUri.split(',')[1];
+            const binary = atob(base64);
+            const bytes = new Uint8Array(binary.length);
+            for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+            return bytes;
         }
 
-        async function buildWordCoverHTML(tpl) {
+        // docx.js exige um "type" explícito por imagem (png/jpg/bmp/gif/svg) — detecta a partir do data URI
+        function imageTypeFromDataUri(dataUri) {
+            const match = dataUri.match(/^data:image\/(\w+);base64,/i);
+            const mime = match ? match[1].toLowerCase() : 'png';
+            if (mime === 'jpeg') return 'jpg';
+            return ['png', 'jpg', 'bmp', 'gif', 'svg'].includes(mime) ? mime : 'png';
+        }
+
+        function loadImageNaturalSize(dataUri) {
+            return new Promise((resolve) => {
+                const img = new Image();
+                img.onload = () => resolve({ width: img.naturalWidth || 400, height: img.naturalHeight || 300 });
+                img.onerror = () => resolve({ width: 400, height: 300 });
+                img.src = dataUri;
+            });
+        }
+
+        async function imageParagraphFromImg(imgEl) {
+            const src = imgEl.getAttribute('src');
+            if (!src || !src.startsWith('data:')) return null;
+            try {
+                const bytes = base64ToUint8Array(src);
+                const natural = await loadImageNaturalSize(src);
+                const maxWidth = 420; // px, cabe confortavelmente dentro da área útil da página A4
+                const scale = Math.min(1, maxWidth / natural.width);
+                return new docx.Paragraph({
+                    alignment: docx.AlignmentType.CENTER,
+                    spacing: { before: 200, after: 200 },
+                    children: [new docx.ImageRun({
+                        data: bytes,
+                        type: imageTypeFromDataUri(src),
+                        transformation: { width: Math.round(natural.width * scale), height: Math.round(natural.height * scale) }
+                    })]
+                });
+            } catch (e) {
+                return null;
+            }
+        }
+
+        // Converte os <b>/<i>/<strong>/<em> dentro de um parágrafo em vários TextRun formatados
+        function runsFromInlineNode(node, baseOpts) {
+            let runs = [];
+            node.childNodes.forEach(child => {
+                if (child.nodeType === Node.TEXT_NODE) {
+                    if (child.textContent) runs.push(new docx.TextRun({ text: child.textContent, ...baseOpts }));
+                } else if (child.nodeType === Node.ELEMENT_NODE) {
+                    const tag = child.tagName.toLowerCase();
+                    const opts = { ...baseOpts };
+                    if (tag === 'b' || tag === 'strong') opts.bold = true;
+                    if (tag === 'i' || tag === 'em') opts.italics = true;
+                    runs = runs.concat(runsFromInlineNode(child, opts));
+                }
+            });
+            return runs;
+        }
+
+        function tableFromHTML(tableEl, fontHalfPt) {
+            const rows = Array.from(tableEl.querySelectorAll('tr')).map(tr => {
+                const cells = Array.from(tr.children).map(cellEl => {
+                    const isHeader = cellEl.tagName.toLowerCase() === 'th';
+                    return new docx.TableCell({
+                        children: [new docx.Paragraph({ children: [new docx.TextRun({ text: cellEl.innerText, bold: isHeader, size: fontHalfPt })] })],
+                        verticalAlign: docx.VerticalAlign.CENTER,
+                        margins: { top: 60, bottom: 60, left: 100, right: 100 }
+                    });
+                });
+                return new docx.TableRow({ children: cells });
+            });
+            return new docx.Table({ rows, width: { size: 100, type: docx.WidthType.PERCENTAGE } });
+        }
+
+        // Converte o HTML guardado de uma seção (parágrafos, títulos, tabelas, imagens) em
+        // blocos reais do docx (Paragraph/Table), preservando negrito/itálico.
+        async function blocksFromHTML(html, fontHalfPt, lineSpacing, indentTwips) {
+            const wrapper = document.createElement('div');
+            wrapper.innerHTML = html;
+            const blocks = [];
+
+            async function walk(node) {
+                for (const child of Array.from(node.childNodes)) {
+                    if (child.nodeType !== 1) continue;
+                    const tag = child.tagName.toLowerCase();
+
+                    if (tag === 'p') {
+                        const isHanging = child.classList.contains('hanging-indent');
+                        let runs = runsFromInlineNode(child, { size: fontHalfPt });
+                        if (runs.length === 0) runs = [new docx.TextRun({ text: '', size: fontHalfPt })];
+                        blocks.push(new docx.Paragraph({
+                            children: runs,
+                            alignment: isHanging ? docx.AlignmentType.LEFT : docx.AlignmentType.JUSTIFIED,
+                            spacing: { line: lineSpacing, lineRule: docx.LineRuleType.AUTO },
+                            indent: isHanging ? { left: indentTwips, hanging: indentTwips } : { firstLine: indentTwips }
+                        }));
+                    } else if (tag === 'h1' || tag === 'h2' || tag === 'h3') {
+                        blocks.push(new docx.Paragraph({
+                            children: [new docx.TextRun({ text: child.innerText, bold: true, italics: tag === 'h3', size: fontHalfPt })],
+                            alignment: tag === 'h1' ? docx.AlignmentType.CENTER : docx.AlignmentType.LEFT,
+                            spacing: { before: 480, after: 240, line: lineSpacing, lineRule: docx.LineRuleType.AUTO }
+                        }));
+                    } else if (tag === 'table') {
+                        blocks.push(tableFromHTML(child, fontHalfPt));
+                    } else if (tag === 'img') {
+                        const imgBlock = await imageParagraphFromImg(child);
+                        if (imgBlock) blocks.push(imgBlock);
+                    } else if (tag === 'div') {
+                        await walk(child); // recursão (ex.: blocos de tabela/imagem inseridos com legenda)
+                    } else {
+                        const text = child.innerText || child.textContent;
+                        if (text && text.trim()) {
+                            blocks.push(new docx.Paragraph({ children: [new docx.TextRun({ text, size: fontHalfPt })], spacing: { line: lineSpacing, lineRule: docx.LineRuleType.AUTO } }));
+                        }
+                    }
+                }
+            }
+
+            await walk(wrapper);
+            return blocks;
+        }
+
+        async function buildCoverBlocks(tpl, fontHalfPt) {
             const val = (id) => { const el = document.getElementById(id); return el ? el.innerText : ''; };
-            const logoSrc = await getLogoAsDataURI();
-            const logoTag = logoSrc ? `<p style="margin-top:24pt; text-indent:0;"><img src="${logoSrc}" style="max-height:120px;" /></p>` : '';
-            const borderStyle = tpl.capaMoldura ? 'border: 6px double #000066;' : '';
+            const blocks = [];
+            const titleSize = ptToHalfPt(14);
 
-            // O Word ignora "height" em tabelas, então pra empurrar localização/ano pra perto do
-            // fim da página usamos um espaçador real (parágrafo vazio com bastante altura de
-            // linha) em vez de depender de vertical-align — isso o Word respeita de verdade.
-            return `<div class="a4-page a4-cover-page">
-                <table style="width:100%; ${borderStyle}" cellpadding="0" cellspacing="0">
-                    <tr><td style="text-align:center; padding:1.2cm;">
-                        <p style="font-size:16pt; font-weight:bold; text-transform:uppercase; margin:0; text-indent:0; line-height:1.2;">${val('out-university')}</p>
-                        <p style="font-size:14pt; font-weight:bold; text-transform:uppercase; margin:0; text-indent:0; line-height:1.2;">${val('out-faculty')}</p>
-                        <p style="font-size:14pt; font-weight:bold; text-transform:uppercase; margin:0; text-indent:0; line-height:1.2;">${val('out-career')}</p>
-                        ${logoTag}
-                        <p style="font-size:14pt; font-weight:bold; text-transform:uppercase; margin-top:24pt; margin-bottom:0; text-indent:0; line-height:1.2;">MONOGRAFÍA</p>
-                        <p style="font-size:14pt; font-weight:bold; text-transform:uppercase; margin-top:6pt; text-indent:0; line-height:1.2;">${val('out-title')}</p>
-                        <table style="margin:24pt auto 0 auto; width:80%; text-align:left; font-size:12pt; line-height:1.2;" cellpadding="4">
-                            <tr><td style="font-weight:bold; width:110px; vertical-align:top;">Asignatura:</td><td>${val('out-subject')}</td></tr>
-                            <tr><td style="font-weight:bold; vertical-align:top;">Docente:</td><td>${val('out-professor')}</td></tr>
-                            <tr><td style="font-weight:bold; vertical-align:top;">Estudiantes:</td><td style="white-space:pre-wrap;">${val('out-student')}</td></tr>
-                        </table>
-                        <p style="margin:0; padding:0; font-size:1pt; line-height:50pt; text-indent:0;">&nbsp;</p>
-                        <p style="margin:0; text-indent:0; line-height:1.2;">${val('out-location')}</p>
-                        <p style="margin:0; padding-bottom:0.5cm; text-indent:0; line-height:1.2;">${val('out-year')}</p>
-                    </td></tr>
-                </table>
-            </div>`;
+            blocks.push(new docx.Paragraph({ alignment: docx.AlignmentType.CENTER, children: [new docx.TextRun({ text: val('out-university'), bold: true, size: ptToHalfPt(16) })] }));
+            blocks.push(new docx.Paragraph({ alignment: docx.AlignmentType.CENTER, children: [new docx.TextRun({ text: val('out-faculty'), bold: true, size: titleSize })] }));
+            blocks.push(new docx.Paragraph({ alignment: docx.AlignmentType.CENTER, spacing: { after: 200 }, children: [new docx.TextRun({ text: val('out-career'), bold: true, size: titleSize })] }));
+
+            if (state.logoBase64 && state.logoBase64.startsWith('data:')) {
+                try {
+                    const bytes = base64ToUint8Array(state.logoBase64);
+                    const natural = await loadImageNaturalSize(state.logoBase64);
+                    const scale = Math.min(1, 130 / natural.width, 130 / natural.height);
+                    blocks.push(new docx.Paragraph({
+                        alignment: docx.AlignmentType.CENTER,
+                        spacing: { before: 200, after: 200 },
+                        children: [new docx.ImageRun({ data: bytes, type: imageTypeFromDataUri(state.logoBase64), transformation: { width: Math.round(natural.width * scale), height: Math.round(natural.height * scale) } })]
+                    }));
+                } catch (e) { /* sem logo válido, segue sem imagem */ }
+            }
+
+            blocks.push(new docx.Paragraph({ alignment: docx.AlignmentType.CENTER, spacing: { before: 300 }, children: [new docx.TextRun({ text: 'MONOGRAFÍA', bold: true, size: titleSize })] }));
+            blocks.push(new docx.Paragraph({ alignment: docx.AlignmentType.CENTER, spacing: { after: 400 }, children: [new docx.TextRun({ text: val('out-title'), bold: true, size: titleSize })] }));
+
+            const infoRow = (label, value) => new docx.TableRow({ children: [
+                new docx.TableCell({ width: { size: 25, type: docx.WidthType.PERCENTAGE }, borders: noBorders(), children: [new docx.Paragraph({ children: [new docx.TextRun({ text: label, bold: true, size: ptToHalfPt(12) })] })] }),
+                new docx.TableCell({ borders: noBorders(), children: [new docx.Paragraph({ children: [new docx.TextRun({ text: value, size: ptToHalfPt(12) })] })] })
+            ]});
+            blocks.push(new docx.Table({
+                width: { size: 80, type: docx.WidthType.PERCENTAGE },
+                alignment: docx.AlignmentType.CENTER,
+                rows: [
+                    infoRow('Asignatura:', val('out-subject')),
+                    infoRow('Docente:', val('out-professor')),
+                    infoRow('Estudiantes:', val('out-student'))
+                ]
+            }));
+
+            blocks.push(new docx.Paragraph({ spacing: { before: 2400 }, children: [] })); // espaço real antes do rodapé da capa
+            blocks.push(new docx.Paragraph({ alignment: docx.AlignmentType.CENTER, children: [new docx.TextRun({ text: val('out-location'), size: ptToHalfPt(12) })] }));
+            blocks.push(new docx.Paragraph({ alignment: docx.AlignmentType.CENTER, pageBreakBefore: false, children: [new docx.TextRun({ text: val('out-year'), size: ptToHalfPt(12) })] }));
+
+            return blocks;
         }
 
-        function buildWordTOC() {
-            let rows = '';
+        function noBorders() {
+            const none = { style: docx.BorderStyle.NONE, size: 0, color: 'FFFFFF' };
+            return { top: none, bottom: none, left: none, right: none };
+        }
+
+        function buildTOCBlocks(usableWidthTwips) {
+            const blocks = [];
+            blocks.push(new docx.Paragraph({ alignment: docx.AlignmentType.CENTER, spacing: { after: 480 }, children: [new docx.TextRun({ text: getTranslatedWord('toc'), bold: true, size: ptToHalfPt(12) })] }));
+
             let currentPage = 3;
+            const tocLine = (text, page, indentTwips) => new docx.Paragraph({
+                indent: indentTwips ? { left: indentTwips } : undefined,
+                tabStops: [{ type: docx.TabStopType.RIGHT, position: usableWidthTwips, leader: docx.LeaderType.DOT }],
+                spacing: { after: 80 },
+                children: [new docx.TextRun({ text: `${text}\t${page}`, size: ptToHalfPt(12) })]
+            });
+
             state.generatedSections.forEach(sec => {
-                rows += `<tr><td style="padding:3pt 4pt 3pt 0;">${sec.title}</td><td style="border-bottom:1px dotted #000;">&nbsp;</td><td style="padding:3pt 0 3pt 4pt; text-align:right; white-space:nowrap;">${currentPage}</td></tr>`;
+                blocks.push(tocLine(sec.title, currentPage));
 
                 const temp = document.createElement('div');
                 temp.innerHTML = sec.content;
                 temp.querySelectorAll('h2, h3').forEach(heading => {
-                    const indent = heading.tagName === 'H3' ? '2.5cm' : '1.27cm';
-                    rows += `<tr><td style="padding:3pt 4pt 3pt ${indent};">${heading.innerText}</td><td style="border-bottom:1px dotted #000;">&nbsp;</td><td style="padding:3pt 0 3pt 4pt; text-align:right; white-space:nowrap;">${currentPage}</td></tr>`;
+                    blocks.push(tocLine(heading.innerText, currentPage, heading.tagName === 'H3' ? cmToTwip(2.5) : cmToTwip(1.27)));
                 });
 
                 const words = sec.content.replace(/<[^>]*>?/gm, '').split(/\s+/).length;
                 currentPage += Math.max(1, Math.ceil(words / 280));
             });
 
-            return `<div class="a4-page">
-                <h1 style="text-align:center; font-weight:bold; margin-bottom:24pt; text-indent:0;">${getTranslatedWord('toc')}</h1>
-                <table style="width:100%; border-collapse:collapse; table-layout:fixed;">
-                    <colgroup><col style="width:65%;"><col style="width:25%;"><col style="width:10%;"></colgroup>
-                    <tbody>${rows}</tbody>
-                </table>
-            </div>`;
-        }
-
-        async function buildCleanDocumentHTML() {
-            const pageBreak = '<br clear="all" style="mso-special-character:line-break;page-break-before:always">\n';
-            let pageCount = 0;
-            const nextPage = (html) => {
-                pageCount++;
-                return (pageCount === 1 ? '' : pageBreak) + html;
-            };
-
-            const tpl = getActiveNormTemplate();
-            let coverHTML = nextPage(await buildWordCoverHTML(tpl));
-            let tocHTML = nextPage(buildWordTOC());
-
-            let sectionsHTML = '';
-            state.generatedSections.forEach(section => {
-                const pageChunks = splitContentIntoPages(section.content);
-                pageChunks.forEach((chunk, idx) => {
-                    const pageHTML = `<div class="a4-page">${idx === 0 ? `<h1>${section.title}</h1>` : ''}${chunk}</div>`;
-                    sectionsHTML += nextPage(pageHTML);
-                });
-            });
-
-            let referencesHTML = '';
-            if (state.references && state.references.length > 0) {
-                referencesHTML = nextPage(generateReferencesPage());
-            }
-
-            return coverHTML + tocHTML + sectionsHTML + referencesHTML;
+            return blocks;
         }
 
         window.exportWord = async function() {
+            if (typeof docx === 'undefined') {
+                alert('Não foi possível carregar o gerador de Word (biblioteca docx.js). Verifique sua conexão e tente novamente.');
+                return;
+            }
+
             const docTitle = document.getElementById('in-title').value || 'Monografia';
-            const printArea = await buildCleanDocumentHTML();
-
-            const mt = state.margins.mt + 'cm';
-            const mr = state.margins.mr + 'cm';
-            const mb = state.margins.mb + 'cm';
-            const ml = state.margins.ml + 'cm';
-
             const tpl = getActiveNormTemplate();
-            const wordFontFamily = tpl.fonte.replace(/'/g, '').split(',')[0];
-            const wordLineHeightPct = (tpl.espacamento * 100) + '%';
-            const wordIndent = tpl.recuoParagrafo + 'cm';
-            const coverBorderCss = tpl.capaMoldura
-                ? `.cover-border { border: 6px double #000066; padding: 1.54cm 1.54cm 1.54cm 2cm; height: 95%; display: block; }`
-                : `.cover-border { border: none; padding: 0; height: 95%; display: block; }`;
+            const fontHalfPt = ptToHalfPt(parseFloat(tpl.tamanhoFonte) || 12);
+            const lineSpacing = Math.round(240 * tpl.espacamento);
+            const indentTwips = cmToTwip(tpl.recuoParagrafo);
 
-            const header = `<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='[http://www.w3.org/TR/REC-html40](http://www.w3.org/TR/REC-html40)'>
-            <head><meta charset='utf-8'><title>Monografia</title>
-                <!--[if gte mso 9]>
-                <xml>
-                    <w:WordDocument>
-                        <w:View>Print</w:View>
-                        <w:Zoom>100</w:Zoom>
-                        <w:DoNotOptimizeForBrowser/>
-                    </w:WordDocument>
-                </xml>
-                <![endif]-->
-                <style>
-                    /* Define o tamanho real da página (A4) e as margens nativas do Word — mais
-                       confiável do que o padding do div em documentos longos com várias páginas. */
-                    @page Section1 { size: 21.0cm 29.7cm; margin: ${mt} ${mr} ${mb} ${ml}; mso-page-orientation: portrait; }
-                    div.Section1 { page: Section1; }
-                    body { font-family: '${wordFontFamily}', serif; font-size: ${tpl.tamanhoFonte}; line-height: ${tpl.espacamento}; color: black; }
-                    .a4-page { page-break-after: always; padding: ${mt} ${mr} ${mb} ${ml}; }
-                    ${coverBorderCss}
-                    .watermark-stamp { display: none !important; }
-                    p { text-indent: ${wordIndent}; text-align: justify; margin: 0; line-height: ${wordLineHeightPct}; }
-                    h1 { text-align: center; font-weight: bold; font-size: ${tpl.tamanhoFonte}; margin-top: 24pt; margin-bottom: 12pt; text-indent: 0;}
-                    h2 { text-align: left; font-weight: bold; font-size: ${tpl.tamanhoFonte}; margin-top: 24pt; margin-bottom: 12pt; text-indent: 0;}
-                    h3 { text-align: left; font-weight: bold; font-style: italic; font-size: ${tpl.tamanhoFonte}; margin-top: 24pt; margin-bottom: 12pt; text-indent: 0;}
-                    .hanging-indent { padding-left: ${wordIndent}; text-indent: -${wordIndent}; text-align: left; margin: 0; line-height: ${wordLineHeightPct};}
-                    .toc-list { list-style: none; padding: 0; }
-                    .center-text { text-align: center; text-indent: 0; }
-                    .bold-text { font-weight: bold; }
-                    .italic-text { font-style: italic; }
-                    .uppercase-text { text-transform: uppercase; }
-                    .hide-on-word { display: none !important; }
-                    .hide-on-print { display: none !important; }
-                    .page-break-marker { page-break-after: always; display: block; margin: 0; padding: 0; border: none; }
-                    table { border-collapse: collapse; width: 100%; }
-                    table, th, td { font-size: ${tpl.tamanhoFonte}; }
-                    img { max-width: 100%; height: auto; }
-                </style>
-            </head><body><div class="Section1">`;
+            const marginTop = cmToTwip(state.margins.mt);
+            const marginRight = cmToTwip(state.margins.mr);
+            const marginBottom = cmToTwip(state.margins.mb);
+            const marginLeft = cmToTwip(state.margins.ml);
+            const pageWidthTwips = 11906; // A4 = 210mm
+            const pageHeightTwips = 16838; // A4 = 297mm
+            const usableWidthTwips = pageWidthTwips - marginLeft - marginRight;
 
-            const sourceHTML = header + printArea + "</div></body></html>";
-            const source = 'data:application/vnd.ms-word;charset=utf-8,' + encodeURIComponent(sourceHTML);
-            const fileDownload = document.createElement("a");
-            document.body.appendChild(fileDownload); 
-            fileDownload.href = source;
-            fileDownload.download = `${docTitle}_APA7.doc`;
-            fileDownload.click(); 
+            const children = [];
+
+            // Capa (com ou sem moldura, conforme o modelo de norma ativo)
+            const coverBlocks = await buildCoverBlocks(tpl, fontHalfPt);
+            if (tpl.capaMoldura) {
+                children.push(new docx.Table({
+                    width: { size: 100, type: docx.WidthType.PERCENTAGE },
+                    borders: {
+                        top: { style: docx.BorderStyle.DOUBLE, size: 18, color: '000066' },
+                        bottom: { style: docx.BorderStyle.DOUBLE, size: 18, color: '000066' },
+                        left: { style: docx.BorderStyle.DOUBLE, size: 18, color: '000066' },
+                        right: { style: docx.BorderStyle.DOUBLE, size: 18, color: '000066' }
+                    },
+                    rows: [new docx.TableRow({ children: [new docx.TableCell({ margins: { top: 300, bottom: 300, left: 300, right: 300 }, children: coverBlocks })] })]
+                }));
+            } else {
+                children.push(...coverBlocks);
+            }
+
+            // Sumário (página própria)
+            const tocBlocks = buildTOCBlocks(usableWidthTwips);
+            children.push(new docx.Paragraph({ children: [], pageBreakBefore: true }));
+            children.push(...tocBlocks);
+
+            // Corpo: cada seção, com cada "página" (chunk de quebra manual) iniciando em página nova
+            for (const section of state.generatedSections) {
+                const pageChunks = splitContentIntoPages(section.content);
+                for (let idx = 0; idx < pageChunks.length; idx++) {
+                    const blocks = await blocksFromHTML(pageChunks[idx], fontHalfPt, lineSpacing, indentTwips);
+                    if (idx === 0) {
+                        children.push(new docx.Paragraph({
+                            pageBreakBefore: true,
+                            alignment: docx.AlignmentType.CENTER,
+                            spacing: { after: 240 },
+                            children: [new docx.TextRun({ text: section.title, bold: true, size: fontHalfPt })]
+                        }));
+                        children.push(...blocks);
+                    } else {
+                        children.push(new docx.Paragraph({ children: [], pageBreakBefore: true }));
+                        children.push(...blocks);
+                    }
+                }
+            }
+
+            // Referências
+            if (state.references && state.references.length > 0) {
+                children.push(new docx.Paragraph({ pageBreakBefore: true, alignment: docx.AlignmentType.CENTER, spacing: { after: 240 }, children: [new docx.TextRun({ text: 'Referências', bold: true, size: fontHalfPt })] }));
+                const sorted = [...state.references].sort((a, b) => a.author.localeCompare(b.author));
+                sorted.forEach(ref => {
+                    let entry;
+                    if (state.citationStyle === 'ABNT') {
+                        entry = `${ref.author.toUpperCase()}. ${ref.title}.`;
+                        if (ref.source) entry += ` ${ref.source}.`;
+                        entry += ` ${ref.year}.`;
+                        if (ref.url) entry += ` ${ref.url}`;
+                    } else {
+                        entry = `${ref.author}. (${ref.year}). ${ref.title}.`;
+                        if (ref.source) entry += ` ${ref.source}.`;
+                        if (ref.url) entry += ` ${ref.url}`;
+                    }
+                    children.push(new docx.Paragraph({
+                        children: [new docx.TextRun({ text: entry, size: fontHalfPt })],
+                        indent: { left: indentTwips, hanging: indentTwips },
+                        spacing: { line: lineSpacing, lineRule: docx.LineRuleType.AUTO }
+                    }));
+                });
+            }
+
+            const doc = new docx.Document({
+                sections: [{
+                    properties: {
+                        page: {
+                            size: { width: pageWidthTwips, height: pageHeightTwips },
+                            margin: { top: marginTop, right: marginRight, bottom: marginBottom, left: marginLeft }
+                        }
+                    },
+                    children
+                }]
+            });
+
+            const blob = await docx.Packer.toBlob(doc);
+            const url = URL.createObjectURL(blob);
+            const fileDownload = document.createElement('a');
+            fileDownload.href = url;
+            fileDownload.download = `${docTitle}.docx`;
+            document.body.appendChild(fileDownload);
+            fileDownload.click();
             document.body.removeChild(fileDownload);
+            URL.revokeObjectURL(url);
         }
-    // ... código anterior do seu script (exportWord, etc)
 
         /* REGISTRO DO SERVICE WORKER (PWA) */
         if ('serviceWorker' in navigator) {
