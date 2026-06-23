@@ -196,14 +196,21 @@
         .toc-dots { border-bottom: 2px dotted #000; flex-grow: 1; margin: 0 4px; position: relative; top: -4px; }
         .toc-page { background: white; padding-left: 8px; }
 
+        /* Dock translúcido: leve (só opacity, sem mexer em transform/posição) pra não
+           pesar nem descentralizar — fica transparente pra ver o documento atrás, e
+           totalmente visível ao passar o mouse. CSS puro, sem JS de mousemove. */
+        .dock-translucent { opacity: 0.45; transition: opacity 0.3s ease; }
+        .dock-translucent:hover { opacity: 1; }
+        @media (pointer: coarse) { .dock-translucent { opacity: 0.7; } }
+
         /* Dock Icon Animations */
-        .dock-icon { transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
-        .dock-btn:hover .dock-icon { transform: translateY(-4px) scale(1.1); }
-        
+        .dock-icon { transition: transform 0.35s cubic-bezier(0.34, 1.2, 0.4, 1); }
+        .dock-btn:hover .dock-icon { transform: translateY(-3px) scale(1.08); }
+
         .dock-tooltip {
             position: absolute; top: -40px; background: rgba(15, 23, 42, 0.9); color: white;
             padding: 4px 10px; border-radius: 8px; font-size: 12px; font-weight: 600;
-            opacity: 0; pointer-events: none; transition: opacity 0.2s, transform 0.2s;
+            opacity: 0; pointer-events: none; transition: opacity 0.3s ease, transform 0.3s ease;
             transform: translateY(10px); backdrop-filter: blur(4px);
         }
         .dock-btn:hover .dock-tooltip { opacity: 1; transform: translateY(0); }
@@ -579,7 +586,7 @@
             <i data-lucide="sun" class="w-5 h-5 block dark:hidden"></i>
         </button>
 
-        <div id="main-dock" class="fixed bottom-4 lg:bottom-6 left-1/2 transform -translate-x-1/2 z-[60] hide-on-print">
+        <div id="main-dock" class="fixed bottom-4 lg:bottom-6 left-1/2 transform -translate-x-1/2 z-[60] hide-on-print dock-translucent">
             <div class="bg-white/80 dark:bg-slate-800/80 backdrop-blur-2xl shadow-[0_20px_40px_-10px_rgba(0,0,0,0.3)] rounded-full px-3 py-2 flex items-center gap-2 border border-white/50 dark:border-slate-700/50">
                 
                 <!-- Mobile/Desktop Toggle Esquerda -->
@@ -1503,10 +1510,9 @@
             if (state.isDemo) { alert('Modo demonstração: exportação desativada. Crie uma conta para exportar de verdade.'); return; }
             if (!state.profile) { alert('Aguarde o carregamento do seu perfil.'); return; }
 
-            // A decisão de remover a marca d'água agora é feita uma vez por trabalho, pelo botão
-            // dedicado no painel Assistente — aqui só refletimos o que já foi decidido.
-            const shouldRemove = state.profile.role === 'admin' || state.currentDocWatermarkRemoved;
-            document.body.classList.toggle('watermark-removed', shouldRemove);
+            // A decisão de remover a marca d'água é feita uma vez por trabalho, pelo botão
+            // dedicado no painel Assistente — o editor já reflete isso (updateWatermarkButtonUI),
+            // então a exportação só usa o que já está sendo mostrado na tela.
             window.print();
         }
 
@@ -1544,19 +1550,20 @@
         }
 
         function updateWatermarkButtonUI() {
+            const unlocked = state.profile && (state.profile.role === 'admin' || state.currentDocWatermarkRemoved);
+
+            // A marca d'água some do editor (não só da exportação) assim que o trabalho é
+            // desbloqueado — o que a pessoa vê ali já é o que ela vai exportar.
+            document.body.classList.toggle('watermark-removed', !!unlocked);
+
             const btn = document.getElementById('btn-remove-watermark-doc');
             if (!btn) return;
-            const unlocked = state.profile && (state.profile.role === 'admin' || state.currentDocWatermarkRemoved);
             btn.disabled = unlocked;
             btn.innerHTML = unlocked
                 ? `<i data-lucide="check-circle" class="w-4 h-4"></i> Marca d'água já removida deste trabalho`
                 : `<i data-lucide="droplet-off" class="w-4 h-4"></i> Remover Marca d'Água (${CREDITS_PER_EXPORT} créditos)`;
             lucide.createIcons();
         }
-
-        window.addEventListener('afterprint', () => {
-            document.body.classList.remove('watermark-removed');
-        });
 
         function switchTab(tabId) {
             if (state.isDemo && (tabId === 'credits' || tabId === 'myprofile')) {
