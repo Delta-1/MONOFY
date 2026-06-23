@@ -463,6 +463,37 @@
             </div>
         </div>
 
+        <!-- Aba fixa na borda esquerda: abre o painel de ferramentas de edição (estilo Word) -->
+        <button id="tools-tab-handle" onclick="toggleEditorToolsPanel()" title="Ferramentas de Edição" class="fixed left-0 top-1/2 -translate-y-1/2 z-[65] hide-on-print w-9 h-20 bg-primary-600 hover:bg-primary-700 text-white rounded-r-xl shadow-xl flex items-center justify-center transition-colors">
+            <i data-lucide="layout-panel-left" class="w-5 h-5"></i>
+        </button>
+
+        <!-- Painel de ferramentas: tipo de página (norma) + inserir tabela/citação/título/quebra/imagem -->
+        <div id="panel-editor-tools" class="fixed left-0 top-0 bottom-0 z-[64] hide-on-print w-[300px] max-w-[85vw] bg-white/95 dark:bg-slate-850/95 backdrop-blur-sm shadow-2xl border-r border-white/40 dark:border-slate-700/50 flex flex-col transition-transform duration-300 -translate-x-full">
+            <div class="p-5 border-b border-slate-200/50 dark:border-slate-800/50 flex justify-between items-center">
+                <h3 class="font-extrabold flex items-center gap-2 text-slate-800 dark:text-white"><i data-lucide="layout-panel-left" class="w-5 h-5 text-primary-500"></i> Ferramentas</h3>
+                <button onclick="toggleEditorToolsPanel()" class="p-1.5 text-slate-400 hover:text-slate-800 dark:hover:text-white rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition"><i data-lucide="x" class="w-4 h-4"></i></button>
+            </div>
+            <div class="flex-1 overflow-y-auto p-5 space-y-6 custom-scrollbar">
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Tipo de Página (Norma)</label>
+                    <select id="quick-norm-select" onchange="quickApplyNormTemplate()" class="w-full p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none font-medium text-sm"></select>
+                    <p class="text-xs text-slate-400 mt-2">Muda margens, fonte, capa e citação no visualizador e na exportação.</p>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Inserir na página em edição</label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button onclick="quickInsertTool('table')" class="flex items-center gap-2 p-3 bg-slate-100 dark:bg-slate-800 rounded-xl text-sm font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition"><i data-lucide="table" class="w-4 h-4"></i> Tabela</button>
+                        <button onclick="quickInsertTool('citation')" class="flex items-center gap-2 p-3 bg-slate-100 dark:bg-slate-800 rounded-xl text-sm font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition"><i data-lucide="quote" class="w-4 h-4"></i> Citação</button>
+                        <button onclick="quickInsertTool('heading')" class="flex items-center gap-2 p-3 bg-slate-100 dark:bg-slate-800 rounded-xl text-sm font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition"><i data-lucide="heading" class="w-4 h-4"></i> Título</button>
+                        <button onclick="quickInsertTool('pagebreak')" class="flex items-center gap-2 p-3 bg-slate-100 dark:bg-slate-800 rounded-xl text-sm font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition"><i data-lucide="scissors" class="w-4 h-4"></i> Quebra</button>
+                        <button onclick="quickInsertTool('image')" class="col-span-2 flex items-center justify-center gap-2 p-3 bg-slate-100 dark:bg-slate-800 rounded-xl text-sm font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition"><i data-lucide="image-plus" class="w-4 h-4"></i> Imagem</button>
+                    </div>
+                    <p class="text-xs text-slate-400 mt-3">Clique dentro do texto de uma página antes de usar, pra eu saber onde inserir.</p>
+                </div>
+            </div>
+        </div>
+
         <!-- PAINEL ESQUERDO: Dados e Contexto da Monografia (Com Resize Dinâmico) -->
         <div id="panel-left" class="fixed lg:absolute left-4 right-4 lg:right-auto top-4 lg:top-24 bottom-28 lg:bottom-auto lg:h-[78vh] lg:max-h-[85vh] lg:w-[400px] bg-white/95 dark:bg-slate-850/95 backdrop-blur-sm shadow-2xl rounded-3xl border border-white/40 dark:border-slate-700/50 flex flex-col z-30 transition-transform duration-300 mobile-hidden lg:!transform-none lg:!opacity-100 lg:!pointer-events-auto lg:overflow-hidden lg:min-w-[320px] lg:max-w-[50vw] lg:min-h-[400px]">
             
@@ -1128,6 +1159,51 @@
                 </div>
             `).join('');
             lucide.createIcons();
+            populateQuickNormSelect();
+        }
+
+        // ==========================================
+        // PAINEL DE FERRAMENTAS (aba fixa na borda esquerda)
+        // ==========================================
+        function toggleEditorToolsPanel() {
+            document.getElementById('panel-editor-tools').classList.toggle('-translate-x-full');
+        }
+
+        function populateQuickNormSelect() {
+            const select = document.getElementById('quick-norm-select');
+            if (!select) return;
+            select.innerHTML = getAllNormTemplates().map(t =>
+                `<option value="${t.id}" ${t.id === state.activeNormTemplateId ? 'selected' : ''}>${t.nome}</option>`
+            ).join('');
+        }
+
+        function quickApplyNormTemplate() {
+            const id = document.getElementById('quick-norm-select').value;
+            const tpl = getAllNormTemplates().find(t => t.id === id);
+            if (tpl) applyNormTemplate(tpl);
+        }
+
+        // Rastreia em qual página (apa-content) o cursor está, pra saber onde as ferramentas
+        // do painel lateral devem inserir tabela/citação/título/quebra/imagem.
+        document.addEventListener('focusin', (e) => {
+            if (e.target.classList && e.target.classList.contains('apa-content')) {
+                state.lastFocusedSectionId = e.target.dataset.sectionId;
+                state.lastFocusedPageKey = e.target.id.replace('apa-content-', '');
+            }
+        });
+
+        function quickInsertTool(type) {
+            if (!state.lastFocusedSectionId || !state.lastFocusedPageKey) {
+                alert('Clique primeiro dentro do texto de uma página pra eu saber onde inserir.');
+                return;
+            }
+            const sectionId = state.lastFocusedSectionId;
+            const pageKey = state.lastFocusedPageKey;
+            if (type === 'table') insertTableInline(sectionId, pageKey);
+            else if (type === 'citation') insertCitationInline(sectionId, pageKey);
+            else if (type === 'heading') insertHeadingInline(sectionId, pageKey);
+            else if (type === 'pagebreak') insertPageBreakInline(sectionId, pageKey);
+            else if (type === 'image') triggerImageInsert(sectionId, pageKey);
         }
 
         let currentZoom = 1;
