@@ -37,6 +37,7 @@
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlmcXpvdWtyamF0Y2dteXNodHB6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE5NTgyMjMsImV4cCI6MjA5NzUzNDIyM30.GBbEwI-1AnrJ6kllFrXkjTc1Bf76bGz8d8TGnaiYoAw';
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         const EDGE_FN_CHECKOUT = `${SUPABASE_URL}/functions/v1/create-payment-preference`;
+        const EDGE_FN_AI = `${SUPABASE_URL}/functions/v1/ai-generate`;
         const CREDIT_PACKS_UI = [
             { id: 'pack_10', credits: 10, price: 'R$ 10,00' },
             { id: 'pack_20', credits: 20, price: 'R$ 20,00' },
@@ -771,14 +772,13 @@
 
                     <div>
                         <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-3 flex items-center gap-2">
-                            <i data-lucide="key" class="w-5 h-5 text-amber-500"></i> Chave API (Provider Inteligência)
+                            <i data-lucide="life-buoy" class="w-5 h-5 text-amber-500"></i> Suporte
                         </label>
-                        <input type="password" id="input-apikey" placeholder="Cole a sua chave aqui..." class="w-full p-4 font-mono text-sm border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 rounded-xl outline-none shadow-inner">
-                        <div class="mt-4 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-900/50 rounded-xl">
-                            <p class="text-sm text-amber-800 dark:text-amber-200">Requer a configuração de uma Chave API válida para processamento de texto no cliente, protegendo a sua privacidade.</p>
+                        <div class="p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-900/50 rounded-xl">
+                            <p class="text-sm text-amber-800 dark:text-amber-200">A IA já está pronta para uso e é cobrada diretamente dos seus créditos — não é preciso configurar nenhuma chave.</p>
                         </div>
-                        <a href="https://wa.me/5519989765398?text=Ol%C3%A1!%20N%C3%A3o%20tenho%20uma%20chave%20de%20API%2C%20quero%20comprar%20uma%20diretamente%20com%20voc%C3%AAs" target="_blank" class="mt-3 flex items-center justify-center gap-2 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-900/40 text-green-700 dark:text-green-400 rounded-xl hover:bg-green-100 transition-all font-bold text-sm">
-                            <i data-lucide="message-circle" class="w-4 h-4"></i> Não tem uma chave? Fale com o Suporte
+                        <a href="https://wa.me/5519989765398?text=Ol%C3%A1!%20Estou%20com%20um%20problema%20no%20site%20e%20preciso%20de%20suporte" target="_blank" class="mt-3 flex items-center justify-center gap-2 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-900/40 text-green-700 dark:text-green-400 rounded-xl hover:bg-green-100 transition-all font-bold text-sm">
+                            <i data-lucide="message-circle" class="w-4 h-4"></i> Teve algum problema? Fale com o Suporte
                         </a>
                     </div>
 
@@ -805,7 +805,6 @@
         // 1. ESTADO GLOBAL E DRAGGABLE PANELS
         // ==========================================
         let state = {
-            apiKey: localStorage.getItem('monografia_api_key') || '',
             docLanguage: localStorage.getItem('monografia_lang') || 'Español (Estándar Académico)',
             generatedSections: [],
             editingSectionId: null,
@@ -825,7 +824,6 @@
         document.addEventListener('DOMContentLoaded', () => {
             lucide.createIcons();
             if(state.isDark) document.documentElement.classList.add('dark');
-            document.getElementById('input-apikey').value = state.apiKey;
             document.getElementById('doc-language').value = state.docLanguage;
             if(state.logoBase64 && state.logoBase64.startsWith('data:')) { setCustomLogo(state.logoBase64); }
             
@@ -1270,19 +1268,11 @@
             else showAuthSuccess('Conta criada! Verifique o seu email para confirmar (ou faça login se a confirmação estiver desativada).');
         }
 
-        function clearLocalApiKey() {
-            state.apiKey = '';
-            localStorage.removeItem('monografia_api_key');
-            const input = document.getElementById('input-apikey');
-            if (input) input.value = '';
-        }
-
         async function signOut() {
             if (!state.isDemo) await supabaseClient.auth.signOut();
             state.session = null;
             state.profile = null;
             state.isDemo = false;
-            clearLocalApiKey(); // a chave de API não pode "vazar" para o próximo login nesta máquina
             document.getElementById('app-screen').classList.add('opacity-0', 'pointer-events-none');
             document.getElementById('login-screen').classList.remove('hidden-state', 'opacity-0', 'pointer-events-none');
         }
@@ -1419,7 +1409,6 @@
                 onAuthenticated(session);
             } else {
                 state.session = null;
-                clearLocalApiKey();
                 document.getElementById('app-screen').classList.add('opacity-0', 'pointer-events-none');
                 document.getElementById('login-screen').classList.remove('hidden-state');
                 document.getElementById('login-screen').classList.add('opacity-0');
@@ -1658,9 +1647,7 @@
         }
 
         function saveSettings(event) {
-            state.apiKey = document.getElementById('input-apikey').value.trim();
             state.docLanguage = document.getElementById('doc-language').value;
-            localStorage.setItem('monografia_api_key', state.apiKey);
             localStorage.setItem('monografia_lang', state.docLanguage);
 
             const btn = event.currentTarget;
@@ -1676,28 +1663,6 @@
             document.getElementById('error-text').innerText = msg;
             errDiv.classList.remove('hidden-state');
             setTimeout(() => errDiv.classList.add('hidden-state'), 6000);
-        }
-
-        // Notificação clicável: leva direto pro WhatsApp de suporte para comprar uma chave de API
-        function showApiKeyNeededToast() {
-            const existing = document.getElementById('apikey-toast');
-            if (existing) existing.remove();
-
-            const toast = document.createElement('div');
-            toast.id = 'apikey-toast';
-            toast.className = 'fixed top-6 left-1/2 -translate-x-1/2 z-[300] bg-amber-500 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 cursor-pointer hover:bg-amber-600 transition-all anim-fade';
-            toast.innerHTML = `
-                <i data-lucide="key-round" class="w-5 h-5 shrink-0"></i>
-                <span class="font-bold text-sm">Você não tem uma chave de API. Adquira a sua agora! <span class="underline">Falar com Suporte</span></span>
-                <i data-lucide="x" class="w-4 h-4 shrink-0 opacity-70 hover:opacity-100" onclick="event.stopPropagation(); this.closest('#apikey-toast').remove();"></i>
-            `;
-            toast.onclick = () => {
-                window.open('https://wa.me/5519989765398?text=Ol%C3%A1!%20N%C3%A3o%20tenho%20uma%20chave%20de%20API%2C%20quero%20comprar%20uma%20diretamente%20com%20voc%C3%AAs', '_blank');
-                toast.remove();
-            };
-            document.body.appendChild(toast);
-            lucide.createIcons();
-            setTimeout(() => { if (document.getElementById('apikey-toast')) toast.remove(); }, 10000);
         }
 
         // ==========================================
@@ -1811,28 +1776,41 @@
         // ==========================================
         // 4. MOTOR INTELIGÊNCIA ARTIFICIAL
         // ==========================================
-        async function generateDocument() {
-            if (!state.apiKey) {
-                showApiKeyNeededToast(); return;
+        // Chama a IA através da Edge Function (chave do provedor fica segura no servidor;
+        // a cobrança de créditos é feita lá dentro, de forma atômica, antes de gerar o texto).
+        async function callAI(prompt, cost, reason) {
+            const response = await fetch(EDGE_FN_AI, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${state.session.access_token}`
+                },
+                body: JSON.stringify({ prompt, cost, reason })
+            });
+            const data = await response.json();
+            if (!response.ok || data.error) {
+                if (response.status === 402 || data.error === 'insufficient_credits') {
+                    throw new Error(`Créditos insuficientes (precisa de ${cost}). Compre créditos na aba Créditos.`);
+                }
+                if (response.status === 401) {
+                    throw new Error('Sessão expirada. Faça login novamente.');
+                }
+                throw new Error(data.error || 'Erro ao contactar a IA.');
             }
+            if (state.profile.role !== 'admin') {
+                state.profile.credits -= cost;
+                document.getElementById('user-credits-display').innerText = state.profile.credits;
+            }
+            return data.text;
+        }
+
+        async function generateDocument() {
             const rawText = document.getElementById('raw-text').value.trim();
             if (!rawText && !state.uploadedContextText) { showError('Forneça texto ou ficheiros base.'); return; }
 
             if (state.isDemo) { alert('Modo demonstração: geração com IA desativada. Crie uma conta para usar de verdade.'); return; }
             if (!state.profile) { alert('Aguarde o carregamento do seu perfil.'); return; }
             if (!confirm(`Gerar a monografia inteira com IA consome ${AI_COST_FULL_DOC} créditos (saldo atual: ${state.profile.credits}). Continuar?`)) return;
-
-            const { data: aiPaid, error: aiPayError } = await supabaseClient.rpc('consume_credits_generic', {
-                p_user_id: state.session.user.id, p_amount: AI_COST_FULL_DOC, p_reason: 'ai_full_document'
-            });
-            if (aiPayError || !aiPaid) {
-                showError(`Créditos insuficientes para gerar com IA (precisa de ${AI_COST_FULL_DOC}). Compre créditos na aba Créditos.`);
-                return;
-            }
-            if (state.profile.role !== 'admin') {
-                state.profile.credits -= AI_COST_FULL_DOC;
-                document.getElementById('user-credits-display').innerText = state.profile.credits;
-            }
 
             const btnGenerate = document.getElementById('btn-generate');
             document.getElementById('icon-generate').classList.add('hidden-state');
@@ -1873,20 +1851,8 @@
             ]`;
 
             try {
-                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${state.apiKey}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        contents: [{ parts: [{ text: systemPrompt }] }],
-                        generationConfig: { temperature: 0.3 } 
-                    })
-                });
+                let jsonText = await callAI(systemPrompt, AI_COST_FULL_DOC, 'ai_full_document');
 
-                const data = await response.json();
-                if (data.error) throw new Error(data.error.message);
-
-                let jsonText = data.candidates[0].content.parts[0].text;
-                
                 // Limpeza Extrema Parser JSON
                 jsonText = jsonText.replace(/```json/gi, '').replace(/```html/gi, '').replace(/```/g, '').trim();
                 const firstBracket = jsonText.indexOf('[');
@@ -1914,8 +1880,8 @@
                 }
 
             } catch (err) {
-                console.error(err); 
-                showError('Erro na IA. Verifique a chave ou tente novamente com menos texto.');
+                console.error(err);
+                showError(err.message || 'Erro na IA. Tente novamente com menos texto.');
             } finally {
                 document.getElementById('icon-generate').classList.remove('hidden-state');
                 document.getElementById('icon-loading').classList.add('hidden-state');
@@ -2280,7 +2246,6 @@
         }
 
         async function refineInline(sectionId, pageKey) {
-            if (!state.apiKey) { showApiKeyNeededToast(); return; }
             if (state.isDemo) { alert('Modo demonstração: refinar com IA está desativado.'); return; }
             if (!state.profile) { alert('Aguarde o carregamento do seu perfil.'); return; }
             const el = document.getElementById(`apa-content-${pageKey}`);
@@ -2292,17 +2257,6 @@
             if (!instruction) return;
 
             if (!confirm(`Usar a IA nesta página consome ${AI_COST_PER_PAGE} créditos (saldo atual: ${state.profile.credits}). Continuar?`)) return;
-            const { data: aiPaid, error: aiPayError } = await supabaseClient.rpc('consume_credits_generic', {
-                p_user_id: state.session.user.id, p_amount: AI_COST_PER_PAGE, p_reason: 'ai_refine_page'
-            });
-            if (aiPayError || !aiPaid) {
-                showError(`Créditos insuficientes (precisa de ${AI_COST_PER_PAGE}). Compre créditos na aba Créditos.`);
-                return;
-            }
-            if (state.profile.role !== 'admin') {
-                state.profile.credits -= AI_COST_PER_PAGE;
-                document.getElementById('user-credits-display').innerText = state.profile.credits;
-            }
 
             el.style.opacity = '0.5';
             const systemPrompt = `Actúa como un profesor universitario experto en Normas ${state.citationStyle}.
@@ -2312,22 +2266,12 @@
             REGLAS: Usa <p> para separar párrafos. Devuelve ÚNICAMENTE el código HTML crudo sin markdown.`;
 
             try {
-                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${state.apiKey}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        contents: [{ parts: [{ text: `${systemPrompt}\n\nTEXTO:\n${currentContent}` }] }],
-                        generationConfig: { temperature: 0.4 }
-                    })
-                });
-                const data = await response.json();
-                if (data.error) throw new Error(data.error.message);
-                let improvedText = data.candidates[0].content.parts[0].text;
+                let improvedText = await callAI(`${systemPrompt}\n\nTEXTO:\n${currentContent}`, AI_COST_PER_PAGE, 'ai_refine_page');
                 improvedText = improvedText.replace(/```html/gi, '').replace(/```/g, '').trim();
                 el.innerHTML = improvedText;
                 scheduleSyncSection(sectionId, true); checkAndSplitOverflow(sectionId);
             } catch (err) {
-                console.error(err); showError('Erro na IA ao tentar melhorar o texto.');
+                console.error(err); showError(err.message || 'Erro na IA ao tentar melhorar o texto.');
             } finally {
                 el.style.opacity = '1';
             }
