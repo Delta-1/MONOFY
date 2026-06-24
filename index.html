@@ -616,25 +616,43 @@
                         <i data-lucide="loader-2" id="icon-loading" class="w-5 h-5 animate-spin hidden-state"></i>
                         <span id="text-generate">Redigir Monografia</span>
                     </button>
-
-                    <button onclick="saveCurrentWork()" class="w-full flex items-center justify-center gap-3 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-900/30 text-emerald-700 dark:text-emerald-400 font-bold py-3.5 rounded-xl transition-all shadow-sm hover:shadow-md">
-                        <i data-lucide="save" class="w-5 h-5"></i> Salvar Trabalho
-                    </button>
-
-                    <button onclick="removeWatermarkForCurrentDoc()" id="btn-remove-watermark-doc" class="w-full flex items-center justify-center gap-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-900/30 text-amber-700 dark:text-amber-400 font-bold py-3.5 rounded-xl transition-all shadow-sm hover:shadow-md disabled:opacity-60">
-                        <i data-lucide="droplet-off" class="w-4 h-4"></i> Remover Marca d'Água (10 créditos)
-                    </button>
-
-                    <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest text-center">Exportar Formato</h4>
-
-                    <button onclick="exportWord()" id="btn-export-word" disabled class="w-full flex items-center justify-center gap-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-blue-600 dark:text-blue-400 font-bold py-3.5 rounded-xl transition-all shadow-sm hover:shadow-md disabled:opacity-50">
-                        <i data-lucide="file-down" class="w-5 h-5"></i> Word (.docx)
-                    </button>
-
-                    <button onclick="handleExportPDF()" id="btn-export-pdf" disabled class="w-full flex items-center justify-center gap-3 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-900/30 text-red-600 dark:text-red-400 font-bold py-3.5 rounded-xl transition-all shadow-sm hover:shadow-md disabled:opacity-50">
-                        <i data-lucide="printer" class="w-5 h-5"></i> PDF / Imprimir
-                    </button>
                 </div>
+            </div>
+        </div>
+
+        <!-- PAINEL DE EXPORTAÇÃO: Salvar, remover marca d'água e exportar o documento final -->
+        <div id="panel-export" class="fixed lg:absolute left-4 right-4 lg:left-auto lg:right-4 top-4 lg:top-24 bottom-28 lg:bottom-auto lg:h-[78vh] lg:max-h-[85vh] lg:w-[300px] bg-white/95 dark:bg-slate-850/95 backdrop-blur-sm shadow-2xl rounded-3xl border border-white/40 dark:border-slate-700/50 flex flex-col z-30 transition-transform duration-300 mobile-hidden lg:!transform-none lg:!opacity-100 lg:!pointer-events-auto lg:overflow-hidden lg:min-w-[280px] lg:max-w-[40vw] lg:min-h-[400px]">
+
+            <div id="panel-export-header" class="p-5 border-b border-slate-200/50 dark:border-slate-800/50 flex justify-between items-center cursor-move lg:hover:bg-slate-50/50 dark:hover:bg-slate-800/50 rounded-t-3xl transition-colors">
+                <h3 class="font-extrabold flex items-center gap-2 text-slate-800 dark:text-white"><i data-lucide="file-down" class="w-5 h-5 text-emerald-500"></i> Exportar</h3>
+                <div class="flex gap-2">
+                    <button onclick="toggleMobilePanels('export')" class="lg:hidden p-2 bg-slate-100 dark:bg-slate-800 rounded-full"><i data-lucide="x" class="w-4 h-4"></i></button>
+                    <button onclick="document.getElementById('panel-export').classList.add('hidden-state')" class="hidden lg:block p-1.5 text-slate-400 hover:text-slate-800 dark:hover:text-white rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition"><i data-lucide="minus" class="w-4 h-4"></i></button>
+                </div>
+            </div>
+
+            <div class="flex-1 p-5 flex flex-col gap-3 overflow-y-auto custom-scrollbar">
+                <button onclick="saveCurrentWork()" class="w-full flex items-center justify-center gap-3 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-900/30 text-emerald-700 dark:text-emerald-400 font-bold py-3.5 rounded-xl transition-all shadow-sm hover:shadow-md">
+                    <i data-lucide="save" class="w-5 h-5"></i> Salvar Trabalho
+                </button>
+
+                <button onclick="removeWatermarkForCurrentDoc()" id="btn-remove-watermark-doc" class="w-full flex items-center justify-center gap-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-900/30 text-amber-700 dark:text-amber-400 font-bold py-3.5 rounded-xl transition-all shadow-sm hover:shadow-md disabled:opacity-60">
+                    <i data-lucide="droplet-off" class="w-4 h-4"></i> Remover Marca d'Água (10 créditos)
+                </button>
+
+                <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest text-center pt-2">Exportar Formato</h4>
+
+                <button onclick="exportWord()" id="btn-export-word" disabled class="w-full flex items-center justify-center gap-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-blue-600 dark:text-blue-400 font-bold py-3.5 rounded-xl transition-all shadow-sm hover:shadow-md disabled:opacity-50">
+                    <i data-lucide="file-down" class="w-5 h-5"></i> Word (.docx)
+                </button>
+
+                <button onclick="handleExportPDF()" id="btn-export-pdf" disabled class="w-full flex items-center justify-center gap-3 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-900/30 text-red-600 dark:text-red-400 font-bold py-3.5 rounded-xl transition-all shadow-sm hover:shadow-md disabled:opacity-50">
+                    <i data-lucide="printer" class="w-5 h-5"></i> PDF / Imprimir
+                </button>
+
+                <button onclick="exportTxt()" id="btn-export-txt" disabled class="w-full flex items-center justify-center gap-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-bold py-3.5 rounded-xl transition-all shadow-sm hover:shadow-md disabled:opacity-50">
+                    <i data-lucide="file-text" class="w-5 h-5"></i> Texto (.txt)
+                </button>
             </div>
         </div>
 
@@ -711,6 +729,11 @@
                 <button onclick="togglePanelVisibility('panel-right')" id="dock-toggle-assistant" class="dock-btn relative flex items-center justify-center w-10 h-10 lg:w-12 lg:h-12 rounded-full text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/30 transition">
                     <i data-lucide="bot" class="dock-icon w-4 h-4 lg:w-5 lg:h-5"></i>
                     <span class="dock-tooltip">Assistente</span>
+                </button>
+
+                <button onclick="togglePanelVisibility('panel-export')" id="dock-toggle-export" class="dock-btn relative flex items-center justify-center w-10 h-10 lg:w-12 lg:h-12 rounded-full text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 transition">
+                    <i data-lucide="file-down" class="dock-icon w-4 h-4 lg:w-5 lg:h-5"></i>
+                    <span class="dock-tooltip">Exportar</span>
                 </button>
 
             </div>
@@ -968,8 +991,10 @@
             // Tornar painéis arrastáveis e redimensionáveis no Desktop
             makeDraggable('panel-left', 'panel-left-header');
             makeDraggable('panel-right', 'panel-right-header');
+            makeDraggable('panel-export', 'panel-export-header');
             makeResizable('panel-left', { minW: 320, maxW: 0.5, minH: 400 });
             makeResizable('panel-right', { minW: 300, maxW: 0.4, minH: 400 });
+            makeResizable('panel-export', { minW: 280, maxW: 0.4, minH: 400 });
             initPinchZoom();
             initPageTracker();
         });
@@ -1413,6 +1438,7 @@
             document.getElementById('user-email-display').innerText = 'Modo Demonstração';
             document.getElementById('user-credits-display').innerText = '0';
             document.getElementById('btn-export-pdf').title = 'Exportação desativada no modo demonstração';
+            document.getElementById('btn-export-txt').title = 'Exportação desativada no modo demonstração';
             document.getElementById('login-screen').classList.add('opacity-0', 'pointer-events-none');
             setTimeout(() => {
                 document.getElementById('login-screen').classList.add('hidden-state');
@@ -1758,6 +1784,7 @@
                 if(panel.classList.contains('mobile-hidden')) {
                     document.getElementById('panel-left').classList.add('mobile-hidden');
                     document.getElementById('panel-right').classList.add('mobile-hidden');
+                    document.getElementById('panel-export').classList.add('mobile-hidden');
                     setTimeout(() => { panel.classList.remove('mobile-hidden'); }, 50);
                 } else {
                     panel.classList.add('mobile-hidden');
@@ -1783,6 +1810,7 @@
             { target: '#btn-generate', title: 'Gerar com IA', before: () => ensurePanelOpenForTour('panel-right'), text: 'Com um clique, a IA escreve a monografia seção por seção a partir das suas notas (e da conversa com o Assistente, se houver). Isso consome créditos da sua conta.' },
             { title: 'Editar o texto', text: 'Depois de gerada, clique em qualquer parágrafo para editar diretamente. Uma barra de ferramentas flutuante deixa você pedir à IA para melhorar um trecho, inserir imagens e mais.' },
             { target: '#dock-toggle-assistant', title: 'Assistente', before: () => ensurePanelOpenForTour('panel-right'), text: 'Converse com o Assistente de IA sobre o que você quer antes de gerar — a conversa entra como contexto extra quando você clicar em "Redigir".' },
+            { target: '#dock-toggle-export', title: 'Exportar', before: () => ensurePanelOpenForTour('panel-export'), text: 'Salve o trabalho, remova a marca d\'água e exporte a monografia final em Word, PDF ou Texto.' },
             { target: '#dock-tab-profile', title: 'Arquivo', text: 'Todos os documentos que você gerar ficam guardados aqui. Pode reabrir e continuar de onde parou quando quiser.' },
             { target: '#dock-tab-credits', title: 'Créditos', text: 'Acompanhe e compre créditos aqui. Eles são usados para gerar com IA, exportar e remover a marca d\'água do documento final.' },
             { target: '#dock-tab-settings', title: 'Ajustes', text: 'Escolha o idioma da redação, a norma (ABNT, APA...), o tema claro/escuro e gerencie modelos personalizados.' },
@@ -2071,6 +2099,7 @@
             state.generatedSections = [];
             document.getElementById('btn-export-word').disabled = true;
             document.getElementById('btn-export-pdf').disabled = true;
+            document.getElementById('btn-export-txt').disabled = true;
 
             const chatContext = state.assistantChatMessages.length
                 ? `\n\nCONTEXTO ADICIONAL CONVERSADO COM O USUÁRIO NO ASSISTENTE (leve isto em conta, tem prioridade sobre suposições genéricas):\n${state.assistantChatMessages.filter(m => m.role !== 'error').map(m => `${m.role === 'user' ? 'Usuário' : 'Assistente'}: ${m.text}`).join('\n')}`
@@ -2128,6 +2157,7 @@
                     setTimeout(checkAllSectionsOverflow, 100);
                     document.getElementById('btn-export-word').disabled = false;
                     document.getElementById('btn-export-pdf').disabled = false;
+                    document.getElementById('btn-export-txt').disabled = false;
                 } catch (err) {
                     console.error(err);
                     failedSection = plan.label;
@@ -2387,6 +2417,7 @@
             renderSections();
             document.getElementById('btn-export-word').disabled = false;
             document.getElementById('btn-export-pdf').disabled = false;
+            document.getElementById('btn-export-txt').disabled = false;
             setTimeout(() => {
                 const el = document.getElementById(`apa-content-${newId}__0`);
                 if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.focus(); }
@@ -2498,6 +2529,7 @@
 
             document.getElementById('btn-export-word').disabled = true;
             document.getElementById('btn-export-pdf').disabled = true;
+            document.getElementById('btn-export-txt').disabled = true;
             updateWatermarkButtonUI();
             syncWatermarkRemovedClass();
             switchTab('generator');
@@ -2578,6 +2610,7 @@
             renderSections();
             document.getElementById('btn-export-word').disabled = false;
             document.getElementById('btn-export-pdf').disabled = false;
+            document.getElementById('btn-export-txt').disabled = false;
 
             // Rola até o fim e foca o conteúdo da nova página para já começar a digitar
             const container = document.getElementById('main-canvas');
@@ -2883,6 +2916,7 @@
 
             document.getElementById('btn-export-word').disabled = false;
             document.getElementById('btn-export-pdf').disabled = false;
+            document.getElementById('btn-export-txt').disabled = false;
             switchTab('generator');
         }
 
@@ -3213,6 +3247,28 @@
             document.body.removeChild(fileDownload);
             URL.revokeObjectURL(url);
         }
+
+        window.exportTxt = function() {
+            const docTitle = document.getElementById('in-title').value || 'Monografia';
+            const parts = [docTitle, ''];
+            state.generatedSections.forEach(sec => {
+                parts.push(sec.title.toUpperCase());
+                const temp = document.createElement('div');
+                temp.innerHTML = sec.content;
+                parts.push(temp.innerText.trim());
+                parts.push('');
+            });
+
+            const blob = new Blob([parts.join('\n')], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const fileDownload = document.createElement('a');
+            fileDownload.href = url;
+            fileDownload.download = `${docTitle}.txt`;
+            document.body.appendChild(fileDownload);
+            fileDownload.click();
+            document.body.removeChild(fileDownload);
+            URL.revokeObjectURL(url);
+        };
 
         /* REGISTRO DO SERVICE WORKER (PWA) */
         if ('serviceWorker' in navigator) {
