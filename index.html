@@ -257,6 +257,16 @@
         @media (max-width: 1023px) {
             .mobile-hidden { transform: translateY(150%); opacity: 0; pointer-events: none; }
             .mobile-visible { transform: translateY(0); opacity: 1; pointer-events: auto; }
+
+            /* Barra de ferramentas fica escondida por padrão no celular (gaveta fechada) e só
+               aparece quando aberta pelo puxador #mobile-toolbar-tab. */
+            #word-toolbar { display: none; }
+            #word-toolbar.mobile-toolbar-open {
+                display: flex !important;
+                left: 3.5rem; right: 1rem; top: 5rem; bottom: 7rem;
+                width: auto !important; height: auto !important; max-height: none !important;
+            }
+            #word-toolbar .resize-handle { display: none !important; }
         }
 
         /* Marca d'água MONOFY por página (some apenas se 1 crédito for consumido na exportação) */
@@ -500,10 +510,17 @@
             </div>
         </div>
 
-        <!-- BARRA DE FERRAMENTAS DE FORMATAÇÃO (estilo Photoshop, ferramentas de Word) — arrastável e redimensionável em todas as bordas -->
-        <div id="word-toolbar" class="hidden lg:flex fixed left-4 top-24 z-30 hide-on-print flex-col bg-slate-900 dark:bg-slate-950 rounded-2xl shadow-2xl border border-slate-700/50 w-12 lg:h-[70vh] lg:max-h-[85vh] lg:min-h-[220px]">
-            <div id="word-toolbar-header" title="Arrastar barra de ferramentas (solte perto de uma parede para fixar)" class="flex items-center justify-center py-1.5 cursor-move shrink-0 hover:bg-white/5 rounded-t-2xl transition-colors">
+        <!-- Aba/puxador no canto esquerdo: só no celular. A barra de ferramentas fica escondida
+             por padrão lá (pra não poluir a tela pequena) e abre como uma gaveta ao tocar aqui. -->
+        <button id="mobile-toolbar-tab" onclick="toggleMobileToolbar()" title="Ferramentas de edição" class="lg:hidden fixed left-0 top-1/2 -translate-y-1/2 z-40 hide-on-print bg-slate-900 dark:bg-slate-950 text-slate-300 rounded-r-xl shadow-xl border border-slate-700/50 border-l-0 w-7 h-16 flex items-center justify-center active:scale-95 transition">
+            <i data-lucide="chevron-right" class="w-4 h-4"></i>
+        </button>
+
+        <!-- BARRA DE FERRAMENTAS DE FORMATAÇÃO (estilo Photoshop, ferramentas de Word) — arrastável e redimensionável em todas as bordas no desktop; no celular abre como gaveta pelo puxador acima -->
+        <div id="word-toolbar" class="flex fixed left-4 top-24 z-30 hide-on-print flex-col bg-slate-900 dark:bg-slate-950 rounded-2xl shadow-2xl border border-slate-700/50 w-12 lg:h-[70vh] lg:max-h-[85vh] lg:min-h-[220px]">
+            <div id="word-toolbar-header" title="Arrastar barra de ferramentas (solte perto de uma parede para fixar)" class="relative flex items-center justify-center py-1.5 cursor-move shrink-0 hover:bg-white/5 rounded-t-2xl transition-colors">
                 <i data-lucide="grip-horizontal" class="toolbar-grip-icon w-5 h-5 text-slate-500"></i>
+                <button onclick="toggleMobileToolbar()" class="lg:hidden absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-slate-400 hover:text-white rounded-full hover:bg-white/10"><i data-lucide="x" class="w-4 h-4"></i></button>
             </div>
             <div class="flex-1 flex flex-wrap content-start items-center justify-center gap-1 py-2 px-1.5 overflow-auto custom-scrollbar">
                 <button onclick="execFormat('undo')" title="Desfazer" class="word-tool-btn"><i data-lucide="undo-2" class="w-4 h-4"></i></button>
@@ -1925,6 +1942,11 @@
         function togglePanelVisibility(panelId) {
             const panel = document.getElementById(panelId);
             if(window.innerWidth < 1024) {
+                // hidden-state é o estado "fechado" usado no desktop; no celular a visibilidade
+                // é controlada só por mobile-hidden/mobile-visible, então ela precisa ser
+                // removida aqui, senão o painel fica com display:none preso mesmo depois de
+                // tirar o mobile-hidden (foi o que fazia os botões Dados/Assistente "não aparecerem").
+                panel.classList.remove('hidden-state');
                 if(panel.classList.contains('mobile-hidden')) {
                     document.getElementById('panel-left').classList.add('mobile-hidden');
                     document.getElementById('panel-right').classList.add('mobile-hidden');
@@ -1943,6 +1965,10 @@
         }
         
         function toggleMobilePanels(side) { togglePanelVisibility(`panel-${side}`); }
+
+        function toggleMobileToolbar() {
+            document.getElementById('word-toolbar').classList.toggle('mobile-toolbar-open');
+        }
 
         // ==========================================
         // TUTORIAL GUIADO DE PRIMEIRO ACESSO
