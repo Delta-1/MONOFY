@@ -98,10 +98,12 @@
         .word-tool-sep { width: 1.75rem; height: 1px; background: rgba(255,255,255,0.12); margin: 0.25rem 0; flex-shrink: 0; }
 
         /* Encaixe (dock) da barra de ferramentas nas paredes esquerda/direita/topo da tela */
-        #word-toolbar.docked-left, #word-toolbar.docked-right { top: 0 !important; height: 100vh !important; max-height: 100vh !important; }
+        /* height: auto + max-height (em vez de height fixo) faz a barra encolher pro tamanho real
+           do conteúdo em vez de ficar "gorda" com um vão vazio embaixo dos ícones. */
+        #word-toolbar.docked-left, #word-toolbar.docked-right { top: 0 !important; bottom: auto !important; height: auto !important; max-height: 100vh !important; }
         #word-toolbar.docked-left { left: 0 !important; border-radius: 0 1rem 1rem 0 !important; }
         #word-toolbar.docked-right { right: 0 !important; left: auto !important; border-radius: 1rem 0 0 1rem !important; }
-        #word-toolbar.docked-top { top: 0 !important; left: 0 !important; right: 0 !important; width: 100vw !important; height: 4.5rem !important; max-height: 4.5rem !important; border-radius: 0 0 1rem 1rem !important; flex-direction: row !important; }
+        #word-toolbar.docked-top { top: 0 !important; left: 0 !important; right: 0 !important; bottom: auto !important; width: 100vw !important; height: auto !important; max-height: 40vh !important; border-radius: 0 0 1rem 1rem !important; flex-direction: row !important; }
         #word-toolbar.docked-top #word-toolbar-header { cursor: move; width: 2.5rem; flex-shrink: 0; }
         #word-toolbar.docked-top #word-toolbar-header .toolbar-grip-icon { transform: rotate(90deg); }
         #word-toolbar.docked-top > .resize-handle.resize-e, #word-toolbar.docked-top > .resize-handle.resize-w,
@@ -263,8 +265,8 @@
             #word-toolbar { display: none; }
             #word-toolbar.mobile-toolbar-open {
                 display: flex !important;
-                left: 3.5rem; right: 1rem; top: 5rem; bottom: 7rem;
-                width: auto !important; height: auto !important; max-height: none !important;
+                left: 3.5rem; right: 1rem; top: 5rem; bottom: auto;
+                width: auto !important; height: auto !important; max-height: calc(100vh - 9rem) !important;
             }
             #word-toolbar .resize-handle { display: none !important; }
         }
@@ -517,12 +519,12 @@
         </button>
 
         <!-- BARRA DE FERRAMENTAS DE FORMATAÇÃO (estilo Photoshop, ferramentas de Word) — arrastável e redimensionável em todas as bordas no desktop; no celular abre como gaveta pelo puxador acima -->
-        <div id="word-toolbar" class="flex fixed left-4 top-24 z-30 hide-on-print flex-col bg-slate-900 dark:bg-slate-950 rounded-2xl shadow-2xl border border-slate-700/50 w-12 lg:h-[70vh] lg:max-h-[85vh] lg:min-h-[220px]">
+        <div id="word-toolbar" class="flex fixed left-4 top-24 z-30 hide-on-print flex-col bg-slate-900 dark:bg-slate-950 rounded-2xl shadow-2xl border border-slate-700/50 w-12 h-auto lg:max-h-[85vh]">
             <div id="word-toolbar-header" title="Arrastar barra de ferramentas (solte perto de uma parede para fixar)" class="relative flex items-center justify-center py-1.5 cursor-move shrink-0 hover:bg-white/5 rounded-t-2xl transition-colors">
                 <i data-lucide="grip-horizontal" class="toolbar-grip-icon w-5 h-5 text-slate-500"></i>
                 <button onclick="toggleMobileToolbar()" class="lg:hidden absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-slate-400 hover:text-white rounded-full hover:bg-white/10"><i data-lucide="x" class="w-4 h-4"></i></button>
             </div>
-            <div class="flex-1 flex flex-wrap content-start items-center justify-center gap-1 py-2 px-1.5 overflow-auto custom-scrollbar">
+            <div class="flex flex-wrap content-start items-center justify-center gap-1 py-2 px-1.5 overflow-auto custom-scrollbar">
                 <button onclick="execFormat('undo')" title="Desfazer" class="word-tool-btn"><i data-lucide="undo-2" class="w-4 h-4"></i></button>
                 <button onclick="execFormat('redo')" title="Refazer" class="word-tool-btn"><i data-lucide="redo-2" class="w-4 h-4"></i></button>
                 <div class="word-tool-sep"></div>
