@@ -827,6 +827,47 @@
     <!-- Input de imagem compartilhado, usado pela ferramenta de edição inline -->
     <input type="file" id="inline-image-upload" accept="image/*" class="hidden" />
 
+    <!-- Modal de confirmação genérico (substitui o confirm() nativo do navegador, feio e
+         inconsistente com o resto do design). Usado antes de ações que gastam créditos. -->
+    <div id="confirm-modal" class="hidden-state fixed inset-0 z-[230] hide-on-print flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-6">
+        <div class="bg-white dark:bg-slate-850 w-full max-w-sm rounded-3xl shadow-2xl border border-white/40 dark:border-slate-700/50 p-6">
+            <h3 id="confirm-modal-title" class="font-extrabold text-lg text-slate-800 dark:text-white mb-2"></h3>
+            <p id="confirm-modal-text" class="text-sm text-slate-600 dark:text-slate-300 leading-relaxed"></p>
+            <div class="flex items-center justify-end gap-2 mt-6">
+                <button id="confirm-modal-cancel" type="button" class="text-sm font-bold text-slate-500 hover:text-slate-800 dark:hover:text-white px-4 py-2.5 rounded-xl">Cancelar</button>
+                <button id="confirm-modal-ok" type="button" class="text-sm font-bold bg-primary-600 hover:bg-primary-700 text-white px-5 py-2.5 rounded-xl shadow">Continuar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chat de refino com IA: substitui o antigo prompt()/confirm() nativos do navegador.
+         Permite conversar sobre um trecho específico e iterar antes de aplicar a mudança ao texto. -->
+    <div id="refine-chat-modal" class="hidden-state fixed inset-0 z-[220] hide-on-print flex items-end lg:items-center justify-center bg-slate-900/60 backdrop-blur-sm p-0 lg:p-6">
+        <div class="bg-white dark:bg-slate-850 w-full lg:max-w-lg lg:rounded-3xl rounded-t-3xl shadow-2xl border border-white/40 dark:border-slate-700/50 flex flex-col h-[85vh] lg:h-[640px] max-h-[90vh]">
+            <div class="flex items-center justify-between px-5 py-4 border-b border-slate-100 dark:border-slate-800">
+                <div class="flex items-center gap-2">
+                    <i data-lucide="sparkles" class="w-5 h-5 text-purple-600"></i>
+                    <h3 class="font-extrabold text-slate-800 dark:text-white">Refinar trecho com IA</h3>
+                </div>
+                <button onclick="closeRefineChat()" type="button" class="p-1.5 text-slate-400 hover:text-slate-700 dark:hover:text-white rounded-full hover:bg-slate-100 dark:hover:bg-slate-800">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <div id="refine-chat-messages" class="flex-1 overflow-y-auto px-5 py-4 space-y-4 custom-scrollbar"></div>
+
+            <div class="border-t border-slate-100 dark:border-slate-800 p-4 space-y-2">
+                <p class="text-xs text-slate-400">Cada mensagem enviada consome <span id="refine-chat-cost" class="font-bold"></span> créditos.</p>
+                <div class="flex items-end gap-2">
+                    <textarea id="refine-chat-input" rows="1" placeholder="Ex: deixe mais formal, expanda com mais detalhes..." class="flex-1 resize-none p-3 text-sm border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 rounded-xl outline-none focus:ring-2 focus:ring-purple-400"></textarea>
+                    <button id="refine-chat-send" onclick="sendRefineChatMessage()" type="button" class="shrink-0 w-11 h-11 flex items-center justify-center bg-purple-600 hover:bg-purple-700 text-white rounded-xl shadow disabled:opacity-50">
+                        <i data-lucide="send" class="w-4 h-4"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
         // ==========================================
         // 1. ESTADO GLOBAL E DRAGGABLE PANELS
@@ -1943,13 +1984,17 @@
 
             if (state.isDemo) { alert('Modo demonstração: geração com IA desativada. Crie uma conta para usar de verdade.'); return; }
             if (!state.profile) { alert('Aguarde o carregamento do seu perfil.'); return; }
-            if (!confirm(`Gerar a monografia inteira com IA consome ${AI_COST_FULL_DOC} créditos (saldo atual: ${state.profile.credits}). Continuar?`)) return;
+            const confirmed = await showConfirmModal(
+                'Gerar monografia com IA',
+                `Isso vai consumir <b>${AI_COST_FULL_DOC} créditos</b> do seu saldo atual de <b>${state.profile.credits}</b>. Continuar?`
+            );
+            if (!confirmed) return;
 
             const btnGenerate = document.getElementById('btn-generate');
             document.getElementById('icon-generate').classList.add('hidden-state');
             document.getElementById('icon-loading').classList.remove('hidden-state');
-            document.getElementById('text-generate').innerText = 'A processar...';
             btnGenerate.disabled = true;
+            const stopProgress = startGenerationProgressMessages();
 
             const activeTpl = getActiveNormTemplate();
             const citStyle = state.citationStyle;
@@ -2016,11 +2061,32 @@
                 console.error(err);
                 showError(err.message || 'Erro na IA. Tente novamente com menos texto.');
             } finally {
+                stopProgress();
                 document.getElementById('icon-generate').classList.remove('hidden-state');
                 document.getElementById('icon-loading').classList.add('hidden-state');
                 document.getElementById('text-generate').innerText = 'Redigir Monografia';
                 btnGenerate.disabled = false;
             }
+        }
+
+        const GENERATION_PROGRESS_MESSAGES = [
+            'Analisando as suas notas...',
+            'Estruturando os capítulos...',
+            'Redigindo o texto...',
+            'Aplicando as normas de formatação...',
+            'Organizando as referências...',
+            'Quase lá...'
+        ];
+
+        function startGenerationProgressMessages() {
+            let i = 0;
+            const textEl = document.getElementById('text-generate');
+            textEl.innerText = GENERATION_PROGRESS_MESSAGES[0];
+            const interval = setInterval(() => {
+                i = (i + 1) % GENERATION_PROGRESS_MESSAGES.length;
+                textEl.innerText = GENERATION_PROGRESS_MESSAGES[i];
+            }, 3500);
+            return () => clearInterval(interval);
         }
 
         // --- 5. RENDERIZAÇÃO A4 E ÍNDICE ---
@@ -2378,36 +2444,138 @@
             }, 500);
         }
 
-        async function refineInline(sectionId, pageKey) {
+        function refineInline(sectionId, pageKey) {
             if (state.isDemo) { alert('Modo demonstração: refinar com IA está desativado.'); return; }
             if (!state.profile) { alert('Aguarde o carregamento do seu perfil.'); return; }
             const el = document.getElementById(`apa-content-${pageKey}`);
-            if (!el) return;
-            const currentContent = el.innerText.trim();
-            if (!currentContent) return;
+            if (!el || !el.innerText.trim()) return;
+            openRefineChat(sectionId, pageKey, el);
+        }
 
-            const instruction = prompt('O que você quer que a IA faça com este trecho? (ex: "deixar mais formal", "expandir com mais detalhes"). Isso usa a IA para melhorar o seu texto, mantendo-o como base — não substitui por algo do zero.', 'Melhorar a redação e coerência, mantendo as ideias originais');
+        function showConfirmModal(title, html) {
+            return new Promise((resolve) => {
+                const modal = document.getElementById('confirm-modal');
+                document.getElementById('confirm-modal-title').innerText = title;
+                document.getElementById('confirm-modal-text').innerHTML = html;
+                modal.classList.remove('hidden-state');
+
+                const okBtn = document.getElementById('confirm-modal-ok');
+                const cancelBtn = document.getElementById('confirm-modal-cancel');
+                const cleanup = (result) => {
+                    modal.classList.add('hidden-state');
+                    okBtn.removeEventListener('click', onOk);
+                    cancelBtn.removeEventListener('click', onCancel);
+                    resolve(result);
+                };
+                const onOk = () => cleanup(true);
+                const onCancel = () => cleanup(false);
+                okBtn.addEventListener('click', onOk);
+                cancelBtn.addEventListener('click', onCancel);
+            });
+        }
+
+        // --- Chat de refino: várias rodadas de conversa sobre o mesmo trecho antes de aplicar ---
+        let refineChat = null;
+
+        function openRefineChat(sectionId, pageKey, el) {
+            refineChat = { sectionId, pageKey, baseHTML: el.innerHTML, draftHTML: el.innerHTML, messages: [], busy: false };
+            document.getElementById('refine-chat-cost').innerText = AI_COST_PER_PAGE;
+            document.getElementById('refine-chat-input').value = '';
+            renderRefineChatMessages();
+            document.getElementById('refine-chat-modal').classList.remove('hidden-state');
+            setTimeout(() => document.getElementById('refine-chat-input').focus(), 100);
+        }
+
+        function closeRefineChat() {
+            document.getElementById('refine-chat-modal').classList.add('hidden-state');
+            refineChat = null;
+        }
+
+        function renderRefineChatMessages() {
+            const box = document.getElementById('refine-chat-messages');
+            if (!refineChat.messages.length) {
+                box.innerHTML = `<p class="text-sm text-slate-400 text-center italic px-4">Diga o que você quer mudar neste trecho (ex: "deixe mais formal", "resuma em um parágrafo"). Pode pedir vários ajustes antes de aplicar ao texto.</p>`;
+                return;
+            }
+            box.innerHTML = refineChat.messages.map((m, i) => {
+                if (m.role === 'user') {
+                    return `<div class="ml-auto max-w-[85%] bg-purple-600 text-white rounded-2xl rounded-br-sm px-4 py-2.5 text-sm">${escapeHtml(m.text)}</div>`;
+                }
+                if (m.role === 'error') {
+                    return `<div class="max-w-[85%] flex items-center gap-2 text-red-600 dark:text-red-400 text-sm bg-red-50 dark:bg-red-900/20 rounded-2xl px-4 py-2.5"><i data-lucide="alert-triangle" class="w-4 h-4 shrink-0"></i>${escapeHtml(m.text)}</div>`;
+                }
+                const preview = m.htmlResult.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+                const applied = m.applied;
+                return `<div class="max-w-[90%] bg-slate-100 dark:bg-slate-800 rounded-2xl rounded-bl-sm p-3 space-y-2">
+                    <p class="text-[11px] font-bold text-purple-600 dark:text-purple-400 uppercase tracking-wide">Sugestão da IA</p>
+                    <p class="text-sm text-slate-700 dark:text-slate-200 line-clamp-6">${escapeHtml(preview.slice(0, 600))}${preview.length > 600 ? '…' : ''}</p>
+                    <button onclick="applyRefineMessage(${i})" type="button" ${applied ? 'disabled' : ''} class="text-xs font-bold px-3 py-1.5 rounded-lg ${applied ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-purple-600 text-white hover:bg-purple-700'}">
+                        ${applied ? '✓ Aplicado ao texto' : 'Aplicar ao texto'}
+                    </button>
+                </div>`;
+            }).join('');
+            box.scrollTop = box.scrollHeight;
+            lucide.createIcons();
+        }
+
+        function escapeHtml(str) {
+            const d = document.createElement('div');
+            d.innerText = str;
+            return d.innerHTML;
+        }
+
+        async function sendRefineChatMessage() {
+            if (!refineChat || refineChat.busy) return;
+            const input = document.getElementById('refine-chat-input');
+            const instruction = input.value.trim();
             if (!instruction) return;
+            if (!state.profile) return;
 
-            if (!confirm(`Usar a IA nesta página consome ${AI_COST_PER_PAGE} créditos (saldo atual: ${state.profile.credits}). Continuar?`)) return;
+            refineChat.messages.push({ role: 'user', text: instruction });
+            input.value = '';
+            renderRefineChatMessages();
 
-            el.style.opacity = '0.5';
+            refineChat.busy = true;
+            document.getElementById('refine-chat-send').disabled = true;
+
+            const currentDraftText = refineChat.draftHTML.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
             const systemPrompt = `Actúa como un profesor universitario experto en Normas ${state.citationStyle}.
             IDIOMA DE SALIDA: ${state.docLanguage}.
             INSTRUÇÃO DO USUÁRIO: ${instruction}
-            IMPORTANTE: Use o texto original como BASE. Melhore-o, não o substitua por um texto completamente novo nem remova as ideias que o usuário já escreveu.
+            IMPORTANTE: Use o texto atual como BASE. Melhore-o conforme a instrução, não remova as ideias que o usuário já escreveu sem necessidade.
             REGLAS: Usa <p> para separar párrafos. Devuelve ÚNICAMENTE el código HTML crudo sin markdown.`;
 
             try {
-                let improvedText = await callAI(`${systemPrompt}\n\nTEXTO:\n${currentContent}`, AI_COST_PER_PAGE, 'ai_refine_page');
-                improvedText = improvedText.replace(/```html/gi, '').replace(/```/g, '').trim();
-                el.innerHTML = improvedText;
-                scheduleSyncSection(sectionId, true); checkAndSplitOverflow(sectionId);
+                let improved = await callAI(`${systemPrompt}\n\nTEXTO:\n${currentDraftText}`, AI_COST_PER_PAGE, 'ai_refine_page');
+                improved = improved.replace(/```html/gi, '').replace(/```/g, '').trim();
+                refineChat.draftHTML = improved;
+                refineChat.messages.push({ role: 'ai', htmlResult: improved, applied: false });
             } catch (err) {
-                console.error(err); showError(err.message || 'Erro na IA ao tentar melhorar o texto.');
+                console.error(err);
+                refineChat.messages.push({ role: 'error', text: err.message || 'Erro na IA ao tentar melhorar o texto.' });
             } finally {
-                el.style.opacity = '1';
+                refineChat.busy = false;
+                document.getElementById('refine-chat-send').disabled = false;
+                renderRefineChatMessages();
             }
+        }
+
+        document.getElementById('refine-chat-input').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendRefineChatMessage(); }
+        });
+
+        function applyRefineMessage(index) {
+            if (!refineChat) return;
+            const msg = refineChat.messages[index];
+            if (!msg || msg.role !== 'ai') return;
+            const el = document.getElementById(`apa-content-${refineChat.pageKey}`);
+            if (!el) return;
+            el.innerHTML = msg.htmlResult;
+            refineChat.messages.forEach(m => { if (m.role === 'ai') m.applied = false; });
+            msg.applied = true;
+            scheduleSyncSection(refineChat.sectionId, true);
+            checkAndSplitOverflow(refineChat.sectionId);
+            renderRefineChatMessages();
         }
 
         let _pendingImageTarget = null;
