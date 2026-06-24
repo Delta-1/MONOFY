@@ -45,8 +45,16 @@
             { id: 'pack_100', credits: 100, price: 'R$ 90,00' }
         ];
         const CREDITS_PER_EXPORT = 10; // remover marca d'água
-        const AI_COST_PER_PAGE = 5;    // usar IA pra refinar 1 página
-        const AI_COST_FULL_DOC = 50;   // gerar a monografia inteira com IA
+        const AI_COST_PER_PAGE = 5;       // usar IA pra refinar 1 página
+        const AI_COST_PER_SECTION = 10;   // gerar 1 seção da monografia com IA (5 seções = 50, igual ao custo anterior do doc inteiro)
+
+        const DOC_SECTION_PLAN = [
+            { id: 'resumo', label: 'Resumo', instructions: `Redacta un RESUMEN/ABSTRACT breve (máx. 200 palabras) que sintetice el problema, el objetivo y la conclusión esperada del trabajo, basado en las notas del usuario. No uses subtítulos.` },
+            { id: 'introducao', label: 'Introdução', instructions: `Redacta la INTRODUCCIÓN: contextualiza el tema, presenta el problema, los objetivos y la justificación del trabajo. 2 a 4 párrafos.` },
+            { id: 'marco_teorico', label: 'Marco Teórico', instructions: `Redacta el MARCO TEÓRICO completo: desarrolla analíticamente los conceptos y argumentos de las notas y del material de referencia. Crea subtítulos con <h2> para cada subtema relevante. Esta es la sección más extensa y profunda del trabajo.` },
+            { id: 'conclusao', label: 'Conclusão', instructions: `Redacta la CONCLUSIÓN: sintetiza los hallazgos, retoma los objetivos planteados en la introducción y propone consideraciones finales. 2 a 3 párrafos.` },
+            { id: 'referencias', label: 'Referências', instructions: null }
+        ];
         const WHATSAPP_SUPPORT_NUMBER = '5519989765398';
 
         // Modelos de norma embutidos. Margens em cm. recuoParagrafo em cm.
@@ -83,6 +91,11 @@
 
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; overscroll-behavior-y: none; }
         .hidden-state { display: none !important; }
+
+        /* Barra de ferramentas de formatação (estilo Photoshop) */
+        .word-tool-btn { width: 2.25rem; height: 2.25rem; display: flex; align-items: center; justify-content: center; border-radius: 0.6rem; color: #cbd5e1; flex-shrink: 0; transition: background-color 0.15s, color 0.15s; }
+        .word-tool-btn:hover { background-color: rgba(255,255,255,0.1); color: #fff; }
+        .word-tool-sep { width: 1.75rem; height: 1px; background: rgba(255,255,255,0.12); margin: 0.25rem 0; flex-shrink: 0; }
 
         /* Scrollbar Melhorada e Visível */
         ::-webkit-scrollbar { width: 8px; height: 8px; }
@@ -465,7 +478,7 @@
         </div>
 
         <!-- Aba fixa na borda esquerda: abre o painel de ferramentas de edição (estilo Word) -->
-        <button id="tools-tab-handle" onclick="toggleEditorToolsPanel()" title="Ferramentas de Edição" class="fixed left-0 top-1/2 -translate-y-1/2 z-[65] hide-on-print w-9 h-20 bg-primary-600 hover:bg-primary-700 text-white rounded-r-xl shadow-xl flex items-center justify-center transition-colors">
+        <button id="tools-tab-handle" onclick="toggleEditorToolsPanel()" title="Ferramentas de Edição" class="fixed left-0 top-4 z-[65] hide-on-print w-9 h-20 bg-primary-600 hover:bg-primary-700 text-white rounded-r-xl shadow-xl flex items-center justify-center transition-colors">
             <i data-lucide="layout-panel-left" class="w-5 h-5"></i>
         </button>
 
@@ -495,9 +508,44 @@
             </div>
         </div>
 
+        <!-- BARRA DE FERRAMENTAS DE FORMATAÇÃO (estilo Photoshop, ferramentas de Word) -->
+        <div id="word-toolbar" class="hidden lg:flex fixed left-4 top-24 bottom-28 z-30 hide-on-print flex-col items-center gap-1 py-3 px-1.5 bg-slate-900 dark:bg-slate-950 rounded-2xl shadow-2xl border border-slate-700/50 overflow-y-auto custom-scrollbar w-12">
+            <button onclick="execFormat('undo')" title="Desfazer" class="word-tool-btn"><i data-lucide="undo-2" class="w-4 h-4"></i></button>
+            <button onclick="execFormat('redo')" title="Refazer" class="word-tool-btn"><i data-lucide="redo-2" class="w-4 h-4"></i></button>
+            <div class="word-tool-sep"></div>
+            <button onclick="execFormat('bold')" title="Negrito" class="word-tool-btn"><i data-lucide="bold" class="w-4 h-4"></i></button>
+            <button onclick="execFormat('italic')" title="Itálico" class="word-tool-btn"><i data-lucide="italic" class="w-4 h-4"></i></button>
+            <button onclick="execFormat('underline')" title="Sublinhado" class="word-tool-btn"><i data-lucide="underline" class="w-4 h-4"></i></button>
+            <button onclick="execFormat('removeFormat')" title="Limpar Formatação" class="word-tool-btn"><i data-lucide="eraser" class="w-4 h-4"></i></button>
+            <label title="Realçar texto" class="word-tool-btn cursor-pointer relative">
+                <i data-lucide="highlighter" class="w-4 h-4"></i>
+                <input type="color" value="#fef08a" onchange="execFormat('hiliteColor', this.value)" class="absolute inset-0 opacity-0 cursor-pointer">
+            </label>
+            <label title="Cor da fonte" class="word-tool-btn cursor-pointer relative">
+                <i data-lucide="baseline" class="w-4 h-4"></i>
+                <input type="color" value="#1e293b" onchange="execFormat('foreColor', this.value)" class="absolute inset-0 opacity-0 cursor-pointer">
+            </label>
+            <div class="word-tool-sep"></div>
+            <button onclick="execFormat('justifyLeft')" title="Alinhar à Esquerda" class="word-tool-btn"><i data-lucide="align-left" class="w-4 h-4"></i></button>
+            <button onclick="execFormat('justifyCenter')" title="Centralizar" class="word-tool-btn"><i data-lucide="align-center" class="w-4 h-4"></i></button>
+            <button onclick="execFormat('justifyRight')" title="Alinhar à Direita" class="word-tool-btn"><i data-lucide="align-right" class="w-4 h-4"></i></button>
+            <button onclick="execFormat('justifyFull')" title="Justificar" class="word-tool-btn"><i data-lucide="align-justify" class="w-4 h-4"></i></button>
+            <div class="word-tool-sep"></div>
+            <button onclick="execFormat('insertUnorderedList')" title="Marcadores" class="word-tool-btn"><i data-lucide="list" class="w-4 h-4"></i></button>
+            <button onclick="execFormat('insertOrderedList')" title="Numeração" class="word-tool-btn"><i data-lucide="list-ordered" class="w-4 h-4"></i></button>
+            <button onclick="execFormat('outdent')" title="Diminuir Recuo" class="word-tool-btn"><i data-lucide="indent-decrease" class="w-4 h-4"></i></button>
+            <button onclick="execFormat('indent')" title="Aumentar Recuo" class="word-tool-btn"><i data-lucide="indent-increase" class="w-4 h-4"></i></button>
+            <div class="word-tool-sep"></div>
+            <button onclick="execFormat('selectAll')" title="Selecionar Tudo" class="word-tool-btn"><i data-lucide="text-cursor-input" class="w-4 h-4"></i></button>
+            <button onclick="openFindReplace()" title="Localizar e Substituir" class="word-tool-btn"><i data-lucide="search" class="w-4 h-4"></i></button>
+            <button onclick="toolbarInsertPageBreak()" title="Quebra de Página" class="word-tool-btn"><i data-lucide="scissors" class="w-4 h-4"></i></button>
+            <div class="word-tool-sep"></div>
+            <button onclick="saveCurrentWork()" title="Salvar Trabalho" class="word-tool-btn text-emerald-400"><i data-lucide="save" class="w-4 h-4"></i></button>
+        </div>
+
         <!-- PAINEL ESQUERDO: Dados e Contexto da Monografia (Com Resize Dinâmico) -->
-        <div id="panel-left" class="fixed lg:absolute left-4 right-4 lg:right-auto top-4 lg:top-24 bottom-28 lg:bottom-auto lg:h-[78vh] lg:max-h-[85vh] lg:w-[400px] bg-white/95 dark:bg-slate-850/95 backdrop-blur-sm shadow-2xl rounded-3xl border border-white/40 dark:border-slate-700/50 flex flex-col z-30 transition-transform duration-300 mobile-hidden lg:!transform-none lg:!opacity-100 lg:!pointer-events-auto lg:overflow-hidden lg:min-w-[320px] lg:max-w-[50vw] lg:min-h-[400px]">
-            
+        <div id="panel-left" class="fixed lg:absolute left-4 lg:left-20 right-4 lg:right-auto top-4 lg:top-24 bottom-28 lg:bottom-auto lg:h-[78vh] lg:max-h-[85vh] lg:w-[400px] bg-white/95 dark:bg-slate-850/95 backdrop-blur-sm shadow-2xl rounded-3xl border border-white/40 dark:border-slate-700/50 flex flex-col z-30 transition-transform duration-300 mobile-hidden lg:!transform-none lg:!opacity-100 lg:!pointer-events-auto lg:overflow-hidden lg:min-w-[320px] lg:max-w-[50vw] lg:min-h-[400px]">
+
             <div id="panel-left-header" class="p-5 border-b border-slate-200/50 dark:border-slate-800/50 flex justify-between items-center cursor-move lg:hover:bg-slate-50/50 dark:hover:bg-slate-800/50 rounded-t-3xl transition-colors">
                 <h3 class="font-extrabold flex items-center gap-2 text-slate-800 dark:text-white"><i data-lucide="database" class="w-5 h-5 text-primary-500"></i> Dados da Pesquisa</h3>
                 <div class="flex gap-2">
@@ -572,8 +620,8 @@
         </div>
 
         <!-- PAINEL DIREITO: Assistente e Ações IA (Com Resize Dinâmico) -->
-        <div id="panel-right" class="fixed lg:absolute left-4 right-4 lg:left-auto lg:right-4 top-4 lg:top-24 bottom-28 lg:bottom-auto lg:h-[78vh] lg:max-h-[85vh] lg:w-[320px] bg-white/95 dark:bg-slate-850/95 backdrop-blur-sm shadow-2xl rounded-3xl border border-white/40 dark:border-slate-700/50 flex flex-col z-30 transition-transform duration-300 mobile-hidden lg:!transform-none lg:!opacity-100 lg:!pointer-events-auto lg:overflow-hidden lg:min-w-[300px] lg:max-w-[40vw] lg:min-h-[400px]">
-            
+        <div id="panel-right" class="fixed lg:absolute left-4 right-4 lg:left-[500px] lg:right-auto top-4 lg:top-24 bottom-28 lg:bottom-auto lg:h-[78vh] lg:max-h-[85vh] lg:w-[340px] bg-white/95 dark:bg-slate-850/95 backdrop-blur-sm shadow-2xl rounded-3xl border border-white/40 dark:border-slate-700/50 flex flex-col z-30 transition-transform duration-300 mobile-hidden lg:!transform-none lg:!opacity-100 lg:!pointer-events-auto lg:overflow-hidden lg:min-w-[300px] lg:max-w-[40vw] lg:min-h-[400px]">
+
             <div id="panel-right-header" class="p-5 border-b border-slate-200/50 dark:border-slate-800/50 flex justify-between items-center cursor-move lg:hover:bg-slate-50/50 dark:hover:bg-slate-800/50 rounded-t-3xl transition-colors">
                 <h3 class="font-extrabold flex items-center gap-2 text-slate-800 dark:text-white"><i data-lucide="bot" class="w-5 h-5 text-purple-500"></i> Assistente IA</h3>
                 <div class="flex gap-2">
@@ -582,43 +630,60 @@
                 </div>
             </div>
 
-            <div class="flex-1 p-5 flex flex-col gap-6 overflow-y-auto custom-scrollbar pb-8">
-                
-                <div class="bg-purple-50 dark:bg-purple-900/20 p-4 rounded-2xl border border-purple-100 dark:border-purple-900/30">
-                    <p class="text-sm text-purple-800 dark:text-purple-300 leading-relaxed font-medium" id="assistant-intro-text">
-                        Olá! Eu vou formatar e expandir a sua pesquisa gerando uma monografia com Índice automático, margens e referências no modelo ativo.
-                    </p>
+            <div class="flex-1 flex flex-col overflow-hidden min-h-0">
+                <div id="assistant-chat-messages" class="flex-1 overflow-y-auto custom-scrollbar p-5 space-y-3"></div>
+
+                <div class="p-4 border-t border-slate-100 dark:border-slate-800 space-y-2 shrink-0">
+                    <div class="flex items-end gap-2">
+                        <textarea id="assistant-chat-input" rows="1" placeholder="Conte pra IA o que você quer (tema, foco, tom...)" class="flex-1 resize-none p-3 text-sm border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 rounded-xl outline-none focus:ring-2 focus:ring-purple-400"></textarea>
+                        <button id="assistant-chat-send" onclick="sendAssistantChatMessage()" type="button" class="p-3 bg-purple-600 hover:bg-purple-700 text-white rounded-xl shadow shrink-0"><i data-lucide="send" class="w-4 h-4"></i></button>
+                    </div>
+                    <p class="text-[11px] text-slate-400">Cada mensagem consome <span class="font-bold"><span id="assistant-chat-cost"></span></span> créditos. A conversa entra como contexto extra ao clicar em "Redigir".</p>
                 </div>
 
-                <div class="space-y-3 mt-auto">
+                <div class="p-5 pt-3 space-y-3 shrink-0 border-t border-slate-100 dark:border-slate-800 overflow-y-auto custom-scrollbar max-h-[40%]">
                     <button id="btn-generate" onclick="generateDocument()" class="w-full bg-slate-900 dark:bg-primary-600 hover:bg-slate-800 dark:hover:bg-primary-700 text-white font-extrabold py-4 rounded-xl transition-all flex items-center justify-center gap-2 shadow-xl hover:shadow-2xl hover:-translate-y-1 disabled:opacity-50 disabled:transform-none">
                         <i data-lucide="wand-2" id="icon-generate" class="w-5 h-5"></i>
                         <i data-lucide="loader-2" id="icon-loading" class="w-5 h-5 animate-spin hidden-state"></i>
                         <span id="text-generate">Redigir Monografia</span>
                     </button>
                 </div>
+            </div>
+        </div>
 
-                <div class="space-y-3 pt-6 border-t border-slate-200/50 dark:border-slate-800/50">
-                    <button onclick="saveCurrentWork()" class="w-full flex items-center justify-center gap-3 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-900/30 text-emerald-700 dark:text-emerald-400 font-bold py-3.5 rounded-xl transition-all shadow-sm hover:shadow-md mb-2">
-                        <i data-lucide="save" class="w-5 h-5"></i> Salvar Trabalho
-                    </button>
+        <!-- PAINEL DE EXPORTAÇÃO: Salvar, remover marca d'água e exportar o documento final -->
+        <div id="panel-export" class="fixed lg:absolute left-4 right-4 lg:left-auto lg:right-4 top-4 lg:top-24 bottom-28 lg:bottom-auto lg:h-[78vh] lg:max-h-[85vh] lg:w-[300px] bg-white/95 dark:bg-slate-850/95 backdrop-blur-sm shadow-2xl rounded-3xl border border-white/40 dark:border-slate-700/50 flex flex-col z-30 transition-transform duration-300 mobile-hidden lg:!transform-none lg:!opacity-100 lg:!pointer-events-auto lg:overflow-hidden lg:min-w-[280px] lg:max-w-[40vw] lg:min-h-[400px]">
 
-                    <button onclick="removeWatermarkForCurrentDoc()" id="btn-remove-watermark-doc" class="w-full flex items-center justify-center gap-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-900/30 text-amber-700 dark:text-amber-400 font-bold py-3.5 rounded-xl transition-all shadow-sm hover:shadow-md mb-4 disabled:opacity-60">
-                        <i data-lucide="droplet-off" class="w-4 h-4"></i> Remover Marca d'Água (10 créditos)
-                    </button>
-
-                    <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest text-center mb-4">Exportar Formato</h4>
-
-                    <button onclick="exportWord()" id="btn-export-word" disabled class="w-full flex items-center justify-center gap-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-blue-600 dark:text-blue-400 font-bold py-3.5 rounded-xl transition-all shadow-sm hover:shadow-md disabled:opacity-50">
-                        <i data-lucide="file-down" class="w-5 h-5"></i> Word (.docx)
-                    </button>
-                    
-                    <button onclick="handleExportPDF()" id="btn-export-pdf" disabled class="w-full flex items-center justify-center gap-3 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-900/30 text-red-600 dark:text-red-400 font-bold py-3.5 rounded-xl transition-all shadow-sm hover:shadow-md disabled:opacity-50">
-                        <i data-lucide="printer" class="w-5 h-5"></i> PDF / Imprimir
-                    </button>
+            <div id="panel-export-header" class="p-5 border-b border-slate-200/50 dark:border-slate-800/50 flex justify-between items-center cursor-move lg:hover:bg-slate-50/50 dark:hover:bg-slate-800/50 rounded-t-3xl transition-colors">
+                <h3 class="font-extrabold flex items-center gap-2 text-slate-800 dark:text-white"><i data-lucide="file-down" class="w-5 h-5 text-emerald-500"></i> Exportar</h3>
+                <div class="flex gap-2">
+                    <button onclick="toggleMobilePanels('export')" class="lg:hidden p-2 bg-slate-100 dark:bg-slate-800 rounded-full"><i data-lucide="x" class="w-4 h-4"></i></button>
+                    <button onclick="document.getElementById('panel-export').classList.add('hidden-state')" class="hidden lg:block p-1.5 text-slate-400 hover:text-slate-800 dark:hover:text-white rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition"><i data-lucide="minus" class="w-4 h-4"></i></button>
                 </div>
-                <!-- Espaçador inferior -->
-                <div class="h-2 shrink-0"></div>
+            </div>
+
+            <div class="flex-1 p-5 flex flex-col gap-3 overflow-y-auto custom-scrollbar">
+                <button onclick="saveCurrentWork()" class="w-full flex items-center justify-center gap-3 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-900/30 text-emerald-700 dark:text-emerald-400 font-bold py-3.5 rounded-xl transition-all shadow-sm hover:shadow-md">
+                    <i data-lucide="save" class="w-5 h-5"></i> Salvar Trabalho
+                </button>
+
+                <button onclick="removeWatermarkForCurrentDoc()" id="btn-remove-watermark-doc" class="w-full flex items-center justify-center gap-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-900/30 text-amber-700 dark:text-amber-400 font-bold py-3.5 rounded-xl transition-all shadow-sm hover:shadow-md disabled:opacity-60">
+                    <i data-lucide="droplet-off" class="w-4 h-4"></i> Remover Marca d'Água (10 créditos)
+                </button>
+
+                <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest text-center pt-2">Exportar Formato</h4>
+
+                <button onclick="exportWord()" id="btn-export-word" disabled class="w-full flex items-center justify-center gap-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-blue-600 dark:text-blue-400 font-bold py-3.5 rounded-xl transition-all shadow-sm hover:shadow-md disabled:opacity-50">
+                    <i data-lucide="file-down" class="w-5 h-5"></i> Word (.docx)
+                </button>
+
+                <button onclick="handleExportPDF()" id="btn-export-pdf" disabled class="w-full flex items-center justify-center gap-3 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-900/30 text-red-600 dark:text-red-400 font-bold py-3.5 rounded-xl transition-all shadow-sm hover:shadow-md disabled:opacity-50">
+                    <i data-lucide="printer" class="w-5 h-5"></i> PDF / Imprimir
+                </button>
+
+                <button onclick="exportTxt()" id="btn-export-txt" disabled class="w-full flex items-center justify-center gap-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-bold py-3.5 rounded-xl transition-all shadow-sm hover:shadow-md disabled:opacity-50">
+                    <i data-lucide="file-text" class="w-5 h-5"></i> Texto (.txt)
+                </button>
             </div>
         </div>
 
@@ -695,6 +760,11 @@
                 <button onclick="togglePanelVisibility('panel-right')" id="dock-toggle-assistant" class="dock-btn relative flex items-center justify-center w-10 h-10 lg:w-12 lg:h-12 rounded-full text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/30 transition">
                     <i data-lucide="bot" class="dock-icon w-4 h-4 lg:w-5 lg:h-5"></i>
                     <span class="dock-tooltip">Assistente</span>
+                </button>
+
+                <button onclick="togglePanelVisibility('panel-export')" id="dock-toggle-export" class="dock-btn relative flex items-center justify-center w-10 h-10 lg:w-12 lg:h-12 rounded-full text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 transition">
+                    <i data-lucide="file-down" class="dock-icon w-4 h-4 lg:w-5 lg:h-5"></i>
+                    <span class="dock-tooltip">Exportar</span>
                 </button>
 
             </div>
@@ -871,6 +941,22 @@
         </div>
     </div>
 
+    <!-- Localizar e Substituir: busca/substitui texto em todas as páginas do documento. -->
+    <div id="find-replace-modal" class="hidden-state fixed inset-0 z-[230] hide-on-print flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-6">
+        <div class="bg-white dark:bg-slate-850 w-full max-w-sm rounded-3xl shadow-2xl border border-white/40 dark:border-slate-700/50 p-6 space-y-4">
+            <h3 class="font-extrabold text-lg text-slate-800 dark:text-white flex items-center gap-2"><i data-lucide="search" class="w-5 h-5"></i> Localizar e Substituir</h3>
+            <div class="space-y-2">
+                <input id="find-replace-find" type="text" placeholder="Localizar..." class="w-full p-3 text-sm border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 rounded-xl outline-none focus:ring-2 focus:ring-purple-400">
+                <input id="find-replace-replace" type="text" placeholder="Substituir por..." class="w-full p-3 text-sm border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 rounded-xl outline-none focus:ring-2 focus:ring-purple-400">
+            </div>
+            <p id="find-replace-feedback" class="text-xs text-slate-400"></p>
+            <div class="flex items-center justify-end gap-2">
+                <button onclick="closeFindReplace()" type="button" class="text-sm font-bold text-slate-500 hover:text-slate-800 dark:hover:text-white px-4 py-2.5 rounded-xl">Fechar</button>
+                <button onclick="runFindReplace()" type="button" class="text-sm font-bold bg-primary-600 hover:bg-primary-700 text-white px-5 py-2.5 rounded-xl shadow">Substituir Tudo</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Chat de refino com IA: substitui o antigo prompt()/confirm() nativos do navegador.
          Permite conversar sobre um trecho específico e iterar antes de aplicar a mudança ao texto. -->
     <div id="refine-chat-modal" class="hidden-state fixed inset-0 z-[220] hide-on-print flex items-end lg:items-center justify-center bg-slate-900/60 backdrop-blur-sm p-0 lg:p-6">
@@ -917,7 +1003,8 @@
             currentDocWatermarkRemoved: false,
             customNormTemplates: JSON.parse(localStorage.getItem('monografia_norm_templates')) || [],
             activeNormTemplateId: localStorage.getItem('monografia_active_norm') || 'apa-upds',
-            citationStyle: 'APA'
+            citationStyle: 'APA',
+            assistantChatMessages: []
         };
 
         document.addEventListener('DOMContentLoaded', () => {
@@ -929,12 +1016,16 @@
             renderHistory();
             applyNormTemplate(getActiveNormTemplate());
             applyWatermarkStamps();
+            document.getElementById('assistant-chat-cost').innerText = AI_COST_PER_PAGE;
+            renderAssistantChat();
 
             // Tornar painéis arrastáveis e redimensionáveis no Desktop
             makeDraggable('panel-left', 'panel-left-header');
             makeDraggable('panel-right', 'panel-right-header');
+            makeDraggable('panel-export', 'panel-export-header');
             makeResizable('panel-left', { minW: 320, maxW: 0.5, minH: 400 });
             makeResizable('panel-right', { minW: 300, maxW: 0.4, minH: 400 });
+            makeResizable('panel-export', { minW: 280, maxW: 0.4, minH: 400 });
             initPinchZoom();
             initPageTracker();
         });
@@ -1177,9 +1268,6 @@
             document.documentElement.style.setProperty('--doc-paragraph-indent', `${tpl.recuoParagrafo}cm`);
 
             document.getElementById('print-area').classList.toggle('norm-no-frame', !tpl.capaMoldura);
-
-            const introEl = document.getElementById('assistant-intro-text');
-            if (introEl) introEl.innerText = `Olá! Eu vou formatar e expandir a sua pesquisa gerando uma monografia com Índice automático, margens do modelo "${tpl.nome}" e Referências em ${tpl.estiloCitacao}.`;
 
             renderNormTemplatesList();
         }
@@ -1426,6 +1514,7 @@
             document.getElementById('user-email-display').innerText = 'Modo Demonstração';
             document.getElementById('user-credits-display').innerText = '0';
             document.getElementById('btn-export-pdf').title = 'Exportação desativada no modo demonstração';
+            document.getElementById('btn-export-txt').title = 'Exportação desativada no modo demonstração';
             document.getElementById('login-screen').classList.add('opacity-0', 'pointer-events-none');
             setTimeout(() => {
                 document.getElementById('login-screen').classList.add('hidden-state');
@@ -1771,6 +1860,7 @@
                 if(panel.classList.contains('mobile-hidden')) {
                     document.getElementById('panel-left').classList.add('mobile-hidden');
                     document.getElementById('panel-right').classList.add('mobile-hidden');
+                    document.getElementById('panel-export').classList.add('mobile-hidden');
                     setTimeout(() => { panel.classList.remove('mobile-hidden'); }, 50);
                 } else {
                     panel.classList.add('mobile-hidden');
@@ -1793,9 +1883,10 @@
             { title: 'Bem-vindo ao Monofy! 👋', text: 'Vamos te mostrar rapidinho como tudo funciona. Leva menos de 1 minuto — você pode pular quando quiser.' },
             { target: '#dock-tab-generator', title: 'Estúdio', text: 'Aqui é onde você escreve e visualiza a sua monografia, já formatada e paginada como um documento real.' },
             { target: '#dock-toggle-data', title: 'Dados', before: () => ensurePanelOpenForTour('panel-left'), text: 'Cole o seu texto-base, anexe PDFs de referência e preencha os dados da capa (universidade, título, autor...).' },
-            { target: '#btn-generate', title: 'Gerar com IA', before: () => ensurePanelOpenForTour('panel-left'), text: 'Com um clique, a IA escreve a monografia inteira a partir das suas notas. Isso consome créditos da sua conta.' },
+            { target: '#btn-generate', title: 'Gerar com IA', before: () => ensurePanelOpenForTour('panel-right'), text: 'Com um clique, a IA escreve a monografia seção por seção a partir das suas notas (e da conversa com o Assistente, se houver). Isso consome créditos da sua conta.' },
             { title: 'Editar o texto', text: 'Depois de gerada, clique em qualquer parágrafo para editar diretamente. Uma barra de ferramentas flutuante deixa você pedir à IA para melhorar um trecho, inserir imagens e mais.' },
-            { target: '#dock-toggle-assistant', title: 'Assistente', before: () => ensurePanelOpenForTour('panel-right'), text: 'O Assistente de IA ajuda a refinar trechos específicos do seu texto sempre que precisar.' },
+            { target: '#dock-toggle-assistant', title: 'Assistente', before: () => ensurePanelOpenForTour('panel-right'), text: 'Converse com o Assistente de IA sobre o que você quer antes de gerar — a conversa entra como contexto extra quando você clicar em "Redigir".' },
+            { target: '#dock-toggle-export', title: 'Exportar', before: () => ensurePanelOpenForTour('panel-export'), text: 'Salve o trabalho, remova a marca d\'água e exporte a monografia final em Word, PDF ou Texto.' },
             { target: '#dock-tab-profile', title: 'Arquivo', text: 'Todos os documentos que você gerar ficam guardados aqui. Pode reabrir e continuar de onde parou quando quiser.' },
             { target: '#dock-tab-credits', title: 'Créditos', text: 'Acompanhe e compre créditos aqui. Eles são usados para gerar com IA, exportar e remover a marca d\'água do documento final.' },
             { target: '#dock-tab-settings', title: 'Ajustes', text: 'Escolha o idioma da redação, a norma (ABNT, APA...), o tema claro/escuro e gerencie modelos personalizados.' },
@@ -2060,17 +2151,19 @@
 
             if (state.isDemo) { alert('Modo demonstração: geração com IA desativada. Crie uma conta para usar de verdade.'); return; }
             if (!state.profile) { alert('Aguarde o carregamento do seu perfil.'); return; }
+
+            const totalCost = AI_COST_PER_SECTION * DOC_SECTION_PLAN.length;
             const confirmed = await showConfirmModal(
                 'Gerar monografia com IA',
-                `Isso vai consumir <b>${AI_COST_FULL_DOC} créditos</b> do seu saldo atual de <b>${state.profile.credits}</b>. Continuar?`
+                `A IA vai redigir o documento seção por seção (Resumo, Introdução, Marco Teórico, Conclusão e Referências). Isso consome até <b>${totalCost} créditos</b> no total — cada seção só é cobrada depois de gerada com sucesso — do seu saldo atual de <b>${state.profile.credits}</b>. Continuar?`
             );
             if (!confirmed) return;
 
             const btnGenerate = document.getElementById('btn-generate');
+            const textEl = document.getElementById('text-generate');
             document.getElementById('icon-generate').classList.add('hidden-state');
             document.getElementById('icon-loading').classList.remove('hidden-state');
             btnGenerate.disabled = true;
-            const stopProgress = startGenerationProgressMessages();
 
             const activeTpl = getActiveNormTemplate();
             const citStyle = state.citationStyle;
@@ -2078,91 +2171,95 @@
                 ? `Genera una lista bibliográfica en NORMAS ABNT (NBR 6023). Formato: SOBRENOME, Nome. Título: subtítulo. Edición. Local: Editora, Año. Las citas en el texto deben ser (SOBRENOME, año).`
                 : `Genera una lista bibliográfica APA 7 válida. Formato: Autor, A. (Año). Título. Fuente/Editorial. Las citas en el texto deben ser (Autor, año).`;
 
-            const systemPrompt = `Actúa como un profesor universitario y revisor experto en Normas ${citStyle} (modelo "${activeTpl.nome}").
-            IDIOMA DE SALIDA OBLIGATORIO: ${state.docLanguage}. Escribe TODO estrictamente en este idioma.
-            TÍTULO DEL TRABAJO: ${document.getElementById('in-title').value}
+            const docTitle = document.getElementById('in-title').value;
+            state.generatedSections = [];
+            document.getElementById('btn-export-word').disabled = true;
+            document.getElementById('btn-export-pdf').disabled = true;
+            document.getElementById('btn-export-txt').disabled = true;
 
-            TAREA: Toma las notas del usuario y el material de referencia, expándelo analíticamente y redacta una monografía académica formal.
+            const chatContext = state.assistantChatMessages.length
+                ? `\n\nCONTEXTO ADICIONAL CONVERSADO COM O USUÁRIO NO ASSISTENTE (leve isto em conta, tem prioridade sobre suposições genéricas):\n${state.assistantChatMessages.filter(m => m.role !== 'error').map(m => `${m.role === 'user' ? 'Usuário' : 'Assistente'}: ${m.text}`).join('\n')}`
+                : '';
 
-            REGLAS CRÍTICAS Y ESTRUCTURA:
-            1. NO GENERE LA TABLA DE CONTENIDO (Índice).
-            2. DEBES CREAR obligatoriamente estas secciones: Resumen, Introducción, Marco Teórico (crea subtópicos), Conclusión, Referencias.
-            3. JERARQUÍA DE TÍTULOS: Usa <h1> para Títulos Nivel 1, <h2> Nivel 2, <h3> Nivel 3.
-            4. PÁRRAFOS: Usa <p> para separar ideas.
-            5. REFERENCIAS BIBLIOGRÁFICAS (MUY IMPORTANTE): ${refRulesByStyle} Envuelve CADA referencia obligatoriamente en <p class="hanging-indent"> para lograr la sangría francesa.
+            let failedSection = null;
 
-            MATERIAL DE REFERENCIA DEL USUARIO (Extrae argumentos de aquí si los hay):
-            ${state.uploadedContextText}
-            
-            NOTAS DEL USUARIO:
-            ${rawText}
-            
-            FORMATO DE SALIDA ESTRICTO:
-            Devuelve ÚNICAMENTE un arreglo JSON crudo. SIN markdown.
-            [
-              {"id": "s1", "title": "Introducción", "content": "<p>Texto...</p>"},
-              {"id": "s2", "title": "Referencias", "content": "<p class=\\"hanging-indent\\">Autor, A. (2020)...</p>"}
-            ]`;
+            for (let i = 0; i < DOC_SECTION_PLAN.length; i++) {
+                const plan = DOC_SECTION_PLAN[i];
+                textEl.innerText = `Gerando: ${plan.label} (${i + 1}/${DOC_SECTION_PLAN.length})...`;
 
-            try {
-                let jsonText = await callAI(systemPrompt, AI_COST_FULL_DOC, 'ai_full_document');
+                const sectionInstructions = plan.id === 'referencias'
+                    ? `Redacta la lista de REFERENCIAS BIBLIOGRÁFICAS. ${refRulesByStyle} Envuelve CADA referencia obligatoriamente en <p class="hanging-indent"> para lograr la sangría francesa.`
+                    : plan.instructions;
+                const otherLabels = DOC_SECTION_PLAN.filter(p => p.id !== plan.id).map(p => p.label).join(', ');
 
-                // Limpeza Extrema Parser JSON
-                jsonText = jsonText.replace(/```json/gi, '').replace(/```html/gi, '').replace(/```/g, '').trim();
-                const firstBracket = jsonText.indexOf('[');
-                const lastBracket = jsonText.lastIndexOf(']');
-                if (firstBracket !== -1 && lastBracket !== -1) {
-                    jsonText = jsonText.substring(firstBracket, lastBracket + 1);
+                const sectionPrompt = `Actúa como un profesor universitario y revisor experto en Normas ${citStyle} (modelo "${activeTpl.nome}").
+                IDIOMA DE SALIDA OBLIGATORIO: ${state.docLanguage}. Escribe TODO estrictamente en este idioma.
+                TÍTULO DEL TRABAJO: ${docTitle}
+
+                Estás redactando una monografía académica formal sección por sección. Esta llamada es SOLO para la sección "${plan.label}". Las demás secciones (${otherLabels}) ya serán redactadas en otras llamadas — NO las repitas ni las anticipes aquí.
+
+                ${sectionInstructions}
+
+                JERARQUÍA DE TÍTULOS DENTRO DEL CONTENIDO: usa <h2> para subtítulos y <h3> para sub-subtítulos si es necesario. Usa <p> para párrafos.
+
+                MATERIAL DE REFERENCIA DEL USUARIO (Extrae argumentos de aquí si los hay):
+                ${state.uploadedContextText}
+
+                NOTAS DEL USUARIO:
+                ${rawText}${chatContext}
+
+                FORMATO DE SALIDA ESTRICTO:
+                Devuelve ÚNICAMENTE un objeto JSON crudo, SIN markdown:
+                {"title": "Título de esta sección en el idioma de salida", "content": "<p>...</p>"}`;
+
+                try {
+                    let jsonText = await callAI(sectionPrompt, AI_COST_PER_SECTION, `ai_section_${plan.id}`);
+
+                    jsonText = jsonText.replace(/```json/gi, '').replace(/```html/gi, '').replace(/```/g, '').trim();
+                    const firstBrace = jsonText.indexOf('{');
+                    const lastBrace = jsonText.lastIndexOf('}');
+                    if (firstBrace !== -1 && lastBrace !== -1) {
+                        jsonText = jsonText.substring(firstBrace, lastBrace + 1);
+                    }
+                    const parsed = JSON.parse(jsonText);
+
+                    state.generatedSections.push({
+                        id: `sec-${plan.id}-${Date.now()}`,
+                        title: parsed.title || plan.label,
+                        content: parsed.content || ''
+                    });
+
+                    renderSections();
+                    setTimeout(checkAllSectionsOverflow, 100);
+                    document.getElementById('btn-export-word').disabled = false;
+                    document.getElementById('btn-export-pdf').disabled = false;
+                    document.getElementById('btn-export-txt').disabled = false;
+                } catch (err) {
+                    console.error(err);
+                    failedSection = plan.label;
+                    break;
                 }
-                
-                state.generatedSections = JSON.parse(jsonText).map((sec, i) => ({
-                    id: sec.id || `sec-${i}-${Date.now()}`, title: sec.title || `Capítulo ${i+1}`, content: sec.content || ''
-                }));
+            }
 
-                document.getElementById('btn-export-word').disabled = false;
-                document.getElementById('btn-export-pdf').disabled = false;
-
-                renderSections();
-                setTimeout(checkAllSectionsOverflow, 100);
+            if (state.generatedSections.length > 0) {
                 state.currentDocWatermarkRemoved = false; // novo trabalho = marca d'água precisa ser paga de novo
-                saveDocumentToHistory(document.getElementById('in-title').value || 'Monografia', state.generatedSections, state.references);
+                saveDocumentToHistory(docTitle || 'Monografia', state.generatedSections, state.references);
                 updateWatermarkButtonUI();
                 syncWatermarkRemovedClass();
 
-                if(window.innerWidth < 1024) {
+                if (window.innerWidth < 1024) {
                     togglePanelVisibility('panel-left');
                 }
-
-            } catch (err) {
-                console.error(err);
-                showError(err.message || 'Erro na IA. Tente novamente com menos texto.');
-            } finally {
-                stopProgress();
-                document.getElementById('icon-generate').classList.remove('hidden-state');
-                document.getElementById('icon-loading').classList.add('hidden-state');
-                document.getElementById('text-generate').innerText = 'Redigir Monografia';
-                btnGenerate.disabled = false;
             }
-        }
 
-        const GENERATION_PROGRESS_MESSAGES = [
-            'Analisando as suas notas...',
-            'Estruturando os capítulos...',
-            'Redigindo o texto...',
-            'Aplicando as normas de formatação...',
-            'Organizando as referências...',
-            'Quase lá...'
-        ];
+            if (failedSection) {
+                showError(`A seção "${failedSection}" falhou e a geração foi interrompida (nenhum crédito foi cobrado por ela). As seções já geradas com sucesso continuam no documento — você pode exportá-las ou completá-las manualmente, ou clicar em "Redigir Monografia" de novo para gerar tudo desde o início.`);
+            }
 
-        function startGenerationProgressMessages() {
-            let i = 0;
-            const textEl = document.getElementById('text-generate');
-            textEl.innerText = GENERATION_PROGRESS_MESSAGES[0];
-            const interval = setInterval(() => {
-                i = (i + 1) % GENERATION_PROGRESS_MESSAGES.length;
-                textEl.innerText = GENERATION_PROGRESS_MESSAGES[i];
-            }, 3500);
-            return () => clearInterval(interval);
+            document.getElementById('icon-generate').classList.remove('hidden-state');
+            document.getElementById('icon-loading').classList.add('hidden-state');
+            textEl.innerText = 'Redigir Monografia';
+            btnGenerate.disabled = false;
         }
 
         // --- 5. RENDERIZAÇÃO A4 E ÍNDICE ---
@@ -2293,6 +2390,83 @@
             renderSections();
         }
 
+        // --- Barra de ferramentas de formatação (estilo Word) ---
+        // Como clicar num botão da barra tira o foco do trecho editável (perdendo a seleção),
+        // guardamos a última seleção feita dentro de uma página e a restauramos antes de formatar.
+        let lastEditableRange = null;
+        let lastEditableEl = null;
+
+        document.addEventListener('selectionchange', () => {
+            const sel = window.getSelection();
+            if (!sel || sel.rangeCount === 0) return;
+            const node = sel.anchorNode;
+            if (!node) return;
+            const el = (node.nodeType === 1 ? node : node.parentElement)?.closest('.apa-content');
+            if (el) {
+                lastEditableRange = sel.getRangeAt(0).cloneRange();
+                lastEditableEl = el;
+            }
+        });
+
+        function restoreEditableSelection() {
+            if (!lastEditableEl || !lastEditableRange || !document.body.contains(lastEditableEl)) return false;
+            lastEditableEl.focus();
+            const sel = window.getSelection();
+            sel.removeAllRanges();
+            sel.addRange(lastEditableRange);
+            return true;
+        }
+
+        function execFormat(cmd, value = null) {
+            if (!restoreEditableSelection()) { showError('Clique dentro de um trecho do documento antes de usar a formatação.'); return; }
+            document.execCommand(cmd, false, value);
+            if (lastEditableEl?.dataset.sectionId) scheduleSyncSection(lastEditableEl.dataset.sectionId);
+        }
+
+        function toolbarInsertPageBreak() {
+            if (!lastEditableEl) { showError('Clique dentro de um trecho do documento antes de inserir uma quebra de página.'); return; }
+            const sectionId = lastEditableEl.dataset.sectionId;
+            const pageKey = lastEditableEl.id.replace('apa-content-', '');
+            insertPageBreakInline(sectionId, pageKey);
+        }
+
+        function openFindReplace() {
+            document.getElementById('find-replace-find').value = '';
+            document.getElementById('find-replace-replace').value = '';
+            document.getElementById('find-replace-feedback').innerText = '';
+            document.getElementById('find-replace-modal').classList.remove('hidden-state');
+            setTimeout(() => document.getElementById('find-replace-find').focus(), 100);
+        }
+
+        function closeFindReplace() {
+            document.getElementById('find-replace-modal').classList.add('hidden-state');
+        }
+
+        // Substitui apenas dentro de nós de texto (TreeWalker), preservando as tags HTML existentes.
+        function runFindReplace() {
+            const find = document.getElementById('find-replace-find').value;
+            const replace = document.getElementById('find-replace-replace').value;
+            const feedback = document.getElementById('find-replace-feedback');
+            if (!find) { feedback.innerText = 'Digite o que você quer localizar.'; return; }
+
+            let count = 0;
+            document.querySelectorAll('.apa-content').forEach(container => {
+                const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT);
+                const textNodes = [];
+                let n;
+                while ((n = walker.nextNode())) textNodes.push(n);
+                textNodes.forEach(node => {
+                    if (node.textContent.includes(find)) {
+                        count += node.textContent.split(find).length - 1;
+                        node.textContent = node.textContent.split(find).join(replace);
+                    }
+                });
+                if (container.dataset.sectionId) scheduleSyncSection(container.dataset.sectionId, true);
+            });
+
+            feedback.innerText = count > 0 ? `${count} ocorrência(s) substituída(s).` : 'Nenhuma ocorrência encontrada.';
+        }
+
         function insertHeadingInline(sectionId, pageKey) {
             const level = prompt('Nível do título: digite 2 para Subtítulo (H2) ou 3 para Sub-subtítulo (H3)', '2');
             if (level !== '2' && level !== '3') return;
@@ -2319,6 +2493,7 @@
             renderSections();
             document.getElementById('btn-export-word').disabled = false;
             document.getElementById('btn-export-pdf').disabled = false;
+            document.getElementById('btn-export-txt').disabled = false;
             setTimeout(() => {
                 const el = document.getElementById(`apa-content-${newId}__0`);
                 if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.focus(); }
@@ -2430,6 +2605,7 @@
 
             document.getElementById('btn-export-word').disabled = true;
             document.getElementById('btn-export-pdf').disabled = true;
+            document.getElementById('btn-export-txt').disabled = true;
             updateWatermarkButtonUI();
             syncWatermarkRemovedClass();
             switchTab('generator');
@@ -2510,6 +2686,7 @@
             renderSections();
             document.getElementById('btn-export-word').disabled = false;
             document.getElementById('btn-export-pdf').disabled = false;
+            document.getElementById('btn-export-txt').disabled = false;
 
             // Rola até o fim e foca o conteúdo da nova página para já começar a digitar
             const container = document.getElementById('main-canvas');
@@ -2654,6 +2831,73 @@
             renderRefineChatMessages();
         }
 
+        // --- Chat do Assistente: conversa livre sobre o que o usuário quer ANTES de gerar o
+        // documento. O histórico é enviado como contexto extra para cada seção em generateDocument(). ---
+        function renderAssistantChat() {
+            const box = document.getElementById('assistant-chat-messages');
+            if (!state.assistantChatMessages.length) {
+                box.innerHTML = `<div class="bg-purple-50 dark:bg-purple-900/20 p-4 rounded-2xl border border-purple-100 dark:border-purple-900/30">
+                    <p class="text-sm text-purple-800 dark:text-purple-300 leading-relaxed font-medium">Olá! Antes de gerar, me conte o que você quer: o foco do tema, o tom de escrita, algo que não pode faltar... Quando estiver pronto, clique em "Redigir Monografia".</p>
+                </div>`;
+                return;
+            }
+            box.innerHTML = state.assistantChatMessages.map(m => {
+                if (m.role === 'user') {
+                    return `<div class="ml-auto max-w-[88%] bg-purple-600 text-white rounded-2xl rounded-br-sm px-4 py-2.5 text-sm">${escapeHtml(m.text)}</div>`;
+                }
+                if (m.role === 'error') {
+                    return `<div class="max-w-[88%] flex items-center gap-2 text-red-600 dark:text-red-400 text-sm bg-red-50 dark:bg-red-900/20 rounded-2xl px-4 py-2.5"><i data-lucide="alert-triangle" class="w-4 h-4 shrink-0"></i>${escapeHtml(m.text)}</div>`;
+                }
+                return `<div class="max-w-[88%] bg-slate-100 dark:bg-slate-800 rounded-2xl rounded-bl-sm px-4 py-2.5 text-sm text-slate-700 dark:text-slate-200">${escapeHtml(m.text)}</div>`;
+            }).join('');
+            box.scrollTop = box.scrollHeight;
+            lucide.createIcons();
+        }
+
+        let assistantChatBusy = false;
+        async function sendAssistantChatMessage() {
+            if (assistantChatBusy) return;
+            if (state.isDemo) { alert('Modo demonstração: chat com IA está desativado.'); return; }
+            if (!state.profile) { alert('Aguarde o carregamento do seu perfil.'); return; }
+            const input = document.getElementById('assistant-chat-input');
+            const text = input.value.trim();
+            if (!text) return;
+
+            state.assistantChatMessages.push({ role: 'user', text });
+            input.value = '';
+            renderAssistantChat();
+
+            assistantChatBusy = true;
+            document.getElementById('assistant-chat-send').disabled = true;
+
+            const history = state.assistantChatMessages
+                .filter(m => m.role !== 'error')
+                .map(m => `${m.role === 'user' ? 'Usuário' : 'Assistente'}: ${m.text}`)
+                .join('\n');
+            const prompt = `Você é um assistente que ajuda um estudante a planejar uma monografia académica ANTES dela ser redigida pela IA.
+            IDIOMA DE RESPOSTA: ${state.docLanguage}.
+            Converse de forma breve e direta (no máximo 2-3 frases), fazendo perguntas úteis sobre o tema, foco, objetivos e tom desejado, ou confirmando que já entendeu o que o usuário quer. Não escreva a monografia agora, apenas conduza a conversa.
+
+            HISTÓRICO DA CONVERSA:
+            ${history}`;
+
+            try {
+                const reply = await callAI(prompt, AI_COST_PER_PAGE, 'ai_chat_assistant');
+                state.assistantChatMessages.push({ role: 'ai', text: reply.trim() });
+            } catch (err) {
+                console.error(err);
+                state.assistantChatMessages.push({ role: 'error', text: err.message || 'Erro na IA ao responder.' });
+            } finally {
+                assistantChatBusy = false;
+                document.getElementById('assistant-chat-send').disabled = false;
+                renderAssistantChat();
+            }
+        }
+
+        document.getElementById('assistant-chat-input').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendAssistantChatMessage(); }
+        });
+
         let _pendingImageTarget = null;
         function triggerImageInsert(sectionId, pageKey) {
             _pendingImageTarget = { sectionId, pageKey };
@@ -2748,6 +2992,7 @@
 
             document.getElementById('btn-export-word').disabled = false;
             document.getElementById('btn-export-pdf').disabled = false;
+            document.getElementById('btn-export-txt').disabled = false;
             switchTab('generator');
         }
 
@@ -3078,6 +3323,28 @@
             document.body.removeChild(fileDownload);
             URL.revokeObjectURL(url);
         }
+
+        window.exportTxt = function() {
+            const docTitle = document.getElementById('in-title').value || 'Monografia';
+            const parts = [docTitle, ''];
+            state.generatedSections.forEach(sec => {
+                parts.push(sec.title.toUpperCase());
+                const temp = document.createElement('div');
+                temp.innerHTML = sec.content;
+                parts.push(temp.innerText.trim());
+                parts.push('');
+            });
+
+            const blob = new Blob([parts.join('\n')], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const fileDownload = document.createElement('a');
+            fileDownload.href = url;
+            fileDownload.download = `${docTitle}.txt`;
+            document.body.appendChild(fileDownload);
+            fileDownload.click();
+            document.body.removeChild(fileDownload);
+            URL.revokeObjectURL(url);
+        };
 
         /* REGISTRO DO SERVICE WORKER (PWA) */
         if ('serviceWorker' in navigator) {
