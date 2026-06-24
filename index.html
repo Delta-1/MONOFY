@@ -97,6 +97,21 @@
         .word-tool-btn:hover { background-color: rgba(255,255,255,0.1); color: #fff; }
         .word-tool-sep { width: 1.75rem; height: 1px; background: rgba(255,255,255,0.12); margin: 0.25rem 0; flex-shrink: 0; }
 
+        /* Encaixe (dock) da barra de ferramentas nas paredes esquerda/direita/topo da tela */
+        #word-toolbar.docked-left, #word-toolbar.docked-right { top: 0 !important; height: 100vh !important; max-height: 100vh !important; }
+        #word-toolbar.docked-left { left: 0 !important; border-radius: 0 1rem 1rem 0 !important; }
+        #word-toolbar.docked-right { right: 0 !important; left: auto !important; border-radius: 1rem 0 0 1rem !important; }
+        #word-toolbar.docked-top { top: 0 !important; left: 0 !important; right: 0 !important; width: 100vw !important; height: 4.5rem !important; max-height: 4.5rem !important; border-radius: 0 0 1rem 1rem !important; flex-direction: row !important; }
+        #word-toolbar.docked-top #word-toolbar-header { cursor: move; width: 2.5rem; flex-shrink: 0; }
+        #word-toolbar.docked-top #word-toolbar-header .toolbar-grip-icon { transform: rotate(90deg); }
+        #word-toolbar.docked-top > .resize-handle.resize-e, #word-toolbar.docked-top > .resize-handle.resize-w,
+        #word-toolbar.docked-left > .resize-handle.resize-n, #word-toolbar.docked-left > .resize-handle.resize-s, #word-toolbar.docked-left > .resize-handle.resize-w,
+        #word-toolbar.docked-right > .resize-handle.resize-n, #word-toolbar.docked-right > .resize-handle.resize-s, #word-toolbar.docked-right > .resize-handle.resize-e,
+        #word-toolbar.docked-left > .resize-handle.resize-se, #word-toolbar.docked-left > .resize-handle.resize-sw, #word-toolbar.docked-left > .resize-handle.resize-ne, #word-toolbar.docked-left > .resize-handle.resize-nw,
+        #word-toolbar.docked-right > .resize-handle.resize-se, #word-toolbar.docked-right > .resize-handle.resize-sw, #word-toolbar.docked-right > .resize-handle.resize-ne, #word-toolbar.docked-right > .resize-handle.resize-nw,
+        #word-toolbar.docked-top > .resize-handle.resize-se, #word-toolbar.docked-top > .resize-handle.resize-sw, #word-toolbar.docked-top > .resize-handle.resize-ne, #word-toolbar.docked-top > .resize-handle.resize-nw,
+        #word-toolbar.docked-top > .resize-handle.resize-n { display: none !important; }
+
         /* Scrollbar Melhorada e Visível */
         ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.05); border-radius: 10px; }
@@ -487,8 +502,8 @@
 
         <!-- BARRA DE FERRAMENTAS DE FORMATAÇÃO (estilo Photoshop, ferramentas de Word) — arrastável e redimensionável em todas as bordas -->
         <div id="word-toolbar" class="hidden lg:flex fixed left-4 top-24 z-30 hide-on-print flex-col bg-slate-900 dark:bg-slate-950 rounded-2xl shadow-2xl border border-slate-700/50 w-12 lg:h-[70vh] lg:max-h-[85vh] lg:min-h-[220px]">
-            <div id="word-toolbar-header" title="Arrastar barra de ferramentas" class="flex items-center justify-center py-1.5 cursor-move shrink-0 hover:bg-white/5 rounded-t-2xl transition-colors">
-                <i data-lucide="grip-horizontal" class="w-5 h-5 text-slate-500"></i>
+            <div id="word-toolbar-header" title="Arrastar barra de ferramentas (solte perto de uma parede para fixar)" class="flex items-center justify-center py-1.5 cursor-move shrink-0 hover:bg-white/5 rounded-t-2xl transition-colors">
+                <i data-lucide="grip-horizontal" class="toolbar-grip-icon w-5 h-5 text-slate-500"></i>
             </div>
             <div class="flex-1 flex flex-wrap content-start items-center justify-center gap-1 py-2 px-1.5 overflow-auto custom-scrollbar">
                 <button onclick="execFormat('undo')" title="Desfazer" class="word-tool-btn"><i data-lucide="undo-2" class="w-4 h-4"></i></button>
@@ -533,7 +548,7 @@
         </div>
 
         <!-- PAINEL ESQUERDO: Dados e Contexto da Monografia (Com Resize Dinâmico) -->
-        <div id="panel-left" class="fixed lg:absolute left-4 lg:left-20 right-4 lg:right-auto top-4 lg:top-24 bottom-28 lg:bottom-auto lg:h-[78vh] lg:max-h-[85vh] lg:w-[400px] bg-white/95 dark:bg-slate-850/95 backdrop-blur-sm shadow-2xl rounded-3xl border border-white/40 dark:border-slate-700/50 flex flex-col z-30 transition-transform duration-300 mobile-hidden lg:!transform-none lg:!opacity-100 lg:!pointer-events-auto lg:overflow-hidden lg:min-w-[320px] lg:max-w-[50vw] lg:min-h-[400px]">
+        <div id="panel-left" class="fixed lg:absolute left-4 lg:left-20 right-4 lg:right-auto top-4 lg:top-24 bottom-28 lg:bottom-auto lg:h-[78vh] lg:max-h-[85vh] lg:w-[400px] bg-white/95 dark:bg-slate-850/95 backdrop-blur-sm shadow-2xl rounded-3xl border border-white/40 dark:border-slate-700/50 flex flex-col z-30 transition-transform duration-300 mobile-hidden hidden-state lg:!transform-none lg:!opacity-100 lg:!pointer-events-auto lg:overflow-hidden lg:min-w-[320px] lg:max-w-[50vw] lg:min-h-[400px]">
 
             <div id="panel-left-header" class="p-5 border-b border-slate-200/50 dark:border-slate-800/50 flex justify-between items-center cursor-move lg:hover:bg-slate-50/50 dark:hover:bg-slate-800/50 rounded-t-3xl transition-colors">
                 <h3 class="font-extrabold flex items-center gap-2 text-slate-800 dark:text-white"><i data-lucide="database" class="w-5 h-5 text-primary-500"></i> Dados da Pesquisa</h3>
@@ -544,11 +559,6 @@
             </div>
 
             <div class="flex-1 overflow-y-auto p-5 space-y-6 custom-scrollbar pb-8">
-                
-                <div id="error-message" class="hidden-state p-4 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 rounded-xl flex items-start gap-2 text-sm border border-red-100 dark:border-red-900/30">
-                    <i data-lucide="alert-circle" class="w-5 h-5 shrink-0"></i>
-                    <p id="error-text" class="font-medium"></p>
-                </div>
 
                 <div class="space-y-4">
                     <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest">Folha de Rosto</h4>
@@ -609,7 +619,7 @@
         </div>
 
         <!-- PAINEL DIREITO: Assistente e Ações IA (Com Resize Dinâmico) -->
-        <div id="panel-right" class="fixed lg:absolute left-4 right-4 lg:left-[500px] lg:right-auto top-4 lg:top-24 bottom-28 lg:bottom-auto lg:h-[78vh] lg:max-h-[85vh] lg:w-[340px] bg-white/95 dark:bg-slate-850/95 backdrop-blur-sm shadow-2xl rounded-3xl border border-white/40 dark:border-slate-700/50 flex flex-col z-30 transition-transform duration-300 mobile-hidden lg:!transform-none lg:!opacity-100 lg:!pointer-events-auto lg:overflow-hidden lg:min-w-[300px] lg:max-w-[40vw] lg:min-h-[400px]">
+        <div id="panel-right" class="fixed lg:absolute left-4 right-4 lg:left-[500px] lg:right-auto top-4 lg:top-24 bottom-28 lg:bottom-auto lg:h-[78vh] lg:max-h-[85vh] lg:w-[340px] bg-white/95 dark:bg-slate-850/95 backdrop-blur-sm shadow-2xl rounded-3xl border border-white/40 dark:border-slate-700/50 flex flex-col z-30 transition-transform duration-300 mobile-hidden hidden-state lg:!transform-none lg:!opacity-100 lg:!pointer-events-auto lg:overflow-hidden lg:min-w-[300px] lg:max-w-[40vw] lg:min-h-[400px]">
 
             <div id="panel-right-header" class="p-5 border-b border-slate-200/50 dark:border-slate-800/50 flex justify-between items-center cursor-move lg:hover:bg-slate-50/50 dark:hover:bg-slate-800/50 rounded-t-3xl transition-colors">
                 <h3 class="font-extrabold flex items-center gap-2 text-slate-800 dark:text-white"><i data-lucide="bot" class="w-5 h-5 text-purple-500"></i> Assistente IA</h3>
@@ -676,12 +686,17 @@
             </div>
         </div>
 
-        <!-- Atalho rápido de modo claro/escuro: só aparece dentro de Ajustes (no painel normal ele
-             ficava atrás do dock inferior no celular). Fica no canto superior, longe do dock. -->
-        <button id="theme-toggle-fixed" onclick="toggleDarkMode()" title="Alternar modo claro/escuro" class="fixed top-4 right-4 lg:top-6 lg:right-6 z-[70] hide-on-print w-12 h-12 flex items-center justify-center bg-white/80 dark:bg-slate-800/80 backdrop-blur-2xl shadow-[0_20px_40px_-10px_rgba(0,0,0,0.3)] rounded-full border border-white/50 dark:border-slate-700/50 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition">
-            <i data-lucide="moon" class="w-5 h-5 hidden dark:block"></i>
-            <i data-lucide="sun" class="w-5 h-5 block dark:hidden"></i>
-        </button>
+        <!-- Indicador visual de "encaixe" da barra de ferramentas: aparece sobre a parede
+             (esquerda/direita/topo) quando o usuário arrasta a barra perto dela, soltando o
+             mouse ali a fixa naquela parede. -->
+        <div id="toolbar-dock-hint" class="hidden-state fixed z-[200] hide-on-print bg-primary-500/25 border-2 border-primary-400 border-dashed pointer-events-none rounded-lg"></div>
+
+        <!-- Aviso global de erro: fica fora dos painéis flutuantes para aparecer mesmo se o
+             usuário estiver na aba do Assistente, Exportação etc. e o painel "Dados" estiver fechado. -->
+        <div id="error-message" class="hidden-state fixed top-4 left-1/2 -translate-x-1/2 z-[120] hide-on-print w-[90vw] max-w-md p-4 bg-red-50 dark:bg-red-900/95 text-red-700 dark:text-red-200 rounded-xl flex items-start gap-2 text-sm border border-red-200 dark:border-red-800 shadow-2xl">
+            <i data-lucide="alert-circle" class="w-5 h-5 shrink-0"></i>
+            <p id="error-text" class="font-medium"></p>
+        </div>
 
         <!-- Tutorial guiado de primeiro acesso: realça um elemento por vez com um "spotlight"
              (caixa com box-shadow gigante) e um cartão explicativo posicionado ao lado dele. -->
@@ -1012,7 +1027,7 @@
             makeDraggable('panel-left', 'panel-left-header');
             makeDraggable('panel-right', 'panel-right-header');
             makeDraggable('panel-export', 'panel-export-header');
-            makeDraggable('word-toolbar', 'word-toolbar-header');
+            makeDraggable('word-toolbar', 'word-toolbar-header', { dockable: true });
             makeResizable('panel-left', { minW: 320, maxW: 0.5, minH: 400 });
             makeResizable('panel-right', { minW: 300, maxW: 0.4, minH: 400 });
             makeResizable('panel-export', { minW: 280, maxW: 0.4, minH: 400 });
@@ -1022,16 +1037,51 @@
         });
 
         // Lógica de Arrastar com Limite de Teto e Laterais (Evita perder janelas)
-        function makeDraggable(elementId, headerId) {
+        const DOCK_EDGE_THRESHOLD = 60;
+
+        function dockToolbar(edge) {
+            const el = document.getElementById('word-toolbar');
+            el.classList.remove('docked-left', 'docked-right', 'docked-top');
+            el.classList.add('docked-' + edge);
+            el.dataset.dock = edge;
+            ['top', 'left', 'right', 'bottom', 'width', 'height', 'maxHeight'].forEach(p => el.style[p] = '');
+        }
+
+        function undockToolbarToRect(el, rect) {
+            el.classList.remove('docked-left', 'docked-right', 'docked-top');
+            el.dataset.dock = 'none';
+            el.style.top = rect.top + 'px';
+            el.style.left = rect.left + 'px';
+            el.style.right = 'auto';
+            el.style.bottom = 'auto';
+            el.style.width = rect.width + 'px';
+            el.style.height = rect.height + 'px';
+        }
+
+        function showDockHint(zone) {
+            const hint = document.getElementById('toolbar-dock-hint');
+            if (!zone) { hint.classList.add('hidden-state'); return; }
+            if (zone === 'left') Object.assign(hint.style, { top: '0', left: '0', bottom: '0', right: 'auto', width: '10px', height: '100vh' });
+            if (zone === 'right') Object.assign(hint.style, { top: '0', right: '0', bottom: '0', left: 'auto', width: '10px', height: '100vh' });
+            if (zone === 'top') Object.assign(hint.style, { top: '0', left: '0', right: '0', bottom: 'auto', width: '100vw', height: '10px' });
+            hint.classList.remove('hidden-state');
+        }
+
+        function makeDraggable(elementId, headerId, opts) {
             const el = document.getElementById(elementId);
             const header = document.getElementById(headerId);
             if (!el || !header) return;
+            const dockable = !!(opts && opts.dockable);
 
             let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
-            
+            let dockZone = null;
+
             header.onmousedown = function(e) {
                 if(window.innerWidth < 1024) return; // Desativa drag no mobile (tablets e telemóveis)
                 e.preventDefault();
+                if (dockable && el.dataset.dock && el.dataset.dock !== 'none') {
+                    undockToolbarToRect(el, el.getBoundingClientRect());
+                }
                 pos3 = e.clientX;
                 pos4 = e.clientY;
                 document.onmouseup = closeDragElement;
@@ -1044,19 +1094,19 @@
                 pos2 = pos4 - e.clientY;
                 pos3 = e.clientX;
                 pos4 = e.clientY;
-                
+
                 let newTop = el.offsetTop - pos2;
                 let newLeft = el.offsetLeft - pos1;
 
                 // Limite do "Teto" (Impede perder a janela no topo)
                 if (newTop < 16) {
-                    newTop = 16; 
+                    newTop = 16;
                 }
-                
+
                 // Limites inferioes e laterais (Garante que pelo menos uma parte da janela fica visível no ecrã)
                 const maxTop = window.innerHeight - 100;
                 if (newTop > maxTop) newTop = maxTop;
-                
+
                 const maxLeft = window.innerWidth - 100;
                 const minLeft = -el.offsetWidth + 100;
                 if (newLeft > maxLeft) newLeft = maxLeft;
@@ -1064,16 +1114,29 @@
 
                 el.style.top = newTop + "px";
                 el.style.left = newLeft + "px";
-                
+
                 // Remove restrições de CSS que impedem o reposicionamento absoluto total
                 el.style.right = 'auto';
                 el.style.bottom = 'auto';
                 el.classList.remove('lg:bottom-24');
+
+                if (dockable) {
+                    if (newTop <= DOCK_EDGE_THRESHOLD) dockZone = 'top';
+                    else if (newLeft <= DOCK_EDGE_THRESHOLD) dockZone = 'left';
+                    else if (newLeft + el.offsetWidth >= window.innerWidth - DOCK_EDGE_THRESHOLD) dockZone = 'right';
+                    else dockZone = null;
+                    showDockHint(dockZone);
+                }
             }
 
             function closeDragElement() {
                 document.onmouseup = null;
                 document.onmousemove = null;
+                if (dockable) {
+                    showDockHint(null);
+                    if (dockZone) dockToolbar(dockZone);
+                    dockZone = null;
+                }
             }
         }
 
@@ -1901,9 +1964,9 @@
         let tourStep = 0;
 
         function ensurePanelOpenForTour(panelId) {
-            if (window.innerWidth >= 1024) return;
             const panel = document.getElementById(panelId);
-            if (panel && panel.classList.contains('mobile-hidden')) {
+            if (!panel) return;
+            if (panel.classList.contains('mobile-hidden') || panel.classList.contains('hidden-state')) {
                 togglePanelVisibility(panelId);
             }
         }
