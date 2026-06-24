@@ -271,8 +271,11 @@
         .resize-handle.resize-e { top: 0; right: 0; width: 8px; height: 100%; cursor: ew-resize; }
         .resize-handle.resize-w { top: 0; left: 0; width: 8px; height: 100%; cursor: ew-resize; }
         .resize-handle.resize-s { left: 0; bottom: 0; width: 100%; height: 8px; cursor: ns-resize; }
+        .resize-handle.resize-n { left: 0; top: 0; width: 100%; height: 8px; cursor: ns-resize; }
         .resize-handle.resize-se { right: 0; bottom: 0; width: 16px; height: 16px; cursor: nwse-resize; }
         .resize-handle.resize-sw { left: 0; bottom: 0; width: 16px; height: 16px; cursor: nesw-resize; }
+        .resize-handle.resize-ne { right: 0; top: 0; width: 16px; height: 16px; cursor: nesw-resize; }
+        .resize-handle.resize-nw { left: 0; top: 0; width: 16px; height: 16px; cursor: nwse-resize; }
 
         /* Brilho pulsante pro botão de "Adicionar Primeira Página" se destacar do resto apagado */
         @keyframes btn-glow-pulse {
@@ -325,7 +328,12 @@
 
             <form id="email-auth-form" class="space-y-3" onsubmit="return false;">
                 <input type="email" id="auth-email" placeholder="O seu email" class="w-full text-sm p-3.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 focus:border-primary-500 rounded-xl outline-none">
-                <input type="password" id="auth-password" placeholder="Senha (mín. 6 caracteres)" class="w-full text-sm p-3.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 focus:border-primary-500 rounded-xl outline-none">
+                <div class="relative">
+                    <input type="password" id="auth-password" placeholder="Senha (mín. 6 caracteres)" class="w-full text-sm p-3.5 pr-11 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 focus:border-primary-500 rounded-xl outline-none">
+                    <button type="button" onclick="toggleAuthPasswordVisibility()" id="auth-password-toggle" title="Mostrar senha" class="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition">
+                        <i data-lucide="eye" class="w-4 h-4"></i>
+                    </button>
+                </div>
                 <div class="flex gap-2">
                     <button type="button" onclick="signInWithEmail()" class="w-1/2 bg-slate-900 dark:bg-primary-600 hover:bg-slate-800 dark:hover:bg-primary-700 text-white font-bold py-3 rounded-xl transition-all text-sm">Entrar</button>
                     <button type="button" onclick="signUpWithEmail()" class="w-1/2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold py-3 rounded-xl transition-all text-sm">Criar Conta</button>
@@ -477,70 +485,51 @@
             </div>
         </div>
 
-        <!-- Aba fixa na borda esquerda: abre o painel de ferramentas de edição (estilo Word) -->
-        <button id="tools-tab-handle" onclick="toggleEditorToolsPanel()" title="Ferramentas de Edição" class="fixed left-0 top-4 z-[65] hide-on-print w-9 h-20 bg-primary-600 hover:bg-primary-700 text-white rounded-r-xl shadow-xl flex items-center justify-center transition-colors">
-            <i data-lucide="layout-panel-left" class="w-5 h-5"></i>
-        </button>
-
-        <!-- Painel de ferramentas: tipo de página (norma) + inserir tabela/citação/título/quebra/imagem -->
-        <div id="panel-editor-tools" class="fixed left-0 top-0 bottom-0 z-[64] hide-on-print w-[300px] max-w-[85vw] bg-white/95 dark:bg-slate-850/95 backdrop-blur-sm shadow-2xl border-r border-white/40 dark:border-slate-700/50 flex flex-col transition-transform duration-300 -translate-x-full">
-            <div class="p-5 border-b border-slate-200/50 dark:border-slate-800/50 flex justify-between items-center">
-                <h3 class="font-extrabold flex items-center gap-2 text-slate-800 dark:text-white"><i data-lucide="layout-panel-left" class="w-5 h-5 text-primary-500"></i> Ferramentas</h3>
-                <button onclick="toggleEditorToolsPanel()" class="p-1.5 text-slate-400 hover:text-slate-800 dark:hover:text-white rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition"><i data-lucide="x" class="w-4 h-4"></i></button>
+        <!-- BARRA DE FERRAMENTAS DE FORMATAÇÃO (estilo Photoshop, ferramentas de Word) — arrastável e redimensionável em todas as bordas -->
+        <div id="word-toolbar" class="hidden lg:flex fixed left-4 top-24 z-30 hide-on-print flex-col bg-slate-900 dark:bg-slate-950 rounded-2xl shadow-2xl border border-slate-700/50 w-12 lg:h-[70vh] lg:max-h-[85vh] lg:min-h-[220px]">
+            <div id="word-toolbar-header" title="Arrastar barra de ferramentas" class="flex items-center justify-center py-1.5 cursor-move shrink-0 hover:bg-white/5 rounded-t-2xl transition-colors">
+                <i data-lucide="grip-horizontal" class="w-5 h-5 text-slate-500"></i>
             </div>
-            <div class="flex-1 overflow-y-auto p-5 space-y-6 custom-scrollbar">
-                <div>
-                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Tipo de Página (Norma)</label>
-                    <select id="quick-norm-select" onchange="quickApplyNormTemplate()" class="w-full p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none font-medium text-sm"></select>
-                    <p class="text-xs text-slate-400 mt-2">Muda margens, fonte, capa e citação no visualizador e na exportação.</p>
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Inserir na página em edição</label>
-                    <div class="grid grid-cols-2 gap-2">
-                        <button onclick="quickInsertTool('table')" class="flex items-center gap-2 p-3 bg-slate-100 dark:bg-slate-800 rounded-xl text-sm font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition"><i data-lucide="table" class="w-4 h-4"></i> Tabela</button>
-                        <button onclick="quickInsertTool('citation')" class="flex items-center gap-2 p-3 bg-slate-100 dark:bg-slate-800 rounded-xl text-sm font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition"><i data-lucide="quote" class="w-4 h-4"></i> Citação</button>
-                        <button onclick="quickInsertTool('heading')" class="flex items-center gap-2 p-3 bg-slate-100 dark:bg-slate-800 rounded-xl text-sm font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition"><i data-lucide="heading" class="w-4 h-4"></i> Título</button>
-                        <button onclick="quickInsertTool('pagebreak')" class="flex items-center gap-2 p-3 bg-slate-100 dark:bg-slate-800 rounded-xl text-sm font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition"><i data-lucide="scissors" class="w-4 h-4"></i> Quebra</button>
-                        <button onclick="quickInsertTool('image')" class="col-span-2 flex items-center justify-center gap-2 p-3 bg-slate-100 dark:bg-slate-800 rounded-xl text-sm font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition"><i data-lucide="image-plus" class="w-4 h-4"></i> Imagem</button>
-                    </div>
-                    <p class="text-xs text-slate-400 mt-3">Clique dentro do texto de uma página antes de usar, pra eu saber onde inserir.</p>
-                </div>
+            <div class="flex-1 flex flex-wrap content-start items-center justify-center gap-1 py-2 px-1.5 overflow-auto custom-scrollbar">
+                <button onclick="execFormat('undo')" title="Desfazer" class="word-tool-btn"><i data-lucide="undo-2" class="w-4 h-4"></i></button>
+                <button onclick="execFormat('redo')" title="Refazer" class="word-tool-btn"><i data-lucide="redo-2" class="w-4 h-4"></i></button>
+                <div class="word-tool-sep"></div>
+                <button onclick="execFormat('bold')" title="Negrito" class="word-tool-btn"><i data-lucide="bold" class="w-4 h-4"></i></button>
+                <button onclick="execFormat('italic')" title="Itálico" class="word-tool-btn"><i data-lucide="italic" class="w-4 h-4"></i></button>
+                <button onclick="execFormat('underline')" title="Sublinhado" class="word-tool-btn"><i data-lucide="underline" class="w-4 h-4"></i></button>
+                <button onclick="execFormat('removeFormat')" title="Limpar Formatação" class="word-tool-btn"><i data-lucide="eraser" class="w-4 h-4"></i></button>
+                <label title="Realçar texto" class="word-tool-btn cursor-pointer relative">
+                    <i data-lucide="highlighter" class="w-4 h-4"></i>
+                    <input type="color" value="#fef08a" onchange="execFormat('hiliteColor', this.value)" class="absolute inset-0 opacity-0 cursor-pointer">
+                </label>
+                <label title="Cor da fonte" class="word-tool-btn cursor-pointer relative">
+                    <i data-lucide="baseline" class="w-4 h-4"></i>
+                    <input type="color" value="#1e293b" onchange="execFormat('foreColor', this.value)" class="absolute inset-0 opacity-0 cursor-pointer">
+                </label>
+                <div class="word-tool-sep"></div>
+                <button onclick="execFormat('justifyLeft')" title="Alinhar à Esquerda" class="word-tool-btn"><i data-lucide="align-left" class="w-4 h-4"></i></button>
+                <button onclick="execFormat('justifyCenter')" title="Centralizar" class="word-tool-btn"><i data-lucide="align-center" class="w-4 h-4"></i></button>
+                <button onclick="execFormat('justifyRight')" title="Alinhar à Direita" class="word-tool-btn"><i data-lucide="align-right" class="w-4 h-4"></i></button>
+                <button onclick="execFormat('justifyFull')" title="Justificar" class="word-tool-btn"><i data-lucide="align-justify" class="w-4 h-4"></i></button>
+                <div class="word-tool-sep"></div>
+                <button onclick="execFormat('insertUnorderedList')" title="Marcadores" class="word-tool-btn"><i data-lucide="list" class="w-4 h-4"></i></button>
+                <button onclick="execFormat('insertOrderedList')" title="Numeração" class="word-tool-btn"><i data-lucide="list-ordered" class="w-4 h-4"></i></button>
+                <button onclick="execFormat('outdent')" title="Diminuir Recuo" class="word-tool-btn"><i data-lucide="indent-decrease" class="w-4 h-4"></i></button>
+                <button onclick="execFormat('indent')" title="Aumentar Recuo" class="word-tool-btn"><i data-lucide="indent-increase" class="w-4 h-4"></i></button>
+                <div class="word-tool-sep"></div>
+                <button onclick="execFormat('selectAll')" title="Selecionar Tudo" class="word-tool-btn"><i data-lucide="text-cursor-input" class="w-4 h-4"></i></button>
+                <button onclick="openFindReplace()" title="Localizar e Substituir" class="word-tool-btn"><i data-lucide="search" class="w-4 h-4"></i></button>
+                <button onclick="toolbarInsertPageBreak()" title="Quebra de Página" class="word-tool-btn"><i data-lucide="scissors" class="w-4 h-4"></i></button>
+                <div class="word-tool-sep"></div>
+                <button onclick="quickInsertTool('table')" title="Inserir Tabela" class="word-tool-btn"><i data-lucide="table" class="w-4 h-4"></i></button>
+                <button onclick="quickInsertTool('citation')" title="Inserir Citação" class="word-tool-btn"><i data-lucide="quote" class="w-4 h-4"></i></button>
+                <button onclick="quickInsertTool('heading')" title="Inserir Título" class="word-tool-btn"><i data-lucide="heading" class="w-4 h-4"></i></button>
+                <button onclick="quickInsertTool('image')" title="Inserir Imagem" class="word-tool-btn"><i data-lucide="image-plus" class="w-4 h-4"></i></button>
+                <div class="word-tool-sep"></div>
+                <select id="quick-norm-select" onchange="quickApplyNormTemplate()" title="Tipo de Página (Norma)" class="w-full text-[10px] p-1 bg-slate-800 text-slate-200 border border-slate-700 rounded-md outline-none"></select>
+                <div class="word-tool-sep"></div>
+                <button onclick="saveCurrentWork()" title="Salvar Trabalho" class="word-tool-btn text-emerald-400"><i data-lucide="save" class="w-4 h-4"></i></button>
             </div>
-        </div>
-
-        <!-- BARRA DE FERRAMENTAS DE FORMATAÇÃO (estilo Photoshop, ferramentas de Word) -->
-        <div id="word-toolbar" class="hidden lg:flex fixed left-4 top-24 bottom-28 z-30 hide-on-print flex-col items-center gap-1 py-3 px-1.5 bg-slate-900 dark:bg-slate-950 rounded-2xl shadow-2xl border border-slate-700/50 overflow-y-auto custom-scrollbar w-12">
-            <button onclick="execFormat('undo')" title="Desfazer" class="word-tool-btn"><i data-lucide="undo-2" class="w-4 h-4"></i></button>
-            <button onclick="execFormat('redo')" title="Refazer" class="word-tool-btn"><i data-lucide="redo-2" class="w-4 h-4"></i></button>
-            <div class="word-tool-sep"></div>
-            <button onclick="execFormat('bold')" title="Negrito" class="word-tool-btn"><i data-lucide="bold" class="w-4 h-4"></i></button>
-            <button onclick="execFormat('italic')" title="Itálico" class="word-tool-btn"><i data-lucide="italic" class="w-4 h-4"></i></button>
-            <button onclick="execFormat('underline')" title="Sublinhado" class="word-tool-btn"><i data-lucide="underline" class="w-4 h-4"></i></button>
-            <button onclick="execFormat('removeFormat')" title="Limpar Formatação" class="word-tool-btn"><i data-lucide="eraser" class="w-4 h-4"></i></button>
-            <label title="Realçar texto" class="word-tool-btn cursor-pointer relative">
-                <i data-lucide="highlighter" class="w-4 h-4"></i>
-                <input type="color" value="#fef08a" onchange="execFormat('hiliteColor', this.value)" class="absolute inset-0 opacity-0 cursor-pointer">
-            </label>
-            <label title="Cor da fonte" class="word-tool-btn cursor-pointer relative">
-                <i data-lucide="baseline" class="w-4 h-4"></i>
-                <input type="color" value="#1e293b" onchange="execFormat('foreColor', this.value)" class="absolute inset-0 opacity-0 cursor-pointer">
-            </label>
-            <div class="word-tool-sep"></div>
-            <button onclick="execFormat('justifyLeft')" title="Alinhar à Esquerda" class="word-tool-btn"><i data-lucide="align-left" class="w-4 h-4"></i></button>
-            <button onclick="execFormat('justifyCenter')" title="Centralizar" class="word-tool-btn"><i data-lucide="align-center" class="w-4 h-4"></i></button>
-            <button onclick="execFormat('justifyRight')" title="Alinhar à Direita" class="word-tool-btn"><i data-lucide="align-right" class="w-4 h-4"></i></button>
-            <button onclick="execFormat('justifyFull')" title="Justificar" class="word-tool-btn"><i data-lucide="align-justify" class="w-4 h-4"></i></button>
-            <div class="word-tool-sep"></div>
-            <button onclick="execFormat('insertUnorderedList')" title="Marcadores" class="word-tool-btn"><i data-lucide="list" class="w-4 h-4"></i></button>
-            <button onclick="execFormat('insertOrderedList')" title="Numeração" class="word-tool-btn"><i data-lucide="list-ordered" class="w-4 h-4"></i></button>
-            <button onclick="execFormat('outdent')" title="Diminuir Recuo" class="word-tool-btn"><i data-lucide="indent-decrease" class="w-4 h-4"></i></button>
-            <button onclick="execFormat('indent')" title="Aumentar Recuo" class="word-tool-btn"><i data-lucide="indent-increase" class="w-4 h-4"></i></button>
-            <div class="word-tool-sep"></div>
-            <button onclick="execFormat('selectAll')" title="Selecionar Tudo" class="word-tool-btn"><i data-lucide="text-cursor-input" class="w-4 h-4"></i></button>
-            <button onclick="openFindReplace()" title="Localizar e Substituir" class="word-tool-btn"><i data-lucide="search" class="w-4 h-4"></i></button>
-            <button onclick="toolbarInsertPageBreak()" title="Quebra de Página" class="word-tool-btn"><i data-lucide="scissors" class="w-4 h-4"></i></button>
-            <div class="word-tool-sep"></div>
-            <button onclick="saveCurrentWork()" title="Salvar Trabalho" class="word-tool-btn text-emerald-400"><i data-lucide="save" class="w-4 h-4"></i></button>
         </div>
 
         <!-- PAINEL ESQUERDO: Dados e Contexto da Monografia (Com Resize Dinâmico) -->
@@ -1023,9 +1012,11 @@
             makeDraggable('panel-left', 'panel-left-header');
             makeDraggable('panel-right', 'panel-right-header');
             makeDraggable('panel-export', 'panel-export-header');
+            makeDraggable('word-toolbar', 'word-toolbar-header');
             makeResizable('panel-left', { minW: 320, maxW: 0.5, minH: 400 });
             makeResizable('panel-right', { minW: 300, maxW: 0.4, minH: 400 });
             makeResizable('panel-export', { minW: 280, maxW: 0.4, minH: 400 });
+            makeResizable('word-toolbar', { minW: 48, maxW: 0.3, minH: 160 });
             initPinchZoom();
             initPageTracker();
         });
@@ -1094,7 +1085,7 @@
             const minH = opts.minH || 300;
             const maxWRatio = opts.maxW || 0.6;
 
-            ['e', 'w', 's', 'se', 'sw'].forEach(dir => {
+            ['e', 'w', 'n', 's', 'se', 'sw', 'ne', 'nw'].forEach(dir => {
                 const handle = document.createElement('div');
                 handle.className = `resize-handle resize-${dir} hide-on-print`;
                 el.appendChild(handle);
@@ -1111,6 +1102,7 @@
                 const startWidth = el.offsetWidth;
                 const startHeight = el.offsetHeight;
                 const startLeft = el.offsetLeft;
+                const startTop = el.offsetTop;
                 const maxW = window.innerWidth * maxWRatio;
                 const maxH = window.innerHeight * 0.9;
 
@@ -1127,6 +1119,13 @@
                     }
                     if (dir.includes('s')) {
                         el.style.height = Math.min(maxH, Math.max(minH, startHeight + (e.clientY - startY))) + 'px';
+                        el.style.maxHeight = 'none';
+                    }
+                    if (dir.includes('n')) {
+                        const delta = startY - e.clientY;
+                        const newHeight = Math.min(maxH, Math.max(minH, startHeight + delta));
+                        el.style.height = newHeight + 'px';
+                        el.style.top = (startTop - (newHeight - startHeight)) + 'px';
                         el.style.maxHeight = 'none';
                     }
                 }
@@ -1317,12 +1316,8 @@
         }
 
         // ==========================================
-        // PAINEL DE FERRAMENTAS (aba fixa na borda esquerda)
+        // BARRA DE FERRAMENTAS (norma rápida + inserir elementos)
         // ==========================================
-        function toggleEditorToolsPanel() {
-            document.getElementById('panel-editor-tools').classList.toggle('-translate-x-full');
-        }
-
         function populateQuickNormSelect() {
             const select = document.getElementById('quick-norm-select');
             if (!select) return;
@@ -1482,6 +1477,16 @@
             el.innerText = msg;
             el.classList.remove('hidden-state', 'bg-red-50', 'dark:bg-red-900/20', 'text-red-600', 'dark:text-red-400');
             el.classList.add('bg-green-50', 'dark:bg-green-900/20', 'text-green-700', 'dark:text-green-400');
+        }
+
+        function toggleAuthPasswordVisibility() {
+            const input = document.getElementById('auth-password');
+            const btn = document.getElementById('auth-password-toggle');
+            const isHidden = input.type === 'password';
+            input.type = isHidden ? 'text' : 'password';
+            btn.title = isHidden ? 'Ocultar senha' : 'Mostrar senha';
+            btn.innerHTML = `<i data-lucide="${isHidden ? 'eye-off' : 'eye'}" class="w-4 h-4"></i>`;
+            lucide.createIcons();
         }
 
         async function signInWithEmail() {
