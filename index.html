@@ -629,11 +629,29 @@
             <i data-lucide="sun" class="w-5 h-5 block dark:hidden"></i>
         </button>
 
+        <!-- Tutorial guiado de primeiro acesso: realça um elemento por vez com um "spotlight"
+             (caixa com box-shadow gigante) e um cartão explicativo posicionado ao lado dele. -->
+        <div id="tour-overlay" class="hidden-state fixed inset-0 z-[250] hide-on-print">
+            <div id="tour-spotlight" class="absolute rounded-2xl pointer-events-none transition-all duration-300" style="box-shadow: 0 0 0 9999px rgba(15,23,42,0.7);"></div>
+            <div id="tour-card" class="absolute bg-white dark:bg-slate-800 rounded-2xl shadow-2xl p-5 w-[88vw] max-w-sm border border-slate-200 dark:border-slate-700 transition-all duration-300">
+                <div class="flex items-center justify-between mb-2">
+                    <span id="tour-step-counter" class="text-xs font-bold text-slate-400"></span>
+                    <button onclick="skipTour()" type="button" class="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 font-bold">Pular tutorial</button>
+                </div>
+                <h3 id="tour-title" class="font-extrabold text-lg text-slate-800 dark:text-white mb-1"></h3>
+                <p id="tour-text" class="text-sm text-slate-600 dark:text-slate-300 leading-relaxed"></p>
+                <div class="flex items-center justify-between mt-4">
+                    <button id="tour-btn-prev" onclick="prevTourStep()" type="button" class="text-sm font-bold text-slate-500 hover:text-slate-800 dark:hover:text-white px-3 py-2 rounded-lg">Voltar</button>
+                    <button id="tour-btn-next" onclick="nextTourStep()" type="button" class="text-sm font-bold bg-primary-600 hover:bg-primary-700 text-white px-5 py-2 rounded-lg shadow">Próximo</button>
+                </div>
+            </div>
+        </div>
+
         <div id="main-dock-zone" class="fixed inset-x-0 bottom-0 h-28 lg:h-32 z-[60] hide-on-print flex items-end justify-center">
             <div id="main-dock" class="mb-4 lg:mb-6 bg-white/80 dark:bg-slate-800/80 backdrop-blur-2xl shadow-[0_20px_40px_-10px_rgba(0,0,0,0.3)] rounded-full px-3 py-2 flex items-center gap-2 border border-white/50 dark:border-slate-700/50">
                 
                 <!-- Mobile/Desktop Toggle Esquerda -->
-                <button onclick="togglePanelVisibility('panel-left')" class="dock-btn relative flex items-center justify-center w-10 h-10 lg:w-12 lg:h-12 rounded-full text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition">
+                <button onclick="togglePanelVisibility('panel-left')" id="dock-toggle-data" class="dock-btn relative flex items-center justify-center w-10 h-10 lg:w-12 lg:h-12 rounded-full text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition">
                     <i data-lucide="database" class="dock-icon w-4 h-4 lg:w-5 lg:h-5"></i>
                     <span class="dock-tooltip">Dados</span>
                 </button>
@@ -674,7 +692,7 @@
                 <div class="w-px h-6 bg-slate-300 dark:bg-slate-600 mx-1"></div>
 
                 <!-- Mobile/Desktop Toggle Direita -->
-                <button onclick="togglePanelVisibility('panel-right')" class="dock-btn relative flex items-center justify-center w-10 h-10 lg:w-12 lg:h-12 rounded-full text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/30 transition">
+                <button onclick="togglePanelVisibility('panel-right')" id="dock-toggle-assistant" class="dock-btn relative flex items-center justify-center w-10 h-10 lg:w-12 lg:h-12 rounded-full text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/30 transition">
                     <i data-lucide="bot" class="dock-icon w-4 h-4 lg:w-5 lg:h-5"></i>
                     <span class="dock-tooltip">Assistente</span>
                 </button>
@@ -799,6 +817,15 @@
                             <input type="file" id="norm-file-input" accept=".txt" class="hidden">
                         </div>
                         <div id="norm-templates-list" class="mt-4 space-y-2"></div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-3 flex items-center gap-2">
+                            <i data-lucide="graduation-cap" class="w-5 h-5 text-primary-500"></i> Tutorial
+                        </label>
+                        <button onclick="startTour()" type="button" class="w-full flex items-center justify-center gap-2 p-4 bg-primary-50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-900/40 text-primary-700 dark:text-primary-400 rounded-xl hover:bg-primary-100 transition-all font-bold text-sm">
+                            <i data-lucide="play-circle" class="w-4 h-4"></i> Ver o tutorial novamente
+                        </button>
                     </div>
 
                     <div>
@@ -1363,6 +1390,7 @@
                 document.getElementById('login-screen').classList.add('hidden-state');
                 document.getElementById('app-screen').classList.remove('opacity-0', 'pointer-events-none');
                 updateCoverPage();
+                maybeStartTour();
             }, 400);
         }
 
@@ -1477,6 +1505,7 @@
                 document.getElementById('login-screen').classList.add('hidden-state');
                 document.getElementById('app-screen').classList.remove('opacity-0', 'pointer-events-none');
                 updateCoverPage();
+                maybeStartTour();
             }, 400);
         }
 
@@ -1715,6 +1744,110 @@
         }
         
         function toggleMobilePanels(side) { togglePanelVisibility(`panel-${side}`); }
+
+        // ==========================================
+        // TUTORIAL GUIADO DE PRIMEIRO ACESSO
+        // ==========================================
+        const TOUR_STEPS = [
+            { title: 'Bem-vindo ao Monofy! 👋', text: 'Vamos te mostrar rapidinho como tudo funciona. Leva menos de 1 minuto — você pode pular quando quiser.' },
+            { target: '#dock-tab-generator', title: 'Estúdio', text: 'Aqui é onde você escreve e visualiza a sua monografia, já formatada e paginada como um documento real.' },
+            { target: '#dock-toggle-data', title: 'Dados', before: () => ensurePanelOpenForTour('panel-left'), text: 'Cole o seu texto-base, anexe PDFs de referência e preencha os dados da capa (universidade, título, autor...).' },
+            { target: '#btn-generate', title: 'Gerar com IA', before: () => ensurePanelOpenForTour('panel-left'), text: 'Com um clique, a IA escreve a monografia inteira a partir das suas notas. Isso consome créditos da sua conta.' },
+            { title: 'Editar o texto', text: 'Depois de gerada, clique em qualquer parágrafo para editar diretamente. Uma barra de ferramentas flutuante deixa você pedir à IA para melhorar um trecho, inserir imagens e mais.' },
+            { target: '#dock-toggle-assistant', title: 'Assistente', before: () => ensurePanelOpenForTour('panel-right'), text: 'O Assistente de IA ajuda a refinar trechos específicos do seu texto sempre que precisar.' },
+            { target: '#dock-tab-profile', title: 'Arquivo', text: 'Todos os documentos que você gerar ficam guardados aqui. Pode reabrir e continuar de onde parou quando quiser.' },
+            { target: '#dock-tab-credits', title: 'Créditos', text: 'Acompanhe e compre créditos aqui. Eles são usados para gerar com IA, exportar e remover a marca d\'água do documento final.' },
+            { target: '#dock-tab-settings', title: 'Ajustes', text: 'Escolha o idioma da redação, a norma (ABNT, APA...), o tema claro/escuro e gerencie modelos personalizados.' },
+            { target: '#dock-tab-myprofile', title: 'Perfil', text: 'Veja os seus dados de conta por aqui.' },
+            { title: 'Pronto! 🎉', text: 'Você já sabe o essencial. Se tiver algum problema, fale com o suporte pelo WhatsApp na aba Ajustes. Bom trabalho com a sua monografia!' }
+        ];
+        let tourStep = 0;
+
+        function ensurePanelOpenForTour(panelId) {
+            if (window.innerWidth >= 1024) return;
+            const panel = document.getElementById(panelId);
+            if (panel && panel.classList.contains('mobile-hidden')) {
+                togglePanelVisibility(panelId);
+            }
+        }
+
+        function startTour() {
+            switchTab('generator');
+            tourStep = 0;
+            document.getElementById('tour-overlay').classList.remove('hidden-state');
+            renderTourStep();
+        }
+
+        function renderTourStep() {
+            const step = TOUR_STEPS[tourStep];
+            if (step.before) step.before();
+            document.getElementById('tour-step-counter').innerText = `${tourStep + 1} / ${TOUR_STEPS.length}`;
+            document.getElementById('tour-title').innerText = step.title;
+            document.getElementById('tour-text').innerText = step.text;
+            document.getElementById('tour-btn-prev').classList.toggle('hidden-state', tourStep === 0);
+            document.getElementById('tour-btn-next').innerText = tourStep === TOUR_STEPS.length - 1 ? 'Concluir' : 'Próximo';
+            setTimeout(() => positionTourStep(step), 80);
+        }
+
+        function positionTourStep(step) {
+            const spotlight = document.getElementById('tour-spotlight');
+            const card = document.getElementById('tour-card');
+            const target = step.target ? document.querySelector(step.target) : null;
+
+            if (target) {
+                target.scrollIntoView({ block: 'center', behavior: 'instant' });
+                const r = target.getBoundingClientRect();
+                const pad = 8;
+                spotlight.style.left = `${r.left - pad}px`;
+                spotlight.style.top = `${r.top - pad}px`;
+                spotlight.style.width = `${r.width + pad * 2}px`;
+                spotlight.style.height = `${r.height + pad * 2}px`;
+
+                const cardW = card.offsetWidth || 320;
+                const cardH = card.offsetHeight || 180;
+                const spaceBelow = window.innerHeight - r.bottom;
+                const top = spaceBelow > cardH + 24 ? r.bottom + 16 : Math.max(16, r.top - cardH - 16);
+                let left = r.left + r.width / 2 - cardW / 2;
+                left = Math.min(Math.max(16, left), window.innerWidth - cardW - 16);
+                card.style.top = `${top}px`;
+                card.style.left = `${left}px`;
+            } else {
+                spotlight.style.left = '50%';
+                spotlight.style.top = '50%';
+                spotlight.style.width = '0px';
+                spotlight.style.height = '0px';
+
+                const cardW = card.offsetWidth || 320;
+                const cardH = card.offsetHeight || 180;
+                card.style.left = `${(window.innerWidth - cardW) / 2}px`;
+                card.style.top = `${(window.innerHeight - cardH) / 2}px`;
+            }
+        }
+
+        function nextTourStep() {
+            if (tourStep >= TOUR_STEPS.length - 1) { finishTour(); return; }
+            tourStep++;
+            renderTourStep();
+        }
+
+        function prevTourStep() {
+            if (tourStep === 0) return;
+            tourStep--;
+            renderTourStep();
+        }
+
+        function skipTour() { finishTour(); }
+
+        function finishTour() {
+            document.getElementById('tour-overlay').classList.add('hidden-state');
+            localStorage.setItem('monografia_onboarding_done', 'true');
+        }
+
+        function maybeStartTour() {
+            if (!localStorage.getItem('monografia_onboarding_done')) {
+                setTimeout(startTour, 600);
+            }
+        }
 
         function toggleDarkMode() {
             state.isDark = !state.isDark;
