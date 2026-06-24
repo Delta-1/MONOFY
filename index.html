@@ -45,8 +45,16 @@
             { id: 'pack_100', credits: 100, price: 'R$ 90,00' }
         ];
         const CREDITS_PER_EXPORT = 10; // remover marca d'água
-        const AI_COST_PER_PAGE = 5;    // usar IA pra refinar 1 página
-        const AI_COST_FULL_DOC = 50;   // gerar a monografia inteira com IA
+        const AI_COST_PER_PAGE = 5;       // usar IA pra refinar 1 página
+        const AI_COST_PER_SECTION = 10;   // gerar 1 seção da monografia com IA (5 seções = 50, igual ao custo anterior do doc inteiro)
+
+        const DOC_SECTION_PLAN = [
+            { id: 'resumo', label: 'Resumo', instructions: `Redacta un RESUMEN/ABSTRACT breve (máx. 200 palabras) que sintetice el problema, el objetivo y la conclusión esperada del trabajo, basado en las notas del usuario. No uses subtítulos.` },
+            { id: 'introducao', label: 'Introdução', instructions: `Redacta la INTRODUCCIÓN: contextualiza el tema, presenta el problema, los objetivos y la justificación del trabajo. 2 a 4 párrafos.` },
+            { id: 'marco_teorico', label: 'Marco Teórico', instructions: `Redacta el MARCO TEÓRICO completo: desarrolla analíticamente los conceptos y argumentos de las notas y del material de referencia. Crea subtítulos con <h2> para cada subtema relevante. Esta es la sección más extensa y profunda del trabajo.` },
+            { id: 'conclusao', label: 'Conclusão', instructions: `Redacta la CONCLUSIÓN: sintetiza los hallazgos, retoma los objetivos planteados en la introducción y propone consideraciones finales. 2 a 3 párrafos.` },
+            { id: 'referencias', label: 'Referências', instructions: null }
+        ];
         const WHATSAPP_SUPPORT_NUMBER = '5519989765398';
 
         // Modelos de norma embutidos. Margens em cm. recuoParagrafo em cm.
@@ -1984,17 +1992,19 @@
 
             if (state.isDemo) { alert('Modo demonstração: geração com IA desativada. Crie uma conta para usar de verdade.'); return; }
             if (!state.profile) { alert('Aguarde o carregamento do seu perfil.'); return; }
+
+            const totalCost = AI_COST_PER_SECTION * DOC_SECTION_PLAN.length;
             const confirmed = await showConfirmModal(
                 'Gerar monografia com IA',
-                `Isso vai consumir <b>${AI_COST_FULL_DOC} créditos</b> do seu saldo atual de <b>${state.profile.credits}</b>. Continuar?`
+                `A IA vai redigir o documento seção por seção (Resumo, Introdução, Marco Teórico, Conclusão e Referências). Isso consome até <b>${totalCost} créditos</b> no total — cada seção só é cobrada depois de gerada com sucesso — do seu saldo atual de <b>${state.profile.credits}</b>. Continuar?`
             );
             if (!confirmed) return;
 
             const btnGenerate = document.getElementById('btn-generate');
+            const textEl = document.getElementById('text-generate');
             document.getElementById('icon-generate').classList.add('hidden-state');
             document.getElementById('icon-loading').classList.remove('hidden-state');
             btnGenerate.disabled = true;
-            const stopProgress = startGenerationProgressMessages();
 
             const activeTpl = getActiveNormTemplate();
             const citStyle = state.citationStyle;
@@ -2002,91 +2012,89 @@
                 ? `Genera una lista bibliográfica en NORMAS ABNT (NBR 6023). Formato: SOBRENOME, Nome. Título: subtítulo. Edición. Local: Editora, Año. Las citas en el texto deben ser (SOBRENOME, año).`
                 : `Genera una lista bibliográfica APA 7 válida. Formato: Autor, A. (Año). Título. Fuente/Editorial. Las citas en el texto deben ser (Autor, año).`;
 
-            const systemPrompt = `Actúa como un profesor universitario y revisor experto en Normas ${citStyle} (modelo "${activeTpl.nome}").
-            IDIOMA DE SALIDA OBLIGATORIO: ${state.docLanguage}. Escribe TODO estrictamente en este idioma.
-            TÍTULO DEL TRABAJO: ${document.getElementById('in-title').value}
+            const docTitle = document.getElementById('in-title').value;
+            state.generatedSections = [];
+            document.getElementById('btn-export-word').disabled = true;
+            document.getElementById('btn-export-pdf').disabled = true;
 
-            TAREA: Toma las notas del usuario y el material de referencia, expándelo analíticamente y redacta una monografía académica formal.
+            let failedSection = null;
 
-            REGLAS CRÍTICAS Y ESTRUCTURA:
-            1. NO GENERE LA TABLA DE CONTENIDO (Índice).
-            2. DEBES CREAR obligatoriamente estas secciones: Resumen, Introducción, Marco Teórico (crea subtópicos), Conclusión, Referencias.
-            3. JERARQUÍA DE TÍTULOS: Usa <h1> para Títulos Nivel 1, <h2> Nivel 2, <h3> Nivel 3.
-            4. PÁRRAFOS: Usa <p> para separar ideas.
-            5. REFERENCIAS BIBLIOGRÁFICAS (MUY IMPORTANTE): ${refRulesByStyle} Envuelve CADA referencia obligatoriamente en <p class="hanging-indent"> para lograr la sangría francesa.
+            for (let i = 0; i < DOC_SECTION_PLAN.length; i++) {
+                const plan = DOC_SECTION_PLAN[i];
+                textEl.innerText = `Gerando: ${plan.label} (${i + 1}/${DOC_SECTION_PLAN.length})...`;
 
-            MATERIAL DE REFERENCIA DEL USUARIO (Extrae argumentos de aquí si los hay):
-            ${state.uploadedContextText}
-            
-            NOTAS DEL USUARIO:
-            ${rawText}
-            
-            FORMATO DE SALIDA ESTRICTO:
-            Devuelve ÚNICAMENTE un arreglo JSON crudo. SIN markdown.
-            [
-              {"id": "s1", "title": "Introducción", "content": "<p>Texto...</p>"},
-              {"id": "s2", "title": "Referencias", "content": "<p class=\\"hanging-indent\\">Autor, A. (2020)...</p>"}
-            ]`;
+                const sectionInstructions = plan.id === 'referencias'
+                    ? `Redacta la lista de REFERENCIAS BIBLIOGRÁFICAS. ${refRulesByStyle} Envuelve CADA referencia obligatoriamente en <p class="hanging-indent"> para lograr la sangría francesa.`
+                    : plan.instructions;
+                const otherLabels = DOC_SECTION_PLAN.filter(p => p.id !== plan.id).map(p => p.label).join(', ');
 
-            try {
-                let jsonText = await callAI(systemPrompt, AI_COST_FULL_DOC, 'ai_full_document');
+                const sectionPrompt = `Actúa como un profesor universitario y revisor experto en Normas ${citStyle} (modelo "${activeTpl.nome}").
+                IDIOMA DE SALIDA OBLIGATORIO: ${state.docLanguage}. Escribe TODO estrictamente en este idioma.
+                TÍTULO DEL TRABAJO: ${docTitle}
 
-                // Limpeza Extrema Parser JSON
-                jsonText = jsonText.replace(/```json/gi, '').replace(/```html/gi, '').replace(/```/g, '').trim();
-                const firstBracket = jsonText.indexOf('[');
-                const lastBracket = jsonText.lastIndexOf(']');
-                if (firstBracket !== -1 && lastBracket !== -1) {
-                    jsonText = jsonText.substring(firstBracket, lastBracket + 1);
+                Estás redactando una monografía académica formal sección por sección. Esta llamada es SOLO para la sección "${plan.label}". Las demás secciones (${otherLabels}) ya serán redactadas en otras llamadas — NO las repitas ni las anticipes aquí.
+
+                ${sectionInstructions}
+
+                JERARQUÍA DE TÍTULOS DENTRO DEL CONTENIDO: usa <h2> para subtítulos y <h3> para sub-subtítulos si es necesario. Usa <p> para párrafos.
+
+                MATERIAL DE REFERENCIA DEL USUARIO (Extrae argumentos de aquí si los hay):
+                ${state.uploadedContextText}
+
+                NOTAS DEL USUARIO:
+                ${rawText}
+
+                FORMATO DE SALIDA ESTRICTO:
+                Devuelve ÚNICAMENTE un objeto JSON crudo, SIN markdown:
+                {"title": "Título de esta sección en el idioma de salida", "content": "<p>...</p>"}`;
+
+                try {
+                    let jsonText = await callAI(sectionPrompt, AI_COST_PER_SECTION, `ai_section_${plan.id}`);
+
+                    jsonText = jsonText.replace(/```json/gi, '').replace(/```html/gi, '').replace(/```/g, '').trim();
+                    const firstBrace = jsonText.indexOf('{');
+                    const lastBrace = jsonText.lastIndexOf('}');
+                    if (firstBrace !== -1 && lastBrace !== -1) {
+                        jsonText = jsonText.substring(firstBrace, lastBrace + 1);
+                    }
+                    const parsed = JSON.parse(jsonText);
+
+                    state.generatedSections.push({
+                        id: `sec-${plan.id}-${Date.now()}`,
+                        title: parsed.title || plan.label,
+                        content: parsed.content || ''
+                    });
+
+                    renderSections();
+                    setTimeout(checkAllSectionsOverflow, 100);
+                    document.getElementById('btn-export-word').disabled = false;
+                    document.getElementById('btn-export-pdf').disabled = false;
+                } catch (err) {
+                    console.error(err);
+                    failedSection = plan.label;
+                    break;
                 }
-                
-                state.generatedSections = JSON.parse(jsonText).map((sec, i) => ({
-                    id: sec.id || `sec-${i}-${Date.now()}`, title: sec.title || `Capítulo ${i+1}`, content: sec.content || ''
-                }));
+            }
 
-                document.getElementById('btn-export-word').disabled = false;
-                document.getElementById('btn-export-pdf').disabled = false;
-
-                renderSections();
-                setTimeout(checkAllSectionsOverflow, 100);
+            if (state.generatedSections.length > 0) {
                 state.currentDocWatermarkRemoved = false; // novo trabalho = marca d'água precisa ser paga de novo
-                saveDocumentToHistory(document.getElementById('in-title').value || 'Monografia', state.generatedSections, state.references);
+                saveDocumentToHistory(docTitle || 'Monografia', state.generatedSections, state.references);
                 updateWatermarkButtonUI();
                 syncWatermarkRemovedClass();
 
-                if(window.innerWidth < 1024) {
+                if (window.innerWidth < 1024) {
                     togglePanelVisibility('panel-left');
                 }
-
-            } catch (err) {
-                console.error(err);
-                showError(err.message || 'Erro na IA. Tente novamente com menos texto.');
-            } finally {
-                stopProgress();
-                document.getElementById('icon-generate').classList.remove('hidden-state');
-                document.getElementById('icon-loading').classList.add('hidden-state');
-                document.getElementById('text-generate').innerText = 'Redigir Monografia';
-                btnGenerate.disabled = false;
             }
-        }
 
-        const GENERATION_PROGRESS_MESSAGES = [
-            'Analisando as suas notas...',
-            'Estruturando os capítulos...',
-            'Redigindo o texto...',
-            'Aplicando as normas de formatação...',
-            'Organizando as referências...',
-            'Quase lá...'
-        ];
+            if (failedSection) {
+                showError(`A seção "${failedSection}" falhou e a geração foi interrompida (nenhum crédito foi cobrado por ela). As seções já geradas com sucesso continuam no documento — você pode exportá-las ou completá-las manualmente, ou clicar em "Redigir Monografia" de novo para gerar tudo desde o início.`);
+            }
 
-        function startGenerationProgressMessages() {
-            let i = 0;
-            const textEl = document.getElementById('text-generate');
-            textEl.innerText = GENERATION_PROGRESS_MESSAGES[0];
-            const interval = setInterval(() => {
-                i = (i + 1) % GENERATION_PROGRESS_MESSAGES.length;
-                textEl.innerText = GENERATION_PROGRESS_MESSAGES[i];
-            }, 3500);
-            return () => clearInterval(interval);
+            document.getElementById('icon-generate').classList.remove('hidden-state');
+            document.getElementById('icon-loading').classList.add('hidden-state');
+            textEl.innerText = 'Redigir Monografia';
+            btnGenerate.disabled = false;
         }
 
         // --- 5. RENDERIZAÇÃO A4 E ÍNDICE ---
