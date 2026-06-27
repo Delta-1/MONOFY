@@ -194,7 +194,7 @@
         }
 
         .cover-border {
-            border: 2px solid #000000;
+            border: 5px solid #000080;
             flex-grow: 1;
             padding: calc(var(--page-mt) - 1cm) calc(var(--page-mr) - 1cm) calc(var(--page-mb) - 1cm) calc(var(--page-ml) - 1cm);
             display: flex;
@@ -3518,10 +3518,10 @@
                 children.push(new docx.Table({
                     width: { size: 100, type: docx.WidthType.PERCENTAGE },
                     borders: {
-                        top: { style: docx.BorderStyle.SINGLE, size: 12, color: '000000' },
-                        bottom: { style: docx.BorderStyle.SINGLE, size: 12, color: '000000' },
-                        left: { style: docx.BorderStyle.SINGLE, size: 12, color: '000000' },
-                        right: { style: docx.BorderStyle.SINGLE, size: 12, color: '000000' }
+                        top: { style: docx.BorderStyle.SINGLE, size: 32, color: '000080' },
+                        bottom: { style: docx.BorderStyle.SINGLE, size: 32, color: '000080' },
+                        left: { style: docx.BorderStyle.SINGLE, size: 32, color: '000080' },
+                        right: { style: docx.BorderStyle.SINGLE, size: 32, color: '000080' }
                     },
                     rows: [new docx.TableRow({ children: [new docx.TableCell({ margins: { top: 300, bottom: 300, left: 300, right: 300 }, children: coverBlocks })] })]
                 }));
