@@ -47,6 +47,22 @@
         const CREDITS_PER_EXPORT = 10; // remover marca d'água
         const AI_COST_PER_PAGE = 5;       // usar IA pra refinar 1 página
         const AI_COST_PER_SECTION = 10;   // gerar 1 seção da monografia com IA (5 seções = 50, igual ao custo anterior do doc inteiro)
+        const CREDITS_AUTO_MODE = 100;    // ativar o Modo Automático do Assistente (capa + tema + redação sem intervenção)
+
+        // Campos da capa que o Assistente consegue perguntar um por um no chat guiado.
+        // "default" é o valor de placeholder que cada campo traz de fábrica — se o input ainda
+        // estiver vazio ou igual a isso, consideramos que o usuário não preencheu de verdade.
+        const COVER_GUIDED_FIELDS = [
+            { id: 'in-university', label: 'Universidade', question: 'Qual é o nome da sua universidade ou instituição?', default: 'UNIVERSIDAD PRIVADA DOMINGO SAVIO' },
+            { id: 'in-faculty', label: 'Faculdade', question: 'Qual é o nome da faculdade?', default: 'FACULTAD DE CIENCIAS EMPRESARIALES' },
+            { id: 'in-career', label: 'Carreira/Curso', question: 'Qual é o nome da carreira ou curso?', default: 'CARRERA DE INGENIERÍA COMERCIAL' },
+            { id: 'in-title', label: 'Título do trabalho', question: 'Qual é o título da sua monografia?', default: 'TÍTULO DA MONOGRAFIA' },
+            { id: 'in-subject', label: 'Disciplina', question: 'Qual é a disciplina ou matéria deste trabalho?', default: 'Metodología de la Investigación' },
+            { id: 'in-professor', label: 'Docente', question: 'Qual é o nome completo do(a) professor(a) ou orientador(a)?', default: 'Nome do Docente' },
+            { id: 'in-student', label: 'Estudante(s)', question: 'Qual é o seu nome completo? (se houver mais de um estudante, um por linha)', default: 'Nome do Estudante' },
+            { id: 'in-city', label: 'Cidade-País', question: 'Em que cidade e país você está?', default: 'Cobija-Pando-Bolivia' },
+            { id: 'in-year', label: 'Ano', question: 'Qual é o ano deste trabalho?', default: '2023' }
+        ];
 
         const DOC_SECTION_PLAN = [
             { id: 'resumo', label: 'Resumo', instructions: `Redacta un RESUMEN/ABSTRACT breve (máx. 200 palabras) que sintetice el problema, el objetivo y la conclusión esperada del trabajo, basado en las notas del usuario. No uses subtítulos.` },
@@ -649,6 +665,13 @@
             </div>
 
             <div class="flex-1 flex flex-col overflow-hidden min-h-0">
+                <div class="px-5 pt-3 shrink-0">
+                    <button id="btn-auto-mode" onclick="toggleAutomaticMode()" type="button" title="Por padrão a IA colabora com você. No modo automático, ela faz tudo (capa, tema e redação) com autonomia." class="w-full flex items-center justify-between gap-2 text-xs font-bold px-3 py-2 rounded-xl border border-purple-200 dark:border-purple-900/40 bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/30 transition">
+                        <span class="flex items-center gap-1.5"><i data-lucide="zap" class="w-3.5 h-3.5"></i> <span id="auto-mode-label">Modo Automático</span></span>
+                        <span class="opacity-70">(<span id="auto-mode-cost"></span> créditos)</span>
+                    </button>
+                </div>
+
                 <div id="assistant-chat-messages" class="flex-1 overflow-y-auto custom-scrollbar p-5 space-y-3"></div>
 
                 <div class="p-4 border-t border-slate-100 dark:border-slate-800 space-y-2 shrink-0">
@@ -1027,7 +1050,10 @@
             customNormTemplates: JSON.parse(localStorage.getItem('monografia_norm_templates')) || [],
             activeNormTemplateId: localStorage.getItem('monografia_active_norm') || 'apa-upds',
             citationStyle: 'APA',
-            assistantChatMessages: []
+            assistantChatMessages: [],
+            automaticMode: false,
+            coverGuidedStage: 'idle', // 'idle' | 'choice' | 'fields' | 'theme' | 'done'
+            coverGuidedPending: []
         };
 
         document.addEventListener('DOMContentLoaded', () => {
@@ -1040,6 +1066,7 @@
             applyNormTemplate(getActiveNormTemplate());
             applyWatermarkStamps();
             document.getElementById('assistant-chat-cost').innerText = AI_COST_PER_PAGE;
+            document.getElementById('auto-mode-cost').innerText = CREDITS_AUTO_MODE;
             renderAssistantChat();
 
             // Tornar painéis arrastáveis e redimensionáveis no Desktop
@@ -2261,7 +2288,7 @@
             if (!state.profile) { alert('Aguarde o carregamento do seu perfil.'); return; }
 
             const totalCost = AI_COST_PER_SECTION * DOC_SECTION_PLAN.length;
-            const confirmed = await showConfirmModal(
+            const confirmed = state.automaticMode ? true : await showConfirmModal(
                 'Gerar monografia com IA',
                 `A IA vai redigir o documento seção por seção (Resumo, Introdução, Marco Teórico, Conclusão e Referências). Isso consome até <b>${totalCost} créditos</b> no total — cada seção só é cobrada depois de gerada com sucesso — do seu saldo atual de <b>${state.profile.credits}</b>. Continuar?`
             );
@@ -2940,10 +2967,40 @@
         }
 
         // --- Chat do Assistente: conversa livre sobre o que o usuário quer ANTES de gerar o
-        // documento. O histórico é enviado como contexto extra para cada seção em generateDocument(). ---
+        // documento. O histórico é enviado como contexto extra para cada seção em generateDocument().
+        // Além disso, se a capa não estiver preenchida, o Assistente guia o usuário campo a campo
+        // antes de passar para a conversa sobre o tema/foco da pesquisa. ---
+        function getMissingCoverFields() {
+            return COVER_GUIDED_FIELDS.filter(f => {
+                const el = document.getElementById(f.id);
+                const val = (el ? el.value : '').trim();
+                return !val || val === f.default;
+            });
+        }
+
+        function hasThemeSignal() {
+            const titleMissing = getMissingCoverFields().some(f => f.id === 'in-title');
+            const rawText = document.getElementById('raw-text').value.trim();
+            return !titleMissing || rawText.length > 0;
+        }
+
         function renderAssistantChat() {
             const box = document.getElementById('assistant-chat-messages');
             if (!state.assistantChatMessages.length) {
+                const missing = getMissingCoverFields();
+                if (missing.length > 0 && state.coverGuidedStage === 'idle') {
+                    box.innerHTML = `<div class="bg-purple-50 dark:bg-purple-900/20 p-4 rounded-2xl border border-purple-100 dark:border-purple-900/30 space-y-3">
+                        <p class="text-sm text-purple-800 dark:text-purple-300 leading-relaxed font-medium">Olá, tudo bem? 👋 Para eu te ajudar, preciso que você forneça algumas informações da capa. Notei que ainda faltam: <b>${missing.map(f => escapeHtml(f.label)).join(', ')}</b>.</p>
+                        <p class="text-sm text-purple-800 dark:text-purple-300 leading-relaxed">Você pode continuar mesmo assim (com os dados padrão) ou me responder aqui, um de cada vez.</p>
+                        <div class="flex flex-wrap gap-2">
+                            <button onclick="startCoverGuidedQA()" type="button" class="text-xs font-bold px-3 py-2 rounded-lg bg-purple-600 text-white hover:bg-purple-700 transition">Responder agora</button>
+                            <button onclick="skipCoverGuidedQA()" type="button" class="text-xs font-bold px-3 py-2 rounded-lg bg-white dark:bg-slate-800 border border-purple-200 dark:border-purple-900/40 text-purple-700 dark:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-900/30 transition">Continuar mesmo assim</button>
+                            <button onclick="togglePanelVisibility('panel-left')" type="button" class="text-xs font-bold px-3 py-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition">Abrir aba de Dados</button>
+                        </div>
+                    </div>`;
+                    lucide.createIcons();
+                    return;
+                }
                 box.innerHTML = `<div class="bg-purple-50 dark:bg-purple-900/20 p-4 rounded-2xl border border-purple-100 dark:border-purple-900/30">
                     <p class="text-sm text-purple-800 dark:text-purple-300 leading-relaxed font-medium">Olá! Antes de gerar, me conte o que você quer: o foco do tema, o tom de escrita, algo que não pode faltar... Quando estiver pronto, clique em "Redigir Monografia".</p>
                 </div>`;
@@ -2962,6 +3019,23 @@
             lucide.createIcons();
         }
 
+        // Inicia o questionário guiado de capa: a IA pergunta um campo por vez, sem gastar créditos
+        // (é só preenchimento de formulário por conversa, não geração de conteúdo).
+        function startCoverGuidedQA() {
+            state.coverGuidedStage = 'fields';
+            state.coverGuidedPending = getMissingCoverFields().map(f => f.id);
+            const first = COVER_GUIDED_FIELDS.find(f => f.id === state.coverGuidedPending[0]);
+            state.assistantChatMessages.push({ role: 'ai', text: first.question });
+            renderAssistantChat();
+            document.getElementById('assistant-chat-input').focus();
+        }
+
+        function skipCoverGuidedQA() {
+            state.coverGuidedStage = 'theme';
+            state.assistantChatMessages.push({ role: 'ai', text: 'Tudo bem, vamos continuar com os dados que já estão na capa. Agora me diga: qual tema ou área você quer pesquisar e se aprofundar nesta monografia?' });
+            renderAssistantChat();
+        }
+
         let assistantChatBusy = false;
         async function sendAssistantChatMessage() {
             if (assistantChatBusy) return;
@@ -2970,6 +3044,27 @@
             const input = document.getElementById('assistant-chat-input');
             const text = input.value.trim();
             if (!text) return;
+
+            // Etapa de preenchimento guiado da capa: respondida localmente, campo a campo,
+            // sem chamar a IA (é só atribuir o valor digitado ao input correspondente).
+            if (state.coverGuidedStage === 'fields' && state.coverGuidedPending.length) {
+                state.assistantChatMessages.push({ role: 'user', text });
+                input.value = '';
+
+                const fieldId = state.coverGuidedPending.shift();
+                const el = document.getElementById(fieldId);
+                if (el) { el.value = text; updateCoverPage(); }
+
+                if (state.coverGuidedPending.length) {
+                    const next = COVER_GUIDED_FIELDS.find(f => f.id === state.coverGuidedPending[0]);
+                    state.assistantChatMessages.push({ role: 'ai', text: next.question });
+                } else {
+                    state.coverGuidedStage = 'theme';
+                    state.assistantChatMessages.push({ role: 'ai', text: 'Perfeito, capa completa! Agora me diga: qual tema ou área você quer pesquisar e se aprofundar nesta monografia?' });
+                }
+                renderAssistantChat();
+                return;
+            }
 
             state.assistantChatMessages.push({ role: 'user', text });
             input.value = '';
@@ -2982,9 +3077,12 @@
                 .filter(m => m.role !== 'error')
                 .map(m => `${m.role === 'user' ? 'Usuário' : 'Assistente'}: ${m.text}`)
                 .join('\n');
+            const themeStageInstructions = (state.coverGuidedStage === 'theme' || !hasThemeSignal())
+                ? `\nO usuário ainda não definiu claramente o tema/área de pesquisa, ou você está conduzindo essa conversa agora. Pergunte e negocie o tema com ele de forma colaborativa (não decida sozinho). Quando sugerir um tema, fonte, autor ou link de referência, explique brevemente por que está sugerindo aquilo e pergunte explicitamente se pode usar/seguir aquilo ("posso usar isso?", "pode ser esse o foco?") antes de assumir como decidido — só trate como confirmado depois que o usuário concordar.`
+                : '';
             const prompt = `Você é um assistente que ajuda um estudante a planejar uma monografia académica ANTES dela ser redigida pela IA.
             IDIOMA DE RESPOSTA: ${state.docLanguage}.
-            Converse de forma breve e direta (no máximo 2-3 frases), fazendo perguntas úteis sobre o tema, foco, objetivos e tom desejado, ou confirmando que já entendeu o que o usuário quer. Não escreva a monografia agora, apenas conduza a conversa.
+            Converse de forma breve e direta (no máximo 2-3 frases), fazendo perguntas úteis sobre o tema, foco, objetivos e tom desejado, ou confirmando que já entendeu o que o usuário quer. Não escreva a monografia agora, apenas conduza a conversa.${themeStageInstructions}
 
             HISTÓRICO DA CONVERSA:
             ${history}`;
@@ -2992,6 +3090,7 @@
             try {
                 const reply = await callAI(prompt, AI_COST_PER_PAGE, 'ai_chat_assistant');
                 state.assistantChatMessages.push({ role: 'ai', text: reply.trim() });
+                if (state.coverGuidedStage === 'theme') state.coverGuidedStage = 'done';
             } catch (err) {
                 console.error(err);
                 state.assistantChatMessages.push({ role: 'error', text: err.message || 'Erro na IA ao responder.' });
@@ -3000,6 +3099,76 @@
                 document.getElementById('assistant-chat-send').disabled = false;
                 renderAssistantChat();
             }
+        }
+
+        // --- Modo Automático: por padrão a IA colabora com o usuário (auxilia a pesquisa, não decide
+        // tudo sozinha). Ativando este modo, ela passa a fazer tudo com autonomia (preenche o que faltar
+        // na capa, escolhe um tema se não houver um definido, e gera o documento completo), por 100 créditos. ---
+        async function toggleAutomaticMode() {
+            if (state.isDemo) { alert('Modo demonstração: indisponível.'); return; }
+            if (!state.profile) { alert('Aguarde o carregamento do seu perfil.'); return; }
+
+            if (state.automaticMode) {
+                state.automaticMode = false;
+                updateAutoModeButtonUI();
+                return;
+            }
+
+            const confirmed = await showConfirmModal(
+                'Ativar Modo Automático',
+                `No modo automático, a IA assume o controle: preenche o que faltar na capa, escolhe um tema (se você não tiver definido um) e redige a monografia completa com excelência, sem perguntar passo a passo. Isso cobra <b>${CREDITS_AUTO_MODE} créditos</b> agora, do seu saldo atual de <b>${state.profile.credits}</b> (à parte do custo normal de gerar cada seção depois). Continuar?`
+            );
+            if (!confirmed) return;
+
+            const { data: success, error } = await supabaseClient.rpc('consume_credits_generic', {
+                p_user_id: state.session.user.id, p_amount: CREDITS_AUTO_MODE, p_reason: 'ai_automatic_mode'
+            });
+            if (error || !success) {
+                showError(`Créditos insuficientes (precisa de ${CREDITS_AUTO_MODE}). Compre créditos na aba Créditos.`);
+                return;
+            }
+            if (state.profile.role !== 'admin') {
+                state.profile.credits -= CREDITS_AUTO_MODE;
+                document.getElementById('user-credits-display').innerText = state.profile.credits;
+            }
+
+            state.automaticMode = true;
+            updateAutoModeButtonUI();
+            state.assistantChatMessages.push({ role: 'ai', text: 'Modo automático ativado! Vou cuidar da capa e do tema com autonomia e já começar a redigir a monografia.' });
+            renderAssistantChat();
+
+            await runAutomaticMode();
+        }
+
+        function updateAutoModeButtonUI() {
+            const btn = document.getElementById('btn-auto-mode');
+            btn.classList.toggle('!bg-purple-600', state.automaticMode);
+            btn.classList.toggle('!text-white', state.automaticMode);
+            document.getElementById('auto-mode-label').innerText = state.automaticMode ? 'Modo Automático (ativo)' : 'Modo Automático';
+        }
+
+        async function runAutomaticMode() {
+            state.coverGuidedStage = 'done';
+            const rawTextEl = document.getElementById('raw-text');
+
+            if (!rawTextEl.value.trim()) {
+                try {
+                    const subject = document.getElementById('in-subject').value || 'tema acadêmico geral';
+                    const career = document.getElementById('in-career').value || '';
+                    const topicPrompt = `Sugira um tema específico e relevante para uma monografia académica na disciplina "${subject}"${career ? ` do curso "${career}"` : ''}, e escreva de 3 a 5 frases de notas-base (problema, objetivo e foco) sobre esse tema, no idioma ${state.docLanguage}. Responda APENAS com o texto das notas-base, sem explicações extras.`;
+                    const notes = await callAI(topicPrompt, AI_COST_PER_PAGE, 'ai_auto_mode_topic');
+                    rawTextEl.value = notes.trim();
+                    state.assistantChatMessages.push({ role: 'ai', text: 'Escolhi um tema e já preparei as notas-base, já que você não tinha definido nenhum. Vamos gerar o documento agora.' });
+                    renderAssistantChat();
+                } catch (err) {
+                    console.error(err);
+                    state.assistantChatMessages.push({ role: 'error', text: err.message || 'Não consegui definir o tema automaticamente.' });
+                    renderAssistantChat();
+                    return;
+                }
+            }
+
+            await generateDocument();
         }
 
         document.getElementById('assistant-chat-input').addEventListener('keydown', function(e) {
