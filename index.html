@@ -2215,30 +2215,42 @@
         // ==========================================
         // Chama a IA através da Edge Function (chave do provedor fica segura no servidor;
         // a cobrança de créditos é feita lá dentro, de forma atômica, antes de gerar o texto).
+        function isOverloadError(message) {
+            return /high demand|overloaded|sobrecarregad|tente.*tarde|try again later/i.test(message || '');
+        }
+
         async function callAI(prompt, cost, reason) {
-            const response = await fetch(EDGE_FN_AI, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${state.session.access_token}`
-                },
-                body: JSON.stringify({ prompt, cost, reason })
-            });
-            const data = await response.json();
-            if (!response.ok || data.error) {
-                if (response.status === 402 || data.error === 'insufficient_credits') {
-                    throw new Error(`Créditos insuficientes (precisa de ${cost}). Compre créditos na aba Créditos.`);
+            const maxAttempts = 3;
+            for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+                const response = await fetch(EDGE_FN_AI, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${state.session.access_token}`
+                    },
+                    body: JSON.stringify({ prompt, cost, reason })
+                });
+                const data = await response.json();
+                if (!response.ok || data.error) {
+                    if (response.status === 402 || data.error === 'insufficient_credits') {
+                        throw new Error(`Créditos insuficientes (precisa de ${cost}). Compre créditos na aba Créditos.`);
+                    }
+                    if (response.status === 401) {
+                        throw new Error('Sessão expirada. Faça login novamente.');
+                    }
+                    const message = data.error || 'Erro ao contactar a IA.';
+                    if (isOverloadError(message) && attempt < maxAttempts) {
+                        await new Promise(r => setTimeout(r, attempt * 2000));
+                        continue;
+                    }
+                    throw new Error(isOverloadError(message) ? 'A IA está sobrecarregada no momento. Tentamos algumas vezes sem sucesso — aguarde um pouco e tente de novo.' : message);
                 }
-                if (response.status === 401) {
-                    throw new Error('Sessão expirada. Faça login novamente.');
+                if (state.profile.role !== 'admin') {
+                    state.profile.credits -= cost;
+                    document.getElementById('user-credits-display').innerText = state.profile.credits;
                 }
-                throw new Error(data.error || 'Erro ao contactar a IA.');
+                return data.text;
             }
-            if (state.profile.role !== 'admin') {
-                state.profile.credits -= cost;
-                document.getElementById('user-credits-display').innerText = state.profile.credits;
-            }
-            return data.text;
         }
 
         async function generateDocument() {
