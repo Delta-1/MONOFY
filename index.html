@@ -111,6 +111,7 @@
         /* Barra de ferramentas de formatação (estilo Photoshop) */
         .word-tool-btn { width: 2.25rem; height: 2.25rem; display: flex; align-items: center; justify-content: center; border-radius: 0.6rem; color: #cbd5e1; flex-shrink: 0; transition: background-color 0.15s, color 0.15s; }
         .word-tool-btn:hover { background-color: rgba(255,255,255,0.1); color: #fff; }
+        .toolbar-tab-btn.active-tab { background-color: #2563eb; color: #fff; }
         .word-tool-sep { width: 1.75rem; height: 1px; background: rgba(255,255,255,0.12); margin: 0.25rem 0; flex-shrink: 0; }
 
         /* Encaixe (dock) da barra de ferramentas nas paredes esquerda/direita/topo da tela */
@@ -188,7 +189,7 @@
             transition: padding 0.3s ease;
         }
 
-        /* Capa Específica da UPDS com Moldura */
+        /* Capa Específica da UPDS com Borda de Página */
         .a4-cover-page {
             padding: 1cm !important; 
             display: flex;
@@ -472,7 +473,7 @@
 
             <div id="print-area" class="flex flex-col gap-10 w-full items-center">
                 
-                <!-- CAPA (Com Moldura UPDS Oficial) -->
+                <!-- CAPA (Com Borda de Página UPDS Oficial) -->
                 <div class="a4-page a4-cover-page">
                     <div id="word-cover" class="cover-border" style="text-align: center; font-family: 'Times New Roman', serif;">
                         
@@ -546,7 +547,17 @@
                 <i data-lucide="grip-horizontal" class="toolbar-grip-icon w-5 h-5 text-slate-500"></i>
                 <button onclick="toggleMobileToolbar()" class="lg:hidden absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-slate-400 hover:text-white rounded-full hover:bg-white/10"><i data-lucide="x" class="w-4 h-4"></i></button>
             </div>
-            <div class="flex flex-wrap content-start items-center justify-center gap-1 py-2 px-1.5 overflow-auto custom-scrollbar">
+            <!-- Abas no estilo Word: cada aba mostra só o grupo de funções correspondente -->
+            <div class="flex flex-wrap items-center justify-center gap-0.5 px-1.5 pt-1 pb-1.5 border-b border-white/10">
+                <button onclick="setToolbarTab('home')" data-tab="home" class="toolbar-tab-btn word-tool-btn" title="Página Inicial"><i data-lucide="house" class="w-4 h-4"></i></button>
+                <button onclick="setToolbarTab('insert')" data-tab="insert" class="toolbar-tab-btn word-tool-btn" title="Inserir"><i data-lucide="plus-square" class="w-4 h-4"></i></button>
+                <button onclick="setToolbarTab('design')" data-tab="design" class="toolbar-tab-btn word-tool-btn" title="Design"><i data-lucide="palette" class="w-4 h-4"></i></button>
+                <button onclick="setToolbarTab('layout')" data-tab="layout" class="toolbar-tab-btn word-tool-btn" title="Layout"><i data-lucide="layout-grid" class="w-4 h-4"></i></button>
+                <button onclick="setToolbarTab('references')" data-tab="references" class="toolbar-tab-btn word-tool-btn" title="Referências"><i data-lucide="book-open" class="w-4 h-4"></i></button>
+            </div>
+
+            <!-- Aba: Página Inicial -->
+            <div data-tab-panel="home" class="toolbar-tab-panel flex flex-wrap content-start items-center justify-center gap-1 py-2 px-1.5 overflow-auto custom-scrollbar">
                 <button onclick="execFormat('undo')" title="Desfazer" class="word-tool-btn"><i data-lucide="undo-2" class="w-4 h-4"></i></button>
                 <button onclick="execFormat('redo')" title="Refazer" class="word-tool-btn"><i data-lucide="redo-2" class="w-4 h-4"></i></button>
                 <div class="word-tool-sep"></div>
@@ -570,35 +581,53 @@
                 <div class="word-tool-sep"></div>
                 <button onclick="execFormat('insertUnorderedList')" title="Marcadores" class="word-tool-btn"><i data-lucide="list" class="w-4 h-4"></i></button>
                 <button onclick="execFormat('insertOrderedList')" title="Numeração" class="word-tool-btn"><i data-lucide="list-ordered" class="w-4 h-4"></i></button>
-                <button onclick="execFormat('outdent')" title="Diminuir Recuo" class="word-tool-btn"><i data-lucide="indent-decrease" class="w-4 h-4"></i></button>
-                <button onclick="execFormat('indent')" title="Aumentar Recuo" class="word-tool-btn"><i data-lucide="indent-increase" class="w-4 h-4"></i></button>
                 <div class="word-tool-sep"></div>
                 <button onclick="execFormat('selectAll')" title="Selecionar Tudo" class="word-tool-btn"><i data-lucide="text-cursor-input" class="w-4 h-4"></i></button>
                 <button onclick="openFindReplace()" title="Localizar e Substituir" class="word-tool-btn"><i data-lucide="search" class="w-4 h-4"></i></button>
-                <button onclick="toolbarInsertPageBreak()" title="Quebra de Página" class="word-tool-btn"><i data-lucide="scissors" class="w-4 h-4"></i></button>
-                <div class="word-tool-sep"></div>
+            </div>
+
+            <!-- Aba: Inserir -->
+            <div data-tab-panel="insert" class="toolbar-tab-panel hidden flex flex-wrap content-start items-center justify-center gap-1 py-2 px-1.5 overflow-auto custom-scrollbar">
                 <button onclick="quickInsertTool('table')" title="Inserir Tabela" class="word-tool-btn"><i data-lucide="table" class="w-4 h-4"></i></button>
-                <button onclick="quickInsertTool('citation')" title="Inserir Citação" class="word-tool-btn"><i data-lucide="quote" class="w-4 h-4"></i></button>
-                <button onclick="quickInsertTool('heading')" title="Inserir Título" class="word-tool-btn"><i data-lucide="heading" class="w-4 h-4"></i></button>
                 <button onclick="quickInsertTool('image')" title="Inserir Imagem" class="word-tool-btn"><i data-lucide="image-plus" class="w-4 h-4"></i></button>
-                <div class="word-tool-sep"></div>
+                <button onclick="quickInsertTool('heading')" title="Inserir Título" class="word-tool-btn"><i data-lucide="heading" class="w-4 h-4"></i></button>
+            </div>
+
+            <!-- Aba: Design (formatação/aparência do documento, igual ao Word) -->
+            <div data-tab-panel="design" class="toolbar-tab-panel hidden flex flex-wrap content-start items-center justify-center gap-1 py-2 px-1.5 overflow-auto custom-scrollbar">
                 <select id="quick-norm-select" onchange="quickApplyNormTemplate()" title="Tipo de Página (Norma)" class="w-full text-[10px] p-1 bg-slate-800 text-slate-200 border border-slate-700 rounded-md outline-none"></select>
                 <div class="word-tool-sep"></div>
-                <button onclick="toggleCoverFramePanel()" id="btn-cover-frame" title="Personalizar Moldura da Capa" class="word-tool-btn"><i data-lucide="square-dashed" class="w-4 h-4"></i></button>
+                <button onclick="toggleCoverFramePanel()" id="btn-cover-frame" title="Borda de Página (Capa)" class="word-tool-btn"><i data-lucide="square-dashed" class="w-4 h-4"></i></button>
+            </div>
+
+            <!-- Aba: Layout -->
+            <div data-tab-panel="layout" class="toolbar-tab-panel hidden flex flex-wrap content-start items-center justify-center gap-1 py-2 px-1.5 overflow-auto custom-scrollbar">
+                <button onclick="execFormat('outdent')" title="Diminuir Recuo" class="word-tool-btn"><i data-lucide="indent-decrease" class="w-4 h-4"></i></button>
+                <button onclick="execFormat('indent')" title="Aumentar Recuo" class="word-tool-btn"><i data-lucide="indent-increase" class="w-4 h-4"></i></button>
                 <div class="word-tool-sep"></div>
+                <button onclick="toolbarInsertPageBreak()" title="Quebra de Página" class="word-tool-btn"><i data-lucide="scissors" class="w-4 h-4"></i></button>
+            </div>
+
+            <!-- Aba: Referências -->
+            <div data-tab-panel="references" class="toolbar-tab-panel hidden flex flex-wrap content-start items-center justify-center gap-1 py-2 px-1.5 overflow-auto custom-scrollbar">
+                <button onclick="quickInsertTool('citation')" title="Inserir Citação" class="word-tool-btn"><i data-lucide="quote" class="w-4 h-4"></i></button>
+            </div>
+
+            <!-- Salvar fica fixo fora das abas (igual ao atalho Ctrl+S do Word, independe da aba ativa) -->
+            <div class="flex items-center justify-center gap-1 py-2 px-1.5 border-t border-white/10">
                 <button onclick="saveCurrentWork()" title="Salvar Trabalho" class="word-tool-btn text-emerald-400"><i data-lucide="save" class="w-4 h-4"></i></button>
             </div>
         </div>
 
-        <!-- PAINEL: Personalizar Moldura da Capa -->
+        <!-- PAINEL: Borda de Página (Capa) — equivalente ao Design > Bordas de Página do Word -->
         <div id="cover-frame-panel" class="hidden-state fixed left-20 top-24 z-[35] hide-on-print bg-white/95 dark:bg-slate-850/95 backdrop-blur-2xl p-5 rounded-3xl shadow-2xl border border-slate-200/50 dark:border-slate-700/50 w-72">
             <div class="flex justify-between items-center mb-4 border-b border-slate-100 dark:border-slate-700 pb-2">
-                <h4 class="font-bold text-sm text-slate-800 dark:text-white flex items-center gap-2"><i data-lucide="square-dashed" class="w-4 h-4"></i> Moldura da Capa</h4>
+                <h4 class="font-bold text-sm text-slate-800 dark:text-white flex items-center gap-2"><i data-lucide="square-dashed" class="w-4 h-4"></i> Borda de Página (Capa)</h4>
                 <button onclick="toggleCoverFramePanel()" class="p-1 text-slate-400 hover:text-slate-800 dark:hover:text-white rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition"><i data-lucide="x" class="w-4 h-4"></i></button>
             </div>
             <div class="space-y-4 text-sm">
                 <label class="flex items-center justify-between font-bold text-slate-600 dark:text-slate-300">
-                    <span>Mostrar moldura</span>
+                    <span>Mostrar borda</span>
                     <input type="checkbox" id="chk-cover-frame-enabled" onchange="updateCoverFrameEnabled()" class="w-5 h-5 accent-primary-600">
                 </label>
                 <div>
@@ -967,7 +996,7 @@
                         <div id="norm-dropzone" class="border-2 border-dashed border-indigo-300 dark:border-indigo-700/50 rounded-2xl p-6 text-center cursor-pointer hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors">
                             <i data-lucide="upload-cloud" class="w-8 h-8 mx-auto mb-2 text-indigo-400"></i>
                             <p class="text-sm font-bold text-slate-600 dark:text-slate-300">Arraste um arquivo .txt aqui ou clique para enviar</p>
-                            <p class="text-xs text-slate-400 mt-1">Define margens, fonte, moldura da capa e estilo de citação do seu modelo</p>
+                            <p class="text-xs text-slate-400 mt-1">Define margens, fonte, borda de página da capa e estilo de citação do seu modelo</p>
                             <input type="file" id="norm-file-input" accept=".txt" class="hidden">
                         </div>
                         <div id="norm-templates-list" class="mt-4 space-y-2"></div>
@@ -1107,6 +1136,7 @@
             applyNormTemplate(getActiveNormTemplate());
             applyCoverFrameToCSS();
             updateCoverFrameButtonTooltip();
+            setToolbarTab(localStorage.getItem('monografia_toolbar_tab') || 'home');
             applyWatermarkStamps();
             document.getElementById('assistant-chat-cost').innerText = AI_COST_PER_PAGE;
             document.getElementById('auto-mode-cost').innerText = CREDITS_AUTO_MODE;
@@ -1333,7 +1363,7 @@
             document.documentElement.style.setProperty('--page-mr', `${state.margins.mr}cm`);
         }
 
-        // Moldura da capa: customizável pelo usuário (cor, espessura, ligado/desligado),
+        // Borda de página da capa: customizável pelo usuário (cor, espessura, ligado/desligado),
         // independente do padrão do modelo de norma — refletido tanto na pré-visualização
         // quanto na exportação (.docx usa os mesmos valores, ver buildCoverBlocks/exportWord).
         function applyCoverFrameToCSS() {
@@ -1399,7 +1429,7 @@
 
         function updateCoverFrameButtonTooltip() {
             const btn = document.getElementById('btn-cover-frame');
-            if (btn) btn.title = `Personalizar Moldura da Capa (atalho: ${formatShortcutLabel(state.shortcuts.coverFrame)})`;
+            if (btn) btn.title = `Borda de Página – Capa (atalho: ${formatShortcutLabel(state.shortcuts.coverFrame)})`;
         }
 
         function eventToShortcutCombo(e) {
@@ -1549,8 +1579,8 @@
             document.documentElement.style.setProperty('--doc-line-height', tpl.espacamento);
             document.documentElement.style.setProperty('--doc-paragraph-indent', `${tpl.recuoParagrafo}cm`);
 
-            // O modelo de norma define o padrão de moldura; o usuário pode customizá-la
-            // depois (cor/espessura/ligado) pelo botão de moldura na barra de ferramentas.
+            // O modelo de norma define o padrão da borda; o usuário pode customizá-la
+            // depois (cor/espessura/ligado) pelo botão de Borda de Página, na aba Design.
             state.coverFrame.enabled = !!tpl.capaMoldura;
             applyCoverFrameToCSS();
             document.getElementById('print-area').classList.toggle('norm-no-frame', !state.coverFrame.enabled);
@@ -2175,6 +2205,13 @@
 
         function toggleMobileToolbar() {
             document.getElementById('word-toolbar').classList.toggle('mobile-toolbar-open');
+        }
+
+        // Abas da barra de ferramentas, no estilo das abas do Word (Página Inicial, Inserir, Design, Layout, Referências)
+        function setToolbarTab(tab) {
+            document.querySelectorAll('.toolbar-tab-panel').forEach(p => p.classList.toggle('hidden', p.dataset.tabPanel !== tab));
+            document.querySelectorAll('.toolbar-tab-btn').forEach(b => b.classList.toggle('active-tab', b.dataset.tab === tab));
+            localStorage.setItem('monografia_toolbar_tab', tab);
         }
 
         // ==========================================
@@ -3734,31 +3771,26 @@
                 })]
             });
 
-            // Seção 1: Capa (com ou sem moldura, conforme a customização do usuário) — sem numeração.
+            // Seção 1: Capa — sem numeração. A borda (quando ativada) é uma Borda de Página
+            // nativa do Word (Design > Bordas de Página), igual ao recurso real do Word, e não
+            // uma tabela: por isso fica restrita a esta seção, que contém só a página da capa.
             const coverBlocks = await buildCoverBlocks(tpl, fontHalfPt);
-            const coverChildren = [];
+            const coverChildren = coverBlocks;
+            const coverPageSetup = { ...pageSetup };
             if (state.coverFrame.enabled) {
-                // A pré-visualização recua o conteúdo da moldura em (margem da página - 1cm) por lado
-                // (.cover-border { padding: calc(var(--page-mt) - 1cm) ... }) — reproduzimos a mesma conta aqui.
-                const cm1 = cmToTwip(1);
-                const frameInset = (m) => Math.max(0, m - cm1);
                 const frameColor = state.coverFrame.color.replace('#', '').toUpperCase();
                 const frameSize = Math.max(2, Math.round(state.coverFrame.widthPt * 8)); // docx: oitavos de ponto
-                coverChildren.push(new docx.Table({
-                    width: { size: 100, type: docx.WidthType.PERCENTAGE },
-                    borders: {
-                        top: { style: docx.BorderStyle.SINGLE, size: frameSize, color: frameColor },
-                        bottom: { style: docx.BorderStyle.SINGLE, size: frameSize, color: frameColor },
-                        left: { style: docx.BorderStyle.SINGLE, size: frameSize, color: frameColor },
-                        right: { style: docx.BorderStyle.SINGLE, size: frameSize, color: frameColor }
-                    },
-                    rows: [new docx.TableRow({ children: [new docx.TableCell({
-                        margins: { top: frameInset(marginTop), bottom: frameInset(marginBottom), left: frameInset(marginLeft), right: frameInset(marginRight) },
-                        children: coverBlocks
-                    })] })]
-                }));
-            } else {
-                coverChildren.push(...coverBlocks);
+                // Offset da borda em relação à borda física da página: 1cm (~28pt), igual à
+                // pré-visualização (.cover-border fica a 1cm da margem física do papel).
+                const offsetPt = Math.min(31, Math.round(28.3465));
+                const borderSide = { style: docx.BorderStyle.SINGLE, size: frameSize, color: frameColor, space: offsetPt };
+                coverPageSetup.borders = {
+                    pageBorders: { display: docx.PageBorderDisplay.ALL_PAGES, offsetFrom: docx.PageBorderOffsetFrom.PAGE, zOrder: docx.PageBorderZOrder.FRONT },
+                    pageBorderTop: borderSide,
+                    pageBorderBottom: borderSide,
+                    pageBorderLeft: borderSide,
+                    pageBorderRight: borderSide
+                };
             }
 
             // Seção 2: páginas preliminares (sumário + resumo) — numeração romana, superior direita.
@@ -3839,7 +3871,7 @@
             const doc = new docx.Document({
                 sections: [
                     {
-                        properties: { page: pageSetup },
+                        properties: { page: coverPageSetup },
                         children: coverChildren
                     },
                     {
