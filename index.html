@@ -178,9 +178,9 @@
         }
 
         .cover-border {
-            border: 6px double #000066; 
+            border: 2px solid #000000;
             flex-grow: 1;
-            padding: calc(var(--page-mt) - 1cm) calc(var(--page-mr) - 1cm) calc(var(--page-mb) - 1cm) calc(var(--page-ml) - 1cm); 
+            padding: calc(var(--page-mt) - 1cm) calc(var(--page-mr) - 1cm) calc(var(--page-mb) - 1cm) calc(var(--page-ml) - 1cm);
             display: flex;
             flex-direction: column;
             justify-content: space-between;
@@ -461,12 +461,12 @@
                         </div>
                         
                         <div style="margin-top: 1.5cm; text-align: center;">
-                            <img id="out-logo" src="https://upload.wikimedia.org/wikipedia/commons/thumb/1/1a/UPDS_Logo.png/600px-UPDS_Logo.png" alt="Logotipo" class="hide-on-word" style="max-height: 140px; display: inline-block; margin: 0 auto;" />
+                            <img id="out-logo" src="https://upload.wikimedia.org/wikipedia/commons/thumb/1/1a/UPDS_Logo.png/600px-UPDS_Logo.png" alt="Logotipo" class="hide-on-word" style="width: 6cm; height: 6cm; object-fit: contain; display: inline-block; margin: 0 auto;" />
                         </div>
 
                         <div style="margin-top: 1.5cm; text-align: center;">
                             <p style="font-size: 14pt; font-weight: bold; text-transform: uppercase; margin: 0; text-indent: 0; text-align: center !important;">MONOGRAFÍA</p>
-                            <h2 style="font-size: 14pt; font-weight: bold; text-transform: uppercase; margin: 12pt 0 0 0; text-align: center; text-indent: 0; line-height: 1.5;" id="out-title">TÍTULO DA MONOGRAFIA</h2>
+                            <h2 style="font-size: 12pt; font-weight: bold; text-transform: capitalize; margin: 12pt 0 0 0; text-align: center; text-indent: 0; line-height: 1.5;" id="out-title">Título da Monografia</h2>
                         </div>
 
                         <div style="margin-top: 2cm; margin-left: 15%; text-align: left; width: 85%;">
@@ -3255,7 +3255,7 @@
                 try {
                     const bytes = base64ToUint8Array(state.logoBase64);
                     const natural = await loadImageNaturalSize(state.logoBase64);
-                    const scale = Math.min(1, 130 / natural.width, 130 / natural.height);
+                    const scale = Math.min(1, 227 / natural.width, 227 / natural.height); // 6cm x 6cm conforme manual UPDS
                     blocks.push(new docx.Paragraph({
                         alignment: docx.AlignmentType.CENTER,
                         spacing: { before: 200, after: 200 },
@@ -3265,7 +3265,7 @@
             }
 
             blocks.push(new docx.Paragraph({ alignment: docx.AlignmentType.CENTER, spacing: { before: 300 }, children: [new docx.TextRun({ text: 'MONOGRAFÍA', bold: true, size: titleSize })] }));
-            blocks.push(new docx.Paragraph({ alignment: docx.AlignmentType.CENTER, spacing: { after: 400 }, children: [new docx.TextRun({ text: val('out-title'), bold: true, size: titleSize })] }));
+            blocks.push(new docx.Paragraph({ alignment: docx.AlignmentType.CENTER, spacing: { after: 400 }, children: [new docx.TextRun({ text: val('out-title'), bold: true, size: ptToHalfPt(12) })] }));
 
             const infoRow = (label, value) => new docx.TableRow({ children: [
                 new docx.TableCell({ width: { size: 25, type: docx.WidthType.PERCENTAGE }, borders: noBorders(), children: [new docx.Paragraph({ children: [new docx.TextRun({ text: label, bold: true, size: ptToHalfPt(12) })] })] }),
@@ -3349,10 +3349,10 @@
                 children.push(new docx.Table({
                     width: { size: 100, type: docx.WidthType.PERCENTAGE },
                     borders: {
-                        top: { style: docx.BorderStyle.DOUBLE, size: 18, color: '000066' },
-                        bottom: { style: docx.BorderStyle.DOUBLE, size: 18, color: '000066' },
-                        left: { style: docx.BorderStyle.DOUBLE, size: 18, color: '000066' },
-                        right: { style: docx.BorderStyle.DOUBLE, size: 18, color: '000066' }
+                        top: { style: docx.BorderStyle.SINGLE, size: 12, color: '000000' },
+                        bottom: { style: docx.BorderStyle.SINGLE, size: 12, color: '000000' },
+                        left: { style: docx.BorderStyle.SINGLE, size: 12, color: '000000' },
+                        right: { style: docx.BorderStyle.SINGLE, size: 12, color: '000000' }
                     },
                     rows: [new docx.TableRow({ children: [new docx.TableCell({ margins: { top: 300, bottom: 300, left: 300, right: 300 }, children: coverBlocks })] })]
                 }));
