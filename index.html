@@ -65,7 +65,7 @@
         ];
 
         const DOC_SECTION_PLAN = [
-            { id: 'resumo', label: 'Resumo', instructions: `Redacta un RESUMEN/ABSTRACT breve (máx. 200 palabras) que sintetice el problema, el objetivo y la conclusión esperada del trabajo, basado en las notas del usuario. No uses subtítulos.` },
+            { id: 'resumo', label: 'Resumo', instructions: `Redacta un RESUMEN/ABSTRACT breve (alrededor de 250 palabras) que sintetice el propósito u objetivo del trabajo, el problema, el método utilizado, las teorías de sustentación y una conclusión general, basado en las notas del usuario. Escríbelo en un solo párrafo, sin subtítulos.` },
             { id: 'introducao', label: 'Introdução', instructions: `Redacta la INTRODUCCIÓN: contextualiza el tema, presenta el problema, los objetivos y la justificación del trabajo. 2 a 4 párrafos.` },
             { id: 'marco_teorico', label: 'Marco Teórico', instructions: `Redacta el MARCO TEÓRICO completo: desarrolla analíticamente los conceptos y argumentos de las notas y del material de referencia. Crea subtítulos con <h2> para cada subtema relevante. Esta es la sección más extensa y profunda del trabajo.` },
             { id: 'conclusao', label: 'Conclusão', instructions: `Redacta la CONCLUSIÓN: sintetiza los hallazgos, retoma los objetivos planteados en la introducción y propone consideraciones finales. 2 a 3 párrafos.` },
@@ -79,14 +79,14 @@
                 id: 'apa-upds', nome: 'APA 7 (UPDS)', builtin: true,
                 margens: { mt: 2.54, mb: 2.54, ml: 3.0, mr: 2.54 },
                 fonte: "'Tinos', 'Times New Roman', Times, serif", tamanhoFonte: '12pt',
-                espacamento: 2, recuoParagrafo: 1.27,
+                espacamento: 1.5, recuoParagrafo: 1.27, papel: 'carta',
                 capaMoldura: true, capaAlinhamento: 'center', estiloCitacao: 'APA'
             },
             {
                 id: 'abnt', nome: 'ABNT', builtin: true,
                 margens: { mt: 3.0, mb: 2.0, ml: 3.0, mr: 2.0 },
                 fonte: "'Times New Roman', Times, serif", tamanhoFonte: '12pt',
-                espacamento: 1.5, recuoParagrafo: 1.25,
+                espacamento: 1.5, recuoParagrafo: 1.25, papel: 'a4',
                 capaMoldura: false, capaAlinhamento: 'center', estiloCitacao: 'ABNT'
             }
         ];
@@ -144,10 +144,12 @@
             --page-mr: 2.54cm;
             --page-mb: 2.54cm;
             --page-ml: 3.00cm;
+            --page-w: 21.59cm;
+            --page-h: 27.94cm;
             --doc-zoom: 1;
             --doc-font-family: 'Tinos', 'Times New Roman', Times, serif;
             --doc-font-size: 12pt;
-            --doc-line-height: 2;
+            --doc-line-height: 1.5;
             --doc-paragraph-indent: 1.27cm;
         }
 
@@ -170,8 +172,8 @@
         */
         .a4-page {
             background: white !important;
-            width: 210mm;
-            min-height: 297mm;
+            width: var(--page-w);
+            min-height: var(--page-h);
             box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
             padding: var(--page-mt) var(--page-mr) var(--page-mb) var(--page-ml) !important;
             font-family: var(--doc-font-family);
@@ -194,7 +196,7 @@
         }
 
         .cover-border {
-            border: 2px solid #000000;
+            border: 5px solid #000080;
             flex-grow: 1;
             padding: calc(var(--page-mt) - 1cm) calc(var(--page-mr) - 1cm) calc(var(--page-mb) - 1cm) calc(var(--page-ml) - 1cm);
             display: flex;
@@ -205,10 +207,13 @@
 
         /* Regras APA 7ª Edição */
         .a4-page p { text-indent: var(--doc-paragraph-indent); margin-bottom: 0; text-align: justify; }
+        .resumo-block p { text-indent: 0; line-height: 1; }
         .norm-no-frame .cover-border { border: none !important; }
         .a4-page h1 { font-size: 12pt; font-weight: bold; text-align: center; margin-top: 24pt; margin-bottom: 12pt; text-indent: 0; }
         .a4-page h2 { font-size: 12pt; font-weight: bold; text-align: left; margin-top: 24pt; margin-bottom: 12pt; text-indent: 0; }
-        .a4-page h3 { font-size: 12pt; font-weight: bold; font-style: italic; text-align: left; margin-top: 24pt; margin-bottom: 12pt; text-indent: 0; }
+        .a4-page h3 { font-size: 12pt; font-weight: bold; text-align: left; margin-top: 24pt; margin-bottom: 12pt; text-indent: 0; }
+        .a4-page h4 { font-size: 12pt; font-weight: bold; text-align: left; margin-top: 24pt; margin-bottom: 12pt; text-indent: 0; padding-left: var(--doc-paragraph-indent); }
+        .a4-page h5 { font-size: 12pt; font-weight: bold; font-style: italic; text-align: left; margin-top: 24pt; margin-bottom: 12pt; text-indent: 0; padding-left: var(--doc-paragraph-indent); }
         .a4-page .hanging-indent { padding-left: 1.27cm; text-indent: -1.27cm; margin-bottom: 12pt; text-align: left; }
         .a4-page img { max-width: 100%; height: auto; display: block; margin: 12pt auto; }
 
@@ -344,14 +349,15 @@
             body * { visibility: hidden; }
             #print-area, #print-area * { visibility: visible; }
             #print-area { position: absolute; left: 0; top: 0; width: 100%; padding: 0; margin: 0; display: block; zoom: 1 !important; transform: none !important;}
-            .a4-page { box-shadow: none; margin: 0; border: none; padding: var(--page-mt) var(--page-mr) var(--page-mb) var(--page-ml) !important; width: 210mm; min-height: 297mm; }
+            .a4-page { box-shadow: none; margin: 0; border: none; padding: var(--page-mt) var(--page-mr) var(--page-mb) var(--page-ml) !important; width: var(--page-w); min-height: var(--page-h); }
             .a4-cover-page { padding: 1cm !important; }
             .page-break-marker { border: none; margin: 0; }
             .page-break-marker::after { display: none; }
-            @page { size: A4; margin: 0; }
+            @page { size: 21.59cm 27.94cm; margin: 0; }
             .hide-on-print { display: none !important; }
         }
     </style>
+    <style id="dynamic-page-size"></style>
 </head>
 <body class="bg-[#e2e8f0] dark:bg-[#0f172a] text-slate-800 dark:text-slate-100 h-[100dvh] w-screen overflow-hidden transition-colors duration-300 selection:bg-primary-500 selection:text-white">
 
@@ -1290,6 +1296,17 @@
             document.documentElement.style.setProperty('--page-mr', `${state.margins.mr}cm`);
         }
 
+        // Carta (UPDS/APA): 21,59 x 27,94 cm. A4 (ABNT e outras normas): 21 x 29,7 cm.
+        const PAPER_SIZES = { carta: { w: '21.59cm', h: '27.94cm' }, a4: { w: '21cm', h: '29.7cm' } };
+
+        function applyPaperSizeToCSS(papel) {
+            const size = PAPER_SIZES[papel] || PAPER_SIZES.carta;
+            document.documentElement.style.setProperty('--page-w', size.w);
+            document.documentElement.style.setProperty('--page-h', size.h);
+            const styleEl = document.getElementById('dynamic-page-size');
+            if (styleEl) styleEl.textContent = `@media print { @page { size: ${size.w} ${size.h}; margin: 0; } }`;
+        }
+
         function resetMargins() {
             state.margins = { mt: 2.54, mb: 2.54, ml: 3.0, mr: 2.54 };
             localStorage.setItem('monografia_margins', JSON.stringify(state.margins));
@@ -1363,6 +1380,7 @@
             state.margins = { ...tpl.margens };
             localStorage.setItem('monografia_margins', JSON.stringify(state.margins));
             applyMarginsToCSS();
+            applyPaperSizeToCSS(tpl.papel);
             ['mt', 'mb', 'ml', 'mr'].forEach(side => {
                 const valEl = document.getElementById(`val-${side}`);
                 const slEl = document.getElementById(`sl-${side}`);
@@ -2500,16 +2518,16 @@
                 let cellsHtml = '';
                 for (let c = 0; c < cols; c++) {
                     cellsHtml += r === 0
-                        ? `<th style="border-bottom: 1px solid #000; padding: 6px 10px; text-align: left; font-weight: bold;">Coluna ${c + 1}</th>`
-                        : `<td style="padding: 6px 10px; text-align: left;"></td>`;
+                        ? `<th style="border-bottom: 1px solid #000; padding: 6px 10px; text-align: left; font-weight: bold; font-size: 10pt;">Coluna ${c + 1}</th>`
+                        : `<td style="padding: 6px 10px; text-align: left; font-size: 10pt;"></td>`;
                 }
                 rowsHtml += `<tr>${cellsHtml}</tr>`;
             }
 
             const tableHtml = `<div style="margin: 18pt 0; text-indent: 0;">
-<p style="text-indent: 0; margin-bottom: 4pt;"><i>Tabla ${tableNum}</i></p>
-<p style="text-indent: 0; font-weight: bold; margin-bottom: 8pt;">${caption}</p>
-<table class="apa-table" style="width: 100%; border-collapse: collapse; border-top: 2px solid #000; border-bottom: 2px solid #000; font-size: 11pt;">${rowsHtml}</table>
+<p style="text-indent: 0; font-weight: bold; font-size: 10pt; margin-bottom: 4pt;">Tabla ${tableNum}</p>
+<p style="text-indent: 0; font-style: italic; font-size: 10pt; margin-bottom: 8pt;">${caption}</p>
+<table class="apa-table" style="width: 100%; border-collapse: collapse; border-top: 2px solid #000; border-bottom: 2px solid #000; font-size: 10pt;">${rowsHtml}</table>
 <p style="text-indent: 0; font-size: 10pt; margin-top: 6pt;"><i>Nota.</i> Fonte: elaboração própria.</p>
 </div>`;
 
@@ -2784,7 +2802,7 @@
                                 <button onclick="refineInline('${section.id}', '${pageKey}')" title="Refinar com IA (5 créditos)" class="p-2.5 bg-purple-600 text-white rounded-lg shadow-xl hover:-translate-y-0.5"><i data-lucide="sparkles" class="w-3.5 h-3.5"></i></button>
                             </div>
                             ${idx === 0 ? `<h1 contenteditable="true" data-section-title="${section.id}" oninput="scheduleSyncSection('${section.id}')" style="text-indent: 0; outline: none;">${section.title}</h1>` : ''}
-                            <div class="apa-content" id="apa-content-${pageKey}" data-page-index="${idx}" contenteditable="true" data-section-id="${section.id}" oninput="scheduleSyncSection('${section.id}')" onblur="checkAndSplitOverflow('${section.id}')" style="outline: none; min-height: 2em;">${chunk}</div>
+                            <div class="apa-content${section.id.startsWith('sec-resumo-') ? ' resumo-block' : ''}" id="apa-content-${pageKey}" data-page-index="${idx}" contenteditable="true" data-section-id="${section.id}" oninput="scheduleSyncSection('${section.id}')" onblur="checkAndSplitOverflow('${section.id}')" style="outline: none; min-height: 2em;">${chunk}</div>
                         </div>
                     `;
                 });
@@ -3342,6 +3360,15 @@
                     const opts = { ...baseOpts };
                     if (tag === 'b' || tag === 'strong') opts.bold = true;
                     if (tag === 'i' || tag === 'em') opts.italics = true;
+                    // Cobre formatação aplicada via style inline (ex: legendas de tabela/figura,
+                    // ou spans gerados pelo execCommand do navegador), não só por tag.
+                    const style = child.getAttribute && child.getAttribute('style');
+                    if (style) {
+                        if (/font-weight\s*:\s*(bold|[6-9]00)/i.test(style)) opts.bold = true;
+                        if (/font-style\s*:\s*italic/i.test(style)) opts.italics = true;
+                        const sizeMatch = style.match(/font-size\s*:\s*([\d.]+)pt/i);
+                        if (sizeMatch) opts.size = ptToHalfPt(parseFloat(sizeMatch[1]));
+                    }
                     runs = runs.concat(runsFromInlineNode(child, opts));
                 }
             });
@@ -3349,11 +3376,13 @@
         }
 
         function tableFromHTML(tableEl, fontHalfPt) {
+            // Tabelas seguem corpo de letra 10pt (não o tamanho de texto corrido), conforme manual.
+            const tableFontHalfPt = ptToHalfPt(10);
             const rows = Array.from(tableEl.querySelectorAll('tr')).map(tr => {
                 const cells = Array.from(tr.children).map(cellEl => {
                     const isHeader = cellEl.tagName.toLowerCase() === 'th';
                     return new docx.TableCell({
-                        children: [new docx.Paragraph({ children: [new docx.TextRun({ text: cellEl.innerText, bold: isHeader, size: fontHalfPt })] })],
+                        children: [new docx.Paragraph({ children: [new docx.TextRun({ text: cellEl.innerText, bold: isHeader, size: tableFontHalfPt })] })],
                         verticalAlign: docx.VerticalAlign.CENTER,
                         margins: { top: 60, bottom: 60, left: 100, right: 100 }
                     });
@@ -3385,10 +3414,12 @@
                             spacing: { line: lineSpacing, lineRule: docx.LineRuleType.AUTO },
                             indent: isHanging ? { left: indentTwips, hanging: indentTwips } : { firstLine: indentTwips }
                         }));
-                    } else if (tag === 'h1' || tag === 'h2' || tag === 'h3') {
+                    } else if (tag === 'h1' || tag === 'h2' || tag === 'h3' || tag === 'h4' || tag === 'h5') {
+                        const isIndented = tag === 'h4' || tag === 'h5';
                         blocks.push(new docx.Paragraph({
-                            children: [new docx.TextRun({ text: child.innerText, bold: true, italics: tag === 'h3', size: fontHalfPt })],
+                            children: [new docx.TextRun({ text: child.innerText, bold: true, italics: tag === 'h5', size: fontHalfPt })],
                             alignment: tag === 'h1' ? docx.AlignmentType.CENTER : docx.AlignmentType.LEFT,
+                            indent: isIndented ? { left: indentTwips } : undefined,
                             spacing: { before: 480, after: 240, line: lineSpacing, lineRule: docx.LineRuleType.AUTO }
                         }));
                     } else if (tag === 'table') {
@@ -3506,57 +3537,98 @@
             const marginRight = cmToTwip(state.margins.mr);
             const marginBottom = cmToTwip(state.margins.mb);
             const marginLeft = cmToTwip(state.margins.ml);
-            const pageWidthTwips = 11906; // A4 = 210mm
-            const pageHeightTwips = 16838; // A4 = 297mm
+            // Carta (21,59 x 27,94 cm) é o tamanho exigido pelo manual UPDS; A4 é usado por outras normas (ex.: ABNT).
+            const pageWidthTwips = tpl.papel === 'a4' ? 11906 : 12240;
+            const pageHeightTwips = tpl.papel === 'a4' ? 16838 : 15840;
             const usableWidthTwips = pageWidthTwips - marginLeft - marginRight;
 
-            const children = [];
+            // O manual exige: capa sem numeração; páginas preliminares (sumário, resumo)
+            // em numeração romana (I, II, III...); a partir da Introdução, numeração
+            // arábiga reiniciando em 1. Isso exige 3 seções docx distintas, pois o Word
+            // só permite trocar o formato/reinício da numeração de página entre seções.
+            const pageSetup = {
+                size: { width: pageWidthTwips, height: pageHeightTwips },
+                margin: { top: marginTop, right: marginRight, bottom: marginBottom, left: marginLeft }
+            };
+            const pageNumberHeader = () => new docx.Header({
+                children: [new docx.Paragraph({
+                    alignment: docx.AlignmentType.RIGHT,
+                    children: [new docx.TextRun({ children: [docx.PageNumber.CURRENT], size: fontHalfPt })]
+                })]
+            });
 
-            // Capa (com ou sem moldura, conforme o modelo de norma ativo)
+            // Seção 1: Capa (com ou sem moldura, conforme o modelo de norma ativo) — sem numeração.
             const coverBlocks = await buildCoverBlocks(tpl, fontHalfPt);
+            const coverChildren = [];
             if (tpl.capaMoldura) {
-                children.push(new docx.Table({
+                coverChildren.push(new docx.Table({
                     width: { size: 100, type: docx.WidthType.PERCENTAGE },
                     borders: {
-                        top: { style: docx.BorderStyle.SINGLE, size: 12, color: '000000' },
-                        bottom: { style: docx.BorderStyle.SINGLE, size: 12, color: '000000' },
-                        left: { style: docx.BorderStyle.SINGLE, size: 12, color: '000000' },
-                        right: { style: docx.BorderStyle.SINGLE, size: 12, color: '000000' }
+                        top: { style: docx.BorderStyle.SINGLE, size: 32, color: '000080' },
+                        bottom: { style: docx.BorderStyle.SINGLE, size: 32, color: '000080' },
+                        left: { style: docx.BorderStyle.SINGLE, size: 32, color: '000080' },
+                        right: { style: docx.BorderStyle.SINGLE, size: 32, color: '000080' }
                     },
                     rows: [new docx.TableRow({ children: [new docx.TableCell({ margins: { top: 300, bottom: 300, left: 300, right: 300 }, children: coverBlocks })] })]
                 }));
             } else {
-                children.push(...coverBlocks);
+                coverChildren.push(...coverBlocks);
             }
 
-            // Sumário (página própria)
+            // Seção 2: páginas preliminares (sumário + resumo) — numeração romana, superior direita.
+            const frontMatterChildren = [];
             const tocBlocks = buildTOCBlocks(usableWidthTwips);
-            children.push(new docx.Paragraph({ children: [], pageBreakBefore: true }));
-            children.push(...tocBlocks);
+            frontMatterChildren.push(...tocBlocks);
 
-            // Corpo: cada seção, com cada "página" (chunk de quebra manual) iniciando em página nova
+            const resumoSection = state.generatedSections.find(s => s.id.startsWith('sec-resumo-'));
+            if (resumoSection) {
+                const pageChunks = splitContentIntoPages(resumoSection.content);
+                for (let idx = 0; idx < pageChunks.length; idx++) {
+                    // Resumo: sem sangria e a um espaço (1.0), independente da norma do documento.
+                    const blocks = await blocksFromHTML(pageChunks[idx], fontHalfPt, 240, 0);
+                    frontMatterChildren.push(new docx.Paragraph({ children: [], pageBreakBefore: true }));
+                    if (idx === 0) {
+                        frontMatterChildren.push(new docx.Paragraph({
+                            alignment: docx.AlignmentType.CENTER,
+                            spacing: { after: 240 },
+                            children: [new docx.TextRun({ text: resumoSection.title, bold: true, size: fontHalfPt })]
+                        }));
+                    }
+                    frontMatterChildren.push(...blocks);
+                }
+            }
+
+            // Seção 3: corpo principal (Introdução em diante) — numeração arábiga reiniciando em 1.
+            const bodyChildren = [];
             for (const section of state.generatedSections) {
+                if (section === resumoSection) continue;
                 const pageChunks = splitContentIntoPages(section.content);
                 for (let idx = 0; idx < pageChunks.length; idx++) {
                     const blocks = await blocksFromHTML(pageChunks[idx], fontHalfPt, lineSpacing, indentTwips);
-                    if (idx === 0) {
-                        children.push(new docx.Paragraph({
+                    if (idx === 0 && bodyChildren.length === 0) {
+                        // primeira página da seção 3: não força quebra (já é o início da seção docx)
+                        bodyChildren.push(new docx.Paragraph({
+                            alignment: docx.AlignmentType.CENTER,
+                            spacing: { after: 240 },
+                            children: [new docx.TextRun({ text: section.title, bold: true, size: fontHalfPt })]
+                        }));
+                    } else if (idx === 0) {
+                        bodyChildren.push(new docx.Paragraph({
                             pageBreakBefore: true,
                             alignment: docx.AlignmentType.CENTER,
                             spacing: { after: 240 },
                             children: [new docx.TextRun({ text: section.title, bold: true, size: fontHalfPt })]
                         }));
-                        children.push(...blocks);
                     } else {
-                        children.push(new docx.Paragraph({ children: [], pageBreakBefore: true }));
-                        children.push(...blocks);
+                        bodyChildren.push(new docx.Paragraph({ children: [], pageBreakBefore: true }));
                     }
+                    bodyChildren.push(...blocks);
                 }
             }
 
             // Referências
             if (state.references && state.references.length > 0) {
-                children.push(new docx.Paragraph({ pageBreakBefore: true, alignment: docx.AlignmentType.CENTER, spacing: { after: 240 }, children: [new docx.TextRun({ text: 'Referências', bold: true, size: fontHalfPt })] }));
+                bodyChildren.push(new docx.Paragraph({ pageBreakBefore: true, alignment: docx.AlignmentType.CENTER, spacing: { after: 240 }, children: [new docx.TextRun({ text: 'Referências', bold: true, size: fontHalfPt })] }));
                 const sorted = [...state.references].sort((a, b) => a.author.localeCompare(b.author));
                 sorted.forEach(ref => {
                     let entry;
@@ -3570,7 +3642,7 @@
                         if (ref.source) entry += ` ${ref.source}.`;
                         if (ref.url) entry += ` ${ref.url}`;
                     }
-                    children.push(new docx.Paragraph({
+                    bodyChildren.push(new docx.Paragraph({
                         children: [new docx.TextRun({ text: entry, size: fontHalfPt })],
                         indent: { left: indentTwips, hanging: indentTwips },
                         spacing: { line: lineSpacing, lineRule: docx.LineRuleType.AUTO }
@@ -3579,15 +3651,26 @@
             }
 
             const doc = new docx.Document({
-                sections: [{
-                    properties: {
-                        page: {
-                            size: { width: pageWidthTwips, height: pageHeightTwips },
-                            margin: { top: marginTop, right: marginRight, bottom: marginBottom, left: marginLeft }
-                        }
+                sections: [
+                    {
+                        properties: { page: pageSetup },
+                        children: coverChildren
                     },
-                    children
-                }]
+                    {
+                        properties: {
+                            page: { ...pageSetup, pageNumbers: { start: 1, formatType: docx.NumberFormat.UPPER_ROMAN } }
+                        },
+                        headers: { default: pageNumberHeader() },
+                        children: frontMatterChildren
+                    },
+                    {
+                        properties: {
+                            page: { ...pageSetup, pageNumbers: { start: 1, formatType: docx.NumberFormat.DECIMAL } }
+                        },
+                        headers: { default: pageNumberHeader() },
+                        children: bodyChildren
+                    }
+                ]
             });
 
             const blob = await docx.Packer.toBlob(doc);
