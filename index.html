@@ -196,7 +196,7 @@
         }
 
         .cover-border {
-            border: 5px solid #000080;
+            border: var(--cover-border-width, 4pt) solid var(--cover-border-color, #000080);
             flex-grow: 1;
             padding: calc(var(--page-mt) - 1cm) calc(var(--page-mr) - 1cm) calc(var(--page-mb) - 1cm) calc(var(--page-ml) - 1cm);
             display: flex;
@@ -584,8 +584,40 @@
                 <div class="word-tool-sep"></div>
                 <select id="quick-norm-select" onchange="quickApplyNormTemplate()" title="Tipo de Página (Norma)" class="w-full text-[10px] p-1 bg-slate-800 text-slate-200 border border-slate-700 rounded-md outline-none"></select>
                 <div class="word-tool-sep"></div>
+                <button onclick="toggleCoverFramePanel()" id="btn-cover-frame" title="Personalizar Moldura da Capa" class="word-tool-btn"><i data-lucide="square-dashed" class="w-4 h-4"></i></button>
+                <div class="word-tool-sep"></div>
                 <button onclick="saveCurrentWork()" title="Salvar Trabalho" class="word-tool-btn text-emerald-400"><i data-lucide="save" class="w-4 h-4"></i></button>
             </div>
+        </div>
+
+        <!-- PAINEL: Personalizar Moldura da Capa -->
+        <div id="cover-frame-panel" class="hidden-state fixed left-20 top-24 z-[35] hide-on-print bg-white/95 dark:bg-slate-850/95 backdrop-blur-2xl p-5 rounded-3xl shadow-2xl border border-slate-200/50 dark:border-slate-700/50 w-72">
+            <div class="flex justify-between items-center mb-4 border-b border-slate-100 dark:border-slate-700 pb-2">
+                <h4 class="font-bold text-sm text-slate-800 dark:text-white flex items-center gap-2"><i data-lucide="square-dashed" class="w-4 h-4"></i> Moldura da Capa</h4>
+                <button onclick="toggleCoverFramePanel()" class="p-1 text-slate-400 hover:text-slate-800 dark:hover:text-white rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition"><i data-lucide="x" class="w-4 h-4"></i></button>
+            </div>
+            <div class="space-y-4 text-sm">
+                <label class="flex items-center justify-between font-bold text-slate-600 dark:text-slate-300">
+                    <span>Mostrar moldura</span>
+                    <input type="checkbox" id="chk-cover-frame-enabled" onchange="updateCoverFrameEnabled()" class="w-5 h-5 accent-primary-600">
+                </label>
+                <div>
+                    <div class="flex justify-between text-xs font-bold text-slate-500 mb-1"><span>Cor</span></div>
+                    <input type="color" id="val-cover-frame-color" onchange="updateCoverFrameColor()" class="w-full h-9 rounded-lg cursor-pointer border border-slate-200 dark:border-slate-700">
+                </div>
+                <div>
+                    <div class="flex justify-between text-xs font-bold text-slate-500 mb-1"><span>Espessura</span> <input type="number" step="0.5" min="0" max="20" id="val-cover-frame-width" oninput="updateCoverFrameWidth()" class="w-14 text-right bg-transparent outline-none"> pt</div>
+                    <input type="range" min="0" max="20" step="0.5" oninput="document.getElementById('val-cover-frame-width').value=this.value; updateCoverFrameWidth();" value="4" class="w-full accent-primary-600" id="sl-cover-frame-width">
+                </div>
+                <div class="pt-2 border-t border-slate-100 dark:border-slate-700">
+                    <div class="flex justify-between items-center text-xs font-bold text-slate-500 mb-1">
+                        <span>Atalho de teclado</span>
+                        <span id="lbl-cover-frame-shortcut" class="text-slate-700 dark:text-slate-200">Alt + M</span>
+                    </div>
+                    <button onclick="startShortcutCapture('coverFrame', 'lbl-cover-frame-shortcut')" title="Clique e depois pressione a combinação de tecla desejada (ex.: uma letra, um número, ou Ctrl/Alt + tecla) para definir um novo atalho que abre este painel" class="w-full text-xs font-bold text-slate-500 hover:text-slate-800 dark:hover:text-white transition py-2 bg-slate-100 dark:bg-slate-800 rounded-lg">Definir novo atalho</button>
+                </div>
+            </div>
+            <button onclick="resetCoverFrame()" class="w-full mt-4 text-xs font-bold text-slate-500 hover:text-slate-800 dark:hover:text-white transition py-2 bg-slate-100 dark:bg-slate-800 rounded-lg">Restaurar Padrão</button>
         </div>
 
         <!-- PAINEL ESQUERDO: Dados e Contexto da Monografia (Com Resize Dinâmico) -->
@@ -1059,7 +1091,10 @@
             assistantChatMessages: [],
             automaticMode: false,
             coverGuidedStage: 'idle', // 'idle' | 'choice' | 'fields' | 'theme' | 'done'
-            coverGuidedPending: []
+            coverGuidedPending: [],
+            coverFrame: JSON.parse(localStorage.getItem('monografia_cover_frame')) || { enabled: true, color: '#000080', widthPt: 4 },
+            shortcuts: JSON.parse(localStorage.getItem('monografia_shortcuts')) || { coverFrame: 'alt+m' },
+            shortcutCapture: null
         };
 
         document.addEventListener('DOMContentLoaded', () => {
@@ -1070,6 +1105,8 @@
             
             renderHistory();
             applyNormTemplate(getActiveNormTemplate());
+            applyCoverFrameToCSS();
+            updateCoverFrameButtonTooltip();
             applyWatermarkStamps();
             document.getElementById('assistant-chat-cost').innerText = AI_COST_PER_PAGE;
             document.getElementById('auto-mode-cost').innerText = CREDITS_AUTO_MODE;
@@ -1296,6 +1333,125 @@
             document.documentElement.style.setProperty('--page-mr', `${state.margins.mr}cm`);
         }
 
+        // Moldura da capa: customizável pelo usuário (cor, espessura, ligado/desligado),
+        // independente do padrão do modelo de norma — refletido tanto na pré-visualização
+        // quanto na exportação (.docx usa os mesmos valores, ver buildCoverBlocks/exportWord).
+        function applyCoverFrameToCSS() {
+            const f = state.coverFrame;
+            document.documentElement.style.setProperty('--cover-border-color', f.color);
+            document.documentElement.style.setProperty('--cover-border-width', f.enabled ? `${f.widthPt}pt` : '0pt');
+        }
+
+        function saveCoverFrameState() {
+            localStorage.setItem('monografia_cover_frame', JSON.stringify(state.coverFrame));
+            applyCoverFrameToCSS();
+        }
+
+        function toggleCoverFramePanel() {
+            const panel = document.getElementById('cover-frame-panel');
+            if (panel.classList.contains('hidden-state')) {
+                panel.classList.remove('hidden-state');
+                document.getElementById('chk-cover-frame-enabled').checked = state.coverFrame.enabled;
+                document.getElementById('val-cover-frame-color').value = state.coverFrame.color;
+                document.getElementById('val-cover-frame-width').value = state.coverFrame.widthPt;
+                document.getElementById('sl-cover-frame-width').value = state.coverFrame.widthPt;
+                document.getElementById('lbl-cover-frame-shortcut').innerText = formatShortcutLabel(state.shortcuts.coverFrame);
+            } else {
+                panel.classList.add('hidden-state');
+            }
+        }
+
+        function updateCoverFrameEnabled() {
+            state.coverFrame.enabled = document.getElementById('chk-cover-frame-enabled').checked;
+            document.getElementById('print-area').classList.toggle('norm-no-frame', !state.coverFrame.enabled);
+            saveCoverFrameState();
+        }
+
+        function updateCoverFrameColor() {
+            state.coverFrame.color = document.getElementById('val-cover-frame-color').value;
+            saveCoverFrameState();
+        }
+
+        function updateCoverFrameWidth() {
+            state.coverFrame.widthPt = parseFloat(document.getElementById('val-cover-frame-width').value) || 0;
+            saveCoverFrameState();
+        }
+
+        function resetCoverFrame() {
+            state.coverFrame = { enabled: true, color: '#000080', widthPt: 4 };
+            document.getElementById('print-area').classList.remove('norm-no-frame');
+            saveCoverFrameState();
+            document.getElementById('chk-cover-frame-enabled').checked = true;
+            document.getElementById('val-cover-frame-color').value = state.coverFrame.color;
+            document.getElementById('val-cover-frame-width').value = state.coverFrame.widthPt;
+            document.getElementById('sl-cover-frame-width').value = state.coverFrame.widthPt;
+        }
+
+        // ==========================================
+        // ATALHOS DE TECLADO CUSTOMIZÁVEIS
+        // Permite ao usuário definir qual tecla (com ou sem modificador) ativa
+        // cada função da barra de ferramentas, em vez de um atalho fixo.
+        // ==========================================
+        function formatShortcutLabel(combo) {
+            if (!combo) return 'Nenhum';
+            return combo.split('+').map(part => part.length === 1 ? part.toUpperCase() : part[0].toUpperCase() + part.slice(1)).join(' + ');
+        }
+
+        function updateCoverFrameButtonTooltip() {
+            const btn = document.getElementById('btn-cover-frame');
+            if (btn) btn.title = `Personalizar Moldura da Capa (atalho: ${formatShortcutLabel(state.shortcuts.coverFrame)})`;
+        }
+
+        function eventToShortcutCombo(e) {
+            const key = e.key.toLowerCase();
+            if (['control', 'alt', 'shift', 'meta'].includes(key)) return null; // só modificador, espera a tecla real
+            const parts = [];
+            if (e.ctrlKey) parts.push('ctrl');
+            if (e.altKey) parts.push('alt');
+            if (e.shiftKey) parts.push('shift');
+            parts.push(key);
+            return parts.join('+');
+        }
+
+        function startShortcutCapture(actionId, labelElId) {
+            state.shortcutCapture = actionId;
+            const lbl = document.getElementById(labelElId);
+            lbl.innerText = 'Pressione uma tecla...';
+            lbl.classList.add('text-primary-500');
+        }
+
+        document.addEventListener('keydown', (e) => {
+            // Modo de captura: a próxima tecla pressionada se torna o novo atalho.
+            if (state.shortcutCapture) {
+                if (e.key === 'Escape') {
+                    state.shortcutCapture = null;
+                    const lbl = document.getElementById('lbl-cover-frame-shortcut');
+                    lbl.innerText = formatShortcutLabel(state.shortcuts.coverFrame);
+                    lbl.classList.remove('text-primary-500');
+                    return;
+                }
+                e.preventDefault();
+                const combo = eventToShortcutCombo(e);
+                if (!combo) return; // só modificador pressionado, espera a tecla real
+                state.shortcuts[state.shortcutCapture] = combo;
+                localStorage.setItem('monografia_shortcuts', JSON.stringify(state.shortcuts));
+                document.getElementById('lbl-cover-frame-shortcut').innerText = formatShortcutLabel(combo);
+                document.getElementById('lbl-cover-frame-shortcut').classList.remove('text-primary-500');
+                updateCoverFrameButtonTooltip();
+                state.shortcutCapture = null;
+                return;
+            }
+            // Atalhos ativos normalmente, exceto enquanto o usuário digita em um campo editável.
+            const target = e.target;
+            const isEditing = target.isContentEditable || ['INPUT', 'TEXTAREA'].includes(target.tagName);
+            if (isEditing) return;
+            const combo = eventToShortcutCombo(e);
+            if (combo && combo === state.shortcuts.coverFrame) {
+                e.preventDefault();
+                toggleCoverFramePanel();
+            }
+        });
+
         // Carta (UPDS/APA): 21,59 x 27,94 cm. A4 (ABNT e outras normas): 21 x 29,7 cm.
         const PAPER_SIZES = { carta: { w: '21.59cm', h: '27.94cm' }, a4: { w: '21cm', h: '29.7cm' } };
 
@@ -1393,7 +1549,11 @@
             document.documentElement.style.setProperty('--doc-line-height', tpl.espacamento);
             document.documentElement.style.setProperty('--doc-paragraph-indent', `${tpl.recuoParagrafo}cm`);
 
-            document.getElementById('print-area').classList.toggle('norm-no-frame', !tpl.capaMoldura);
+            // O modelo de norma define o padrão de moldura; o usuário pode customizá-la
+            // depois (cor/espessura/ligado) pelo botão de moldura na barra de ferramentas.
+            state.coverFrame.enabled = !!tpl.capaMoldura;
+            applyCoverFrameToCSS();
+            document.getElementById('print-area').classList.toggle('norm-no-frame', !state.coverFrame.enabled);
 
             renderNormTemplatesList();
         }
@@ -3442,14 +3602,30 @@
             return blocks;
         }
 
+        // Mede, na pré-visualização real (#word-cover), o espaço que o flexbox
+        // (margin-top: auto) injeta entre o bloco de dados e o rodapé da capa,
+        // pra reproduzir no Word a mesma posição do rodapé que aparece na tela.
+        function measureCoverFooterGapTwips() {
+            const cover = document.getElementById('word-cover');
+            if (!cover) return cmToTwip(3);
+            const children = Array.from(cover.children).filter(el => el.nodeType === 1);
+            const footerDiv = children[children.length - 1];
+            const infoDiv = children[children.length - 2];
+            if (!footerDiv || !infoDiv) return cmToTwip(3);
+            const gapPx = footerDiv.offsetTop - (infoDiv.offsetTop + infoDiv.offsetHeight);
+            const gapCm = Math.max(0, gapPx) / 37.795275591; // 96dpi: 1cm = 37.795275591px
+            return cmToTwip(gapCm);
+        }
+
         async function buildCoverBlocks(tpl, fontHalfPt) {
             const val = (id) => { const el = document.getElementById(id); return el ? el.innerText : ''; };
             const blocks = [];
             const titleSize = ptToHalfPt(14);
+            const tight = { after: 0 }; // a pré-visualização usa margin:0 entre essas linhas — sem isso o Word aplica o espaçamento padrão do estilo Normal
 
-            blocks.push(new docx.Paragraph({ alignment: docx.AlignmentType.CENTER, children: [new docx.TextRun({ text: val('out-university'), bold: true, size: ptToHalfPt(16) })] }));
-            blocks.push(new docx.Paragraph({ alignment: docx.AlignmentType.CENTER, children: [new docx.TextRun({ text: val('out-faculty'), bold: true, size: titleSize })] }));
-            blocks.push(new docx.Paragraph({ alignment: docx.AlignmentType.CENTER, spacing: { after: 200 }, children: [new docx.TextRun({ text: val('out-career'), bold: true, size: titleSize })] }));
+            blocks.push(new docx.Paragraph({ alignment: docx.AlignmentType.CENTER, spacing: tight, children: [new docx.TextRun({ text: val('out-university'), bold: true, size: ptToHalfPt(16) })] }));
+            blocks.push(new docx.Paragraph({ alignment: docx.AlignmentType.CENTER, spacing: tight, children: [new docx.TextRun({ text: val('out-faculty'), bold: true, size: titleSize })] }));
+            blocks.push(new docx.Paragraph({ alignment: docx.AlignmentType.CENTER, spacing: tight, children: [new docx.TextRun({ text: val('out-career'), bold: true, size: titleSize })] }));
 
             if (state.logoBase64 && state.logoBase64.startsWith('data:')) {
                 try {
@@ -3458,18 +3634,18 @@
                     const scale = Math.min(1, 227 / natural.width, 227 / natural.height); // 6cm x 6cm conforme manual UPDS
                     blocks.push(new docx.Paragraph({
                         alignment: docx.AlignmentType.CENTER,
-                        spacing: { before: 200, after: 200 },
+                        spacing: { before: cmToTwip(1.5), after: 0 }, // margin-top: 1.5cm na pré-visualização
                         children: [new docx.ImageRun({ data: bytes, type: imageTypeFromDataUri(state.logoBase64), transformation: { width: Math.round(natural.width * scale), height: Math.round(natural.height * scale) } })]
                     }));
                 } catch (e) { /* sem logo válido, segue sem imagem */ }
             }
 
-            blocks.push(new docx.Paragraph({ alignment: docx.AlignmentType.CENTER, spacing: { before: 300 }, children: [new docx.TextRun({ text: 'MONOGRAFÍA', bold: true, size: titleSize })] }));
-            blocks.push(new docx.Paragraph({ alignment: docx.AlignmentType.CENTER, spacing: { after: 400 }, children: [new docx.TextRun({ text: val('out-title'), bold: true, size: ptToHalfPt(12) })] }));
+            blocks.push(new docx.Paragraph({ alignment: docx.AlignmentType.CENTER, spacing: { before: cmToTwip(1.5), after: 0 }, children: [new docx.TextRun({ text: 'MONOGRAFÍA', bold: true, size: titleSize })] }));
+            blocks.push(new docx.Paragraph({ alignment: docx.AlignmentType.CENTER, spacing: tight, children: [new docx.TextRun({ text: val('out-title'), bold: true, size: ptToHalfPt(12) })] }));
 
             const infoRow = (label, value) => new docx.TableRow({ children: [
-                new docx.TableCell({ width: { size: 25, type: docx.WidthType.PERCENTAGE }, borders: noBorders(), children: [new docx.Paragraph({ children: [new docx.TextRun({ text: label, bold: true, size: ptToHalfPt(12) })] })] }),
-                new docx.TableCell({ borders: noBorders(), children: [new docx.Paragraph({ children: [new docx.TextRun({ text: value, size: ptToHalfPt(12) })] })] })
+                new docx.TableCell({ width: { size: 25, type: docx.WidthType.PERCENTAGE }, borders: noBorders(), children: [new docx.Paragraph({ spacing: tight, children: [new docx.TextRun({ text: label, bold: true, size: ptToHalfPt(12) })] })] }),
+                new docx.TableCell({ borders: noBorders(), children: [new docx.Paragraph({ spacing: tight, children: [new docx.TextRun({ text: value, size: ptToHalfPt(12) })] })] })
             ]});
             blocks.push(new docx.Table({
                 width: { size: 80, type: docx.WidthType.PERCENTAGE },
@@ -3481,9 +3657,10 @@
                 ]
             }));
 
-            blocks.push(new docx.Paragraph({ spacing: { before: 2400 }, children: [] })); // espaço real antes do rodapé da capa
-            blocks.push(new docx.Paragraph({ alignment: docx.AlignmentType.CENTER, children: [new docx.TextRun({ text: val('out-location'), size: ptToHalfPt(12) })] }));
-            blocks.push(new docx.Paragraph({ alignment: docx.AlignmentType.CENTER, pageBreakBefore: false, children: [new docx.TextRun({ text: val('out-year'), size: ptToHalfPt(12) })] }));
+            // Espaço antes do rodapé: o mesmo que o flexbox (margin-top: auto) cria na pré-visualização real.
+            blocks.push(new docx.Paragraph({ spacing: { before: measureCoverFooterGapTwips() }, children: [] }));
+            blocks.push(new docx.Paragraph({ alignment: docx.AlignmentType.CENTER, spacing: tight, children: [new docx.TextRun({ text: val('out-location'), size: ptToHalfPt(12) })] }));
+            blocks.push(new docx.Paragraph({ alignment: docx.AlignmentType.CENTER, children: [new docx.TextRun({ text: val('out-year'), size: ptToHalfPt(12) })] }));
 
             return blocks;
         }
@@ -3557,19 +3734,28 @@
                 })]
             });
 
-            // Seção 1: Capa (com ou sem moldura, conforme o modelo de norma ativo) — sem numeração.
+            // Seção 1: Capa (com ou sem moldura, conforme a customização do usuário) — sem numeração.
             const coverBlocks = await buildCoverBlocks(tpl, fontHalfPt);
             const coverChildren = [];
-            if (tpl.capaMoldura) {
+            if (state.coverFrame.enabled) {
+                // A pré-visualização recua o conteúdo da moldura em (margem da página - 1cm) por lado
+                // (.cover-border { padding: calc(var(--page-mt) - 1cm) ... }) — reproduzimos a mesma conta aqui.
+                const cm1 = cmToTwip(1);
+                const frameInset = (m) => Math.max(0, m - cm1);
+                const frameColor = state.coverFrame.color.replace('#', '').toUpperCase();
+                const frameSize = Math.max(2, Math.round(state.coverFrame.widthPt * 8)); // docx: oitavos de ponto
                 coverChildren.push(new docx.Table({
                     width: { size: 100, type: docx.WidthType.PERCENTAGE },
                     borders: {
-                        top: { style: docx.BorderStyle.SINGLE, size: 32, color: '000080' },
-                        bottom: { style: docx.BorderStyle.SINGLE, size: 32, color: '000080' },
-                        left: { style: docx.BorderStyle.SINGLE, size: 32, color: '000080' },
-                        right: { style: docx.BorderStyle.SINGLE, size: 32, color: '000080' }
+                        top: { style: docx.BorderStyle.SINGLE, size: frameSize, color: frameColor },
+                        bottom: { style: docx.BorderStyle.SINGLE, size: frameSize, color: frameColor },
+                        left: { style: docx.BorderStyle.SINGLE, size: frameSize, color: frameColor },
+                        right: { style: docx.BorderStyle.SINGLE, size: frameSize, color: frameColor }
                     },
-                    rows: [new docx.TableRow({ children: [new docx.TableCell({ margins: { top: 300, bottom: 300, left: 300, right: 300 }, children: coverBlocks })] })]
+                    rows: [new docx.TableRow({ children: [new docx.TableCell({
+                        margins: { top: frameInset(marginTop), bottom: frameInset(marginBottom), left: frameInset(marginLeft), right: frameInset(marginRight) },
+                        children: coverBlocks
+                    })] })]
                 }));
             } else {
                 coverChildren.push(...coverBlocks);
