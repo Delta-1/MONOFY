@@ -47,7 +47,6 @@
         const CREDITS_PER_EXPORT = 10; // remover marca d'água
         const AI_COST_PER_PAGE = 5;       // usar IA pra refinar 1 página
         const AI_COST_PER_SECTION = 10;   // gerar 1 seção da monografia com IA (5 seções = 50, igual ao custo anterior do doc inteiro)
-        const CREDITS_AUTO_MODE = 100;    // ativar o Modo Automático do Assistente (capa + tema + redação sem intervenção)
 
         // Campos da capa que o Assistente consegue perguntar um por um no chat guiado.
         // "default" é o valor de placeholder que cada campo traz de fábrica — se o input ainda
@@ -357,6 +356,9 @@
             @page { size: 21.59cm 27.94cm; margin: 0; }
             .hide-on-print { display: none !important; }
         }
+
+        @keyframes assistantFadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fade-in { animation: assistantFadeIn 0.25s ease-out; }
     </style>
     <style id="dynamic-page-size"></style>
 </head>
@@ -403,7 +405,7 @@
         </div>
 
         <!-- BADGE DE UTILIZADOR + SALDO DE CRÉDITOS -->
-        <div class="fixed top-6 left-6 lg:top-6 lg:left-10 z-[40] hide-on-print">
+        <div class="fixed top-6 left-6 lg:top-auto lg:bottom-6 lg:left-10 z-[40] hide-on-print">
             <div class="bg-white/90 dark:bg-slate-850/90 backdrop-blur-md shadow-xl rounded-2xl border border-slate-200/50 dark:border-slate-700/50 flex items-center gap-3 px-4 py-2.5">
                 <img id="user-avatar" src="" class="w-7 h-7 rounded-full hidden-state object-cover">
                 <i data-lucide="user-circle" id="user-avatar-fallback" class="w-6 h-6 text-slate-400"></i>
@@ -732,13 +734,6 @@
             </div>
 
             <div class="flex-1 flex flex-col overflow-hidden min-h-0">
-                <div class="px-5 pt-3 shrink-0">
-                    <button id="btn-auto-mode" onclick="toggleAutomaticMode()" type="button" title="Por padrão a IA colabora com você. No modo automático, ela faz tudo (capa, tema e redação) com autonomia." class="w-full flex items-center justify-between gap-2 text-xs font-bold px-3 py-2 rounded-xl border border-purple-200 dark:border-purple-900/40 bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/30 transition">
-                        <span class="flex items-center gap-1.5"><i data-lucide="zap" class="w-3.5 h-3.5"></i> <span id="auto-mode-label">Modo Automático</span></span>
-                        <span class="opacity-70">(<span id="auto-mode-cost"></span> créditos)</span>
-                    </button>
-                </div>
-
                 <div id="assistant-chat-messages" class="flex-1 overflow-y-auto custom-scrollbar p-5 space-y-3"></div>
 
                 <div class="p-4 border-t border-slate-100 dark:border-slate-800 space-y-2 shrink-0">
@@ -799,6 +794,21 @@
              (esquerda/direita/topo) quando o usuário arrasta a barra perto dela, soltando o
              mouse ali a fixa naquela parede. -->
         <div id="toolbar-dock-hint" class="hidden-state fixed z-[200] hide-on-print bg-primary-500/25 border-2 border-primary-400 border-dashed pointer-events-none rounded-lg"></div>
+
+        <!-- MODO ASSISTENTE: botão flutuante (estrela) no canto inferior direito -->
+        <button id="btn-assistant-mode" onclick="toggleAssistantMode()" type="button" title="Ativar Modo Assistente: a IA sugere continuações e tópicos de pesquisa enquanto você escreve."
+            class="fixed bottom-6 right-6 z-[55] hide-on-print w-12 h-12 rounded-full bg-white dark:bg-slate-800 shadow-2xl border border-slate-200 dark:border-slate-700 flex items-center justify-center text-indigo-500 hover:scale-105 transition-transform">
+            <i data-lucide="sparkles" class="w-5 h-5"></i>
+        </button>
+
+        <!-- MODO ASSISTENTE: painel com o histórico de sugestões de pesquisa -->
+        <div id="panel-assistant" class="hidden-state fixed lg:absolute left-4 right-4 lg:left-auto lg:right-24 bottom-24 lg:bottom-6 top-auto lg:top-auto lg:h-[60vh] lg:max-h-[70vh] lg:w-[320px] bg-white/95 dark:bg-slate-850/95 backdrop-blur-sm shadow-2xl rounded-3xl border border-white/40 dark:border-slate-700/50 flex flex-col z-[56] lg:min-w-[280px] lg:max-w-[40vw]">
+            <div id="panel-assistant-header" class="p-5 border-b border-slate-200/50 dark:border-slate-800/50 flex justify-between items-center cursor-move rounded-t-3xl">
+                <h3 class="font-extrabold flex items-center gap-2 text-slate-800 dark:text-white"><i data-lucide="sparkles" class="w-5 h-5 text-indigo-500"></i> Assistente</h3>
+                <button onclick="document.getElementById('panel-assistant').classList.add('hidden-state')" class="p-1.5 text-slate-400 hover:text-slate-800 dark:hover:text-white rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition"><i data-lucide="x" class="w-4 h-4"></i></button>
+            </div>
+            <div id="assistant-suggestions-list" class="flex-1 p-4 flex flex-col gap-2 overflow-y-auto custom-scrollbar"></div>
+        </div>
 
         <!-- Aviso global de erro: fica fora dos painéis flutuantes para aparecer mesmo se o
              usuário estiver na aba do Assistente, Exportação etc. e o painel "Dados" estiver fechado. -->
@@ -1118,12 +1128,14 @@
             activeNormTemplateId: localStorage.getItem('monografia_active_norm') || 'apa-upds',
             citationStyle: 'APA',
             assistantChatMessages: [],
-            automaticMode: false,
             coverGuidedStage: 'idle', // 'idle' | 'choice' | 'fields' | 'theme' | 'done'
             coverGuidedPending: [],
             coverFrame: JSON.parse(localStorage.getItem('monografia_cover_frame')) || { enabled: true, color: '#000080', widthPt: 4 },
             shortcuts: JSON.parse(localStorage.getItem('monografia_shortcuts')) || { coverFrame: 'alt+m' },
-            shortcutCapture: null
+            shortcutCapture: null,
+            assistantMode: localStorage.getItem('monografia_assistant_mode') === 'true',
+            assistantSuggestions: JSON.parse(localStorage.getItem('monografia_assistant_suggestions')) || [],
+            _lastAnalyzedParagraph: ''
         };
 
         document.addEventListener('DOMContentLoaded', () => {
@@ -1139,18 +1151,20 @@
             setToolbarTab(localStorage.getItem('monografia_toolbar_tab') || 'home');
             applyWatermarkStamps();
             document.getElementById('assistant-chat-cost').innerText = AI_COST_PER_PAGE;
-            document.getElementById('auto-mode-cost').innerText = CREDITS_AUTO_MODE;
             renderAssistantChat();
 
             // Tornar painéis arrastáveis e redimensionáveis no Desktop
             makeDraggable('panel-left', 'panel-left-header');
             makeDraggable('panel-right', 'panel-right-header');
             makeDraggable('panel-export', 'panel-export-header');
-            makeDraggable('word-toolbar', 'word-toolbar-header', { dockable: true });
+            makeDraggable('panel-assistant', 'panel-assistant-header');
+            makeDraggable('word-toolbar', 'word-toolbar-header', { dockable: true, mobileDraggable: true });
             makeResizable('panel-left', { minW: 320, maxW: 0.5, minH: 400 });
             makeResizable('panel-right', { minW: 300, maxW: 0.4, minH: 400 });
             makeResizable('panel-export', { minW: 280, maxW: 0.4, minH: 400 });
             makeResizable('word-toolbar', { minW: 48, maxW: 0.3, minH: 160 });
+            updateAssistantModeButtonUI();
+            renderAssistantSuggestions();
             initPinchZoom();
             initPageTracker();
         });
@@ -1191,28 +1205,24 @@
             const header = document.getElementById(headerId);
             if (!el || !header) return;
             const dockable = !!(opts && opts.dockable);
+            const mobileDraggable = !!(opts && opts.mobileDraggable);
 
             let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
             let dockZone = null;
 
-            header.onmousedown = function(e) {
-                if(window.innerWidth < 1024) return; // Desativa drag no mobile (tablets e telemóveis)
-                e.preventDefault();
+            function startDrag(clientX, clientY) {
                 if (dockable && el.dataset.dock && el.dataset.dock !== 'none') {
                     undockToolbarToRect(el, el.getBoundingClientRect());
                 }
-                pos3 = e.clientX;
-                pos4 = e.clientY;
-                document.onmouseup = closeDragElement;
-                document.onmousemove = elementDrag;
-            };
+                pos3 = clientX;
+                pos4 = clientY;
+            }
 
-            function elementDrag(e) {
-                e.preventDefault();
-                pos1 = pos3 - e.clientX;
-                pos2 = pos4 - e.clientY;
-                pos3 = e.clientX;
-                pos4 = e.clientY;
+            function dragTo(clientX, clientY) {
+                pos1 = pos3 - clientX;
+                pos2 = pos4 - clientY;
+                pos3 = clientX;
+                pos4 = clientY;
 
                 let newTop = el.offsetTop - pos2;
                 let newLeft = el.offsetLeft - pos1;
@@ -1248,13 +1258,54 @@
                 }
             }
 
-            function closeDragElement() {
-                document.onmouseup = null;
-                document.onmousemove = null;
+            function endDrag() {
                 if (dockable) {
                     showDockHint(null);
                     if (dockZone) dockToolbar(dockZone);
                     dockZone = null;
+                }
+            }
+
+            header.onmousedown = function(e) {
+                if(window.innerWidth < 1024) return; // Desativa drag no mobile (tablets e telemóveis)
+                e.preventDefault();
+                startDrag(e.clientX, e.clientY);
+                document.onmouseup = closeDragElement;
+                document.onmousemove = elementDrag;
+            };
+
+            function elementDrag(e) {
+                e.preventDefault();
+                dragTo(e.clientX, e.clientY);
+            }
+
+            function closeDragElement() {
+                document.onmouseup = null;
+                document.onmousemove = null;
+                endDrag();
+            }
+
+            if (mobileDraggable) {
+                header.addEventListener('touchstart', function(e) {
+                    if (window.innerWidth >= 1024) return;
+                    const t = e.touches[0];
+                    startDrag(t.clientX, t.clientY);
+                    document.addEventListener('touchmove', touchDrag, { passive: false });
+                    document.addEventListener('touchend', touchEnd);
+                    document.addEventListener('touchcancel', touchEnd);
+                }, { passive: true });
+
+                function touchDrag(e) {
+                    e.preventDefault();
+                    const t = e.touches[0];
+                    dragTo(t.clientX, t.clientY);
+                }
+
+                function touchEnd() {
+                    document.removeEventListener('touchmove', touchDrag);
+                    document.removeEventListener('touchend', touchEnd);
+                    document.removeEventListener('touchcancel', touchEnd);
+                    endDrag();
                 }
             }
         }
@@ -2503,7 +2554,7 @@
             if (!state.profile) { alert('Aguarde o carregamento do seu perfil.'); return; }
 
             const totalCost = AI_COST_PER_SECTION * DOC_SECTION_PLAN.length;
-            const confirmed = state.automaticMode ? true : await showConfirmModal(
+            const confirmed = await showConfirmModal(
                 'Gerar monografia com IA',
                 `A IA vai redigir o documento seção por seção (Resumo, Introdução, Marco Teórico, Conclusão e Referências). Isso consome até <b>${totalCost} créditos</b> no total — cada seção só é cobrada depois de gerada com sucesso — do seu saldo atual de <b>${state.profile.credits}</b>. Continuar?`
             );
@@ -2861,6 +2912,7 @@
         }
 
         function syncSectionFromDOM(sectionId) {
+            clearGhostSuggestion();
             const idx = state.generatedSections.findIndex(s => s.id === sectionId);
             if (idx === -1) return;
 
@@ -2924,6 +2976,224 @@
                 if (!didSplit) break;
             }
         }
+
+        // ==========================================
+        // MODO ASSISTENTE: autocomplete (ghost text) + sugestões de pesquisa por parágrafo
+        // ==========================================
+        let _ghostDebounceTimer = null;
+        let _ghostRequestSeq = 0;
+
+        function clearGhostSuggestion() {
+            const ghost = document.getElementById('ai-ghost-suggestion');
+            if (ghost) ghost.remove();
+        }
+
+        function acceptGhostSuggestion() {
+            const ghost = document.getElementById('ai-ghost-suggestion');
+            if (!ghost) return false;
+            const text = ghost.dataset.suggestion || '';
+            const parent = ghost.parentNode;
+            ghost.remove();
+            if (!text) return true;
+
+            const textNode = document.createTextNode(text);
+            const sel = window.getSelection();
+            if (sel && sel.rangeCount > 0) {
+                const range = sel.getRangeAt(0);
+                range.insertNode(textNode);
+                range.setStartAfter(textNode);
+                range.collapse(true);
+                sel.removeAllRanges();
+                sel.addRange(range);
+            } else if (parent) {
+                parent.appendChild(textNode);
+            }
+            return true;
+        }
+
+        function insertGhostSuggestion(text) {
+            clearGhostSuggestion();
+            const sel = window.getSelection();
+            if (!sel || sel.rangeCount === 0 || !text) return;
+            const range = sel.getRangeAt(0);
+            if (!range.collapsed) return;
+
+            const span = document.createElement('span');
+            span.id = 'ai-ghost-suggestion';
+            span.contentEditable = 'false';
+            span.dataset.suggestion = text;
+            span.style.color = '#94a3b8';
+            span.style.opacity = '0.85';
+            span.textContent = text;
+
+            range.insertNode(span);
+            range.setStartBefore(span);
+            range.setEndBefore(span);
+            sel.removeAllRanges();
+            sel.addRange(range);
+        }
+
+        function getCaretContextText(el) {
+            const sel = window.getSelection();
+            if (!sel || sel.rangeCount === 0) return '';
+            const range = sel.getRangeAt(0);
+            if (!range.collapsed) return '';
+            const preRange = range.cloneRange();
+            preRange.selectNodeContents(el);
+            preRange.setEnd(range.endContainer, range.endOffset);
+            return preRange.toString();
+        }
+
+        function scheduleGhostSuggestion(el) {
+            clearTimeout(_ghostDebounceTimer);
+            clearGhostSuggestion();
+            if (!state.assistantMode) return;
+            const contextText = getCaretContextText(el).slice(-600);
+            if (contextText.trim().length < 12) return;
+
+            _ghostDebounceTimer = setTimeout(async () => {
+                const seq = ++_ghostRequestSeq;
+                try {
+                    const prompt = `Você está ajudando a continuar a escrita de uma monografia acadêmica, no idioma ${state.docLanguage || 'português'}. Aqui está o texto já escrito até o ponto onde o cursor está:\n\n"""${contextText}"""\n\nContinue a frase ou pensamento atual de forma natural e académica, em no máximo 12 palavras. Responda APENAS com a continuação do texto (sem repetir o que já foi escrito, sem aspas, sem explicações).`;
+                    const suggestion = await callAI(prompt, 0, 'ai_autocomplete');
+                    if (seq !== _ghostRequestSeq || !state.assistantMode) return;
+                    const clean = (suggestion || '').trim().replace(/^["']|["']$/g, '');
+                    if (clean) insertGhostSuggestion(clean.startsWith(' ') ? clean : (' ' + clean));
+                } catch (err) {
+                    console.error('Autocomplete IA falhou (silencioso):', err);
+                }
+            }, 1100);
+        }
+
+        function maybeAnalyzeFinishedParagraph(el) {
+            if (!state.assistantMode) return;
+            const lines = (el.innerText || '').split('\n').map(l => l.trim()).filter(Boolean);
+            const lastLine = lines[lines.length - 1] || '';
+            if (lastLine.length < 40) return;
+            if (!/[.!?]["')\]]?$/.test(lastLine)) return;
+            if (lastLine === state._lastAnalyzedParagraph) return;
+            state._lastAnalyzedParagraph = lastLine;
+            fetchParagraphSuggestion(lastLine);
+        }
+
+        async function fetchParagraphSuggestion(paragraphText) {
+            try {
+                const prompt = `Um estudante está redigindo uma monografia académica e acabou de escrever este parágrafo, no idioma ${state.docLanguage || 'português'}:\n\n"""${paragraphText}"""\n\nCom base apenas no seu conhecimento (não faça referência a uma pesquisa real na internet), sugira em até 2 frases curtas um tema, palavra-chave, autor ou linha de estudo relacionado que valeria a pena o estudante explorar para aprofundar esse trecho. Seja específico e direto, sem introduções como "Sugiro" ou "Aqui está".`;
+                const suggestion = await callAI(prompt, 0, 'ai_paragraph_suggestion');
+                const clean = (suggestion || '').trim();
+                if (clean) addAssistantSuggestion(clean, paragraphText);
+            } catch (err) {
+                console.error('Sugestão de parágrafo falhou (silencioso):', err);
+            }
+        }
+
+        function addAssistantSuggestion(text, sourceParagraph) {
+            const entry = { text, sourceParagraph, ts: Date.now() };
+            state.assistantSuggestions.unshift(entry);
+            state.assistantSuggestions = state.assistantSuggestions.slice(0, 50);
+            localStorage.setItem('monografia_assistant_suggestions', JSON.stringify(state.assistantSuggestions));
+            renderAssistantSuggestions();
+            showAssistantToast(text);
+        }
+
+        function showAssistantToast(text) {
+            let container = document.getElementById('assistant-toast-container');
+            if (!container) {
+                container = document.createElement('div');
+                container.id = 'assistant-toast-container';
+                container.className = 'fixed bottom-24 right-4 lg:bottom-6 lg:right-28 z-[60] flex flex-col gap-2 items-end hide-on-print';
+                document.body.appendChild(container);
+            }
+            const toast = document.createElement('div');
+            toast.className = 'assistant-toast bg-white dark:bg-slate-800 shadow-2xl rounded-xl border border-indigo-200 dark:border-indigo-900/40 p-3 max-w-xs text-xs animate-fade-in';
+            toast.innerHTML = `
+                <div class="flex items-start gap-2">
+                    <i data-lucide="sparkles" class="w-4 h-4 text-indigo-500 shrink-0 mt-0.5"></i>
+                    <div class="flex-1">
+                        <p class="font-bold text-slate-700 dark:text-slate-200 mb-1">Sugestão do Assistente</p>
+                        <p class="text-slate-600 dark:text-slate-300">${escapeHtml(text)}</p>
+                        <button onclick="openAssistantPanel(); this.closest('.assistant-toast').remove();" class="mt-1.5 text-indigo-600 dark:text-indigo-400 font-bold hover:underline">Ver no Assistente</button>
+                    </div>
+                    <button onclick="this.closest('.assistant-toast').remove()" class="text-slate-400 hover:text-slate-700 dark:hover:text-white shrink-0"><i data-lucide="x" class="w-3.5 h-3.5"></i></button>
+                </div>`;
+            container.appendChild(toast);
+            lucide.createIcons();
+            setTimeout(() => { if (toast.parentNode) toast.remove(); }, 10000);
+        }
+
+        function renderAssistantSuggestions() {
+            const box = document.getElementById('assistant-suggestions-list');
+            if (!box) return;
+            if (state.assistantSuggestions.length === 0) {
+                box.innerHTML = `<p class="text-xs text-slate-400 text-center py-6">Nenhuma sugestão ainda. Ative o Modo Assistente e continue escrevendo — as sugestões de pesquisa aparecem aqui.</p>`;
+                return;
+            }
+            box.innerHTML = state.assistantSuggestions.map(s => `
+                <div class="p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-xs space-y-1">
+                    <p class="text-slate-700 dark:text-slate-200">${escapeHtml(s.text)}</p>
+                    <p class="text-slate-400 italic truncate">"${escapeHtml((s.sourceParagraph || '').slice(0, 80))}${(s.sourceParagraph || '').length > 80 ? '…' : ''}"</p>
+                </div>
+            `).join('');
+        }
+
+        function openAssistantPanel() {
+            const panel = document.getElementById('panel-assistant');
+            if (panel) panel.classList.remove('hidden-state');
+            renderAssistantSuggestions();
+        }
+
+        function toggleAssistantMode() {
+            state.assistantMode = !state.assistantMode;
+            localStorage.setItem('monografia_assistant_mode', state.assistantMode);
+            updateAssistantModeButtonUI();
+            clearGhostSuggestion();
+            if (state.assistantMode) openAssistantPanel();
+        }
+
+        function updateAssistantModeButtonUI() {
+            const btn = document.getElementById('btn-assistant-mode');
+            if (!btn) return;
+            btn.classList.toggle('!bg-indigo-600', state.assistantMode);
+            btn.classList.toggle('!text-white', state.assistantMode);
+            btn.title = state.assistantMode
+                ? 'Modo Assistente ativo: a IA sugere continuações e tópicos de pesquisa enquanto você escreve. Clique para desativar.'
+                : 'Ativar Modo Assistente: a IA sugere continuações e tópicos de pesquisa enquanto você escreve.';
+        }
+
+        // Delegação de eventos no contêiner estável (os .apa-content são recriados a cada renderSections())
+        (function setupAssistantModeListeners() {
+            const container = document.getElementById('generated-content');
+            if (!container) return;
+
+            container.addEventListener('input', function(e) {
+                const el = e.target.closest('.apa-content');
+                if (!el) return;
+                scheduleGhostSuggestion(el);
+            });
+
+            container.addEventListener('keydown', function(e) {
+                const el = e.target.closest('.apa-content');
+                if (!el) return;
+
+                if (e.key === 'Tab' && document.getElementById('ai-ghost-suggestion')) {
+                    e.preventDefault();
+                    acceptGhostSuggestion();
+                    return;
+                }
+                if (document.getElementById('ai-ghost-suggestion') && e.key !== 'Shift' && e.key !== 'Control' && e.key !== 'Alt' && e.key !== 'Meta') {
+                    clearGhostSuggestion();
+                }
+                if (e.key === 'Enter') {
+                    setTimeout(() => maybeAnalyzeFinishedParagraph(el), 0);
+                }
+            });
+
+            container.addEventListener('focusout', function(e) {
+                const el = e.target.closest('.apa-content');
+                if (!el) return;
+                clearGhostSuggestion();
+            });
+        })();
 
         function startNewBlankProject() {
             if (!confirm('Começar um novo projeto em branco? O trabalho atual continua salvo no histórico (se já foi salvo), mas a tela vai limpar para um documento novo.')) return;
@@ -3314,76 +3584,6 @@
                 document.getElementById('assistant-chat-send').disabled = false;
                 renderAssistantChat();
             }
-        }
-
-        // --- Modo Automático: por padrão a IA colabora com o usuário (auxilia a pesquisa, não decide
-        // tudo sozinha). Ativando este modo, ela passa a fazer tudo com autonomia (preenche o que faltar
-        // na capa, escolhe um tema se não houver um definido, e gera o documento completo), por 100 créditos. ---
-        async function toggleAutomaticMode() {
-            if (state.isDemo) { alert('Modo demonstração: indisponível.'); return; }
-            if (!state.profile) { alert('Aguarde o carregamento do seu perfil.'); return; }
-
-            if (state.automaticMode) {
-                state.automaticMode = false;
-                updateAutoModeButtonUI();
-                return;
-            }
-
-            const confirmed = await showConfirmModal(
-                'Ativar Modo Automático',
-                `No modo automático, a IA assume o controle: preenche o que faltar na capa, escolhe um tema (se você não tiver definido um) e redige a monografia completa com excelência, sem perguntar passo a passo. Isso cobra <b>${CREDITS_AUTO_MODE} créditos</b> agora, do seu saldo atual de <b>${state.profile.credits}</b> (à parte do custo normal de gerar cada seção depois). Continuar?`
-            );
-            if (!confirmed) return;
-
-            const { data: success, error } = await supabaseClient.rpc('consume_credits_generic', {
-                p_user_id: state.session.user.id, p_amount: CREDITS_AUTO_MODE, p_reason: 'ai_automatic_mode'
-            });
-            if (error || !success) {
-                showError(`Créditos insuficientes (precisa de ${CREDITS_AUTO_MODE}). Compre créditos na aba Créditos.`);
-                return;
-            }
-            if (state.profile.role !== 'admin') {
-                state.profile.credits -= CREDITS_AUTO_MODE;
-                document.getElementById('user-credits-display').innerText = state.profile.credits;
-            }
-
-            state.automaticMode = true;
-            updateAutoModeButtonUI();
-            state.assistantChatMessages.push({ role: 'ai', text: 'Modo automático ativado! Vou cuidar da capa e do tema com autonomia e já começar a redigir a monografia.' });
-            renderAssistantChat();
-
-            await runAutomaticMode();
-        }
-
-        function updateAutoModeButtonUI() {
-            const btn = document.getElementById('btn-auto-mode');
-            btn.classList.toggle('!bg-purple-600', state.automaticMode);
-            btn.classList.toggle('!text-white', state.automaticMode);
-            document.getElementById('auto-mode-label').innerText = state.automaticMode ? 'Modo Automático (ativo)' : 'Modo Automático';
-        }
-
-        async function runAutomaticMode() {
-            state.coverGuidedStage = 'done';
-            const rawTextEl = document.getElementById('raw-text');
-
-            if (!rawTextEl.value.trim()) {
-                try {
-                    const subject = document.getElementById('in-subject').value || 'tema acadêmico geral';
-                    const career = document.getElementById('in-career').value || '';
-                    const topicPrompt = `Sugira um tema específico e relevante para uma monografia académica na disciplina "${subject}"${career ? ` do curso "${career}"` : ''}, e escreva de 3 a 5 frases de notas-base (problema, objetivo e foco) sobre esse tema, no idioma ${state.docLanguage}. Responda APENAS com o texto das notas-base, sem explicações extras.`;
-                    const notes = await callAI(topicPrompt, AI_COST_PER_PAGE, 'ai_auto_mode_topic');
-                    rawTextEl.value = notes.trim();
-                    state.assistantChatMessages.push({ role: 'ai', text: 'Escolhi um tema e já preparei as notas-base, já que você não tinha definido nenhum. Vamos gerar o documento agora.' });
-                    renderAssistantChat();
-                } catch (err) {
-                    console.error(err);
-                    state.assistantChatMessages.push({ role: 'error', text: err.message || 'Não consegui definir o tema automaticamente.' });
-                    renderAssistantChat();
-                    return;
-                }
-            }
-
-            await generateDocument();
         }
 
         document.getElementById('assistant-chat-input').addEventListener('keydown', function(e) {
