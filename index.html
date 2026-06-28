@@ -356,6 +356,11 @@
         .btn-glow { animation: btn-glow-pulse 2.2s ease-in-out infinite; }
 
         @media print {
+            /* Sem isto, o Safari/WebKit do iOS (e alguns Android) descartam cores de fundo,
+               bordas e degradês na hora de imprimir/exportar PDF, deixando capa, marca d'água
+               e temas dos slides "lavados" — é o motivo nº1 de exportação feia no celular. */
+            * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
+
             /* O app inteiro vive numa "casca" de altura fixa com overflow:hidden para permitir
                rolagem interna na tela. Isso corta a impressão na primeira tela cheia, deixando
                só a capa visível. Aqui liberamos altura/overflow em toda a cadeia de ancestrais
@@ -553,8 +558,8 @@
                         <div class="text-center w-full px-6">
                             <div class="opacity-40">
                                 <i data-lucide="file-signature" class="w-16 h-16 mx-auto mb-4"></i>
-                                <p class="font-sans text-lg font-bold" style="text-indent: 0;">O documento formatado aparecerá aqui.</p>
-                                <p class="font-sans text-sm mt-2 mb-6" style="text-indent: 0;">Configure a IA e os dados nos painéis laterais, ou comece manualmente.</p>
+                                <p class="font-sans text-lg font-bold" style="text-indent: 0; text-align: center !important;">O documento formatado aparecerá aqui.</p>
+                                <p class="font-sans text-sm mt-2 mb-6" style="text-indent: 0; text-align: center !important;">Configure a IA e os dados nos painéis laterais, ou comece manualmente.</p>
                             </div>
                             <button onclick="addNewSection()" class="btn-glow hide-on-print mx-auto flex items-center gap-2 px-6 py-4 bg-primary-600 text-white rounded-2xl hover:bg-primary-700 transition-all font-bold shadow-lg hover:-translate-y-0.5">
                                 <i data-lucide="plus-circle" class="w-5 h-5"></i> Adicionar Primeira Página (sem IA)
@@ -2271,6 +2276,9 @@
             // A decisão de remover a marca d'água agora é feita uma vez por trabalho, pelo botão
             // dedicado no painel Assistente — aqui só refletimos o que já foi decidido.
             syncWatermarkRemovedClass();
+            // No celular a fonte Tinos às vezes ainda não tinha carregado quando o print
+            // disparava, trocando a serifada pela fonte padrão do sistema no PDF gerado.
+            if (document.fonts && document.fonts.ready) { try { await document.fonts.ready; } catch(e) {} }
             window.print();
         }
 
@@ -3801,8 +3809,8 @@ O campo "body" deve ser texto simples curto (pode usar quebras de linha com \\n 
                     <div class="text-center w-full px-6">
                         <div class="opacity-40">
                             <i data-lucide="file-signature" class="w-16 h-16 mx-auto mb-4"></i>
-                            <p class="font-sans text-lg font-bold" style="text-indent: 0;">O documento formatado aparecerá aqui.</p>
-                            <p class="font-sans text-sm mt-2 mb-6" style="text-indent: 0;">Configure a IA e os dados nos painéis laterais, ou comece manualmente.</p>
+                            <p class="font-sans text-lg font-bold" style="text-indent: 0; text-align: center !important;">O documento formatado aparecerá aqui.</p>
+                            <p class="font-sans text-sm mt-2 mb-6" style="text-indent: 0; text-align: center !important;">Configure a IA e os dados nos painéis laterais, ou comece manualmente.</p>
                         </div>
                         <button onclick="addNewSection()" class="btn-glow hide-on-print mx-auto flex items-center gap-2 px-6 py-4 bg-primary-600 text-white rounded-2xl hover:bg-primary-700 transition-all font-bold shadow-lg hover:-translate-y-0.5">
                             <i data-lucide="plus-circle" class="w-5 h-5"></i> Adicionar Primeira Página (sem IA)
