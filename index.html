@@ -986,8 +986,12 @@
         <!-- Tab: Slides (editor estilo Canva, gerado a partir da monografia) -->
         <div id="tab-slides" class="hidden-state absolute inset-0 z-40 bg-slate-100/95 dark:bg-slate-900/95 backdrop-blur-2xl overflow-y-auto pt-6 pb-32 px-3 lg:px-6 custom-scrollbar">
             <div class="max-w-7xl mx-auto">
-                <!-- Barra superior: temas, logo, gerar IA, exportar -->
-                <div class="bg-white/80 dark:bg-slate-850/80 backdrop-blur rounded-2xl shadow border border-white/40 dark:border-slate-700 p-3 lg:p-4 mb-4 flex flex-wrap items-center gap-3">
+                <!-- Barra superior: temas, logo, gerar IA, exportar.
+                     Precisa de "relative z-20": o backdrop-blur cria um stacking context próprio,
+                     então sem um z-index explícito aqui o menu "Exportar" (z-50, mas só dentro
+                     desse contexto) acabava pintado atrás do canvas do slide, que vem depois no
+                     HTML e também não tinha z-index. -->
+                <div class="relative z-20 bg-white/80 dark:bg-slate-850/80 backdrop-blur rounded-2xl shadow border border-white/40 dark:border-slate-700 p-3 lg:p-4 mb-4 flex flex-wrap items-center gap-3">
                     <div class="flex items-center gap-2">
                         <i data-lucide="presentation" class="w-5 h-5 text-indigo-600 dark:text-indigo-400"></i>
                         <h2 class="font-extrabold text-slate-800 dark:text-white text-sm lg:text-base">Slides da Apresentação</h2>
@@ -995,10 +999,43 @@
 
                     <div class="flex items-center gap-1.5" id="slide-theme-picker"></div>
 
-                    <label class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 cursor-pointer">
-                        <i data-lucide="image-up" class="w-3.5 h-3.5"></i> Logo
-                        <input type="file" accept="image/*" class="hidden" onchange="uploadSlideLogo(event)">
-                    </label>
+                    <div class="relative" id="slides-style-wrap">
+                        <button onclick="document.getElementById('slides-style-menu').classList.toggle('hidden-state')" type="button" class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700">
+                            <i data-lucide="image-up" class="w-3.5 h-3.5"></i> Logo &amp; Texto
+                        </button>
+                        <div id="slides-style-menu" class="hidden-state absolute left-0 mt-1 w-72 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 z-50 p-4 space-y-4">
+                            <div>
+                                <p class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">Logo do topo (só na capa)</p>
+                                <div class="flex items-center gap-2">
+                                    <label class="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 text-xs font-semibold rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 cursor-pointer">
+                                        <i data-lucide="upload" class="w-3 h-3"></i> Enviar
+                                        <input type="file" accept="image/*" class="hidden" onchange="uploadSlideLogo(event,'top')">
+                                    </label>
+                                    <button onclick="removeSlideLogo('top')" type="button" title="Remover" class="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-700 hover:bg-red-50 dark:hover:bg-red-900/30 hover:text-red-500"><i data-lucide="x" class="w-3.5 h-3.5"></i></button>
+                                </div>
+                                <label class="flex items-center gap-2 mt-2 text-[11px] text-slate-500 dark:text-slate-400">Tamanho
+                                    <input type="range" min="16" max="80" step="1" id="slide-logo-top-size" oninput="setSlideLogoSize('top', this.value)" class="flex-1">
+                                </label>
+                            </div>
+                            <div>
+                                <p class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">Logo do rodapé (em todos os slides)</p>
+                                <div class="flex items-center gap-2">
+                                    <label class="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 text-xs font-semibold rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 cursor-pointer">
+                                        <i data-lucide="upload" class="w-3 h-3"></i> Enviar
+                                        <input type="file" accept="image/*" class="hidden" onchange="uploadSlideLogo(event,'bottom')">
+                                    </label>
+                                    <button onclick="removeSlideLogo('bottom')" type="button" title="Remover" class="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-700 hover:bg-red-50 dark:hover:bg-red-900/30 hover:text-red-500"><i data-lucide="x" class="w-3.5 h-3.5"></i></button>
+                                </div>
+                                <label class="flex items-center gap-2 mt-2 text-[11px] text-slate-500 dark:text-slate-400">Tamanho
+                                    <input type="range" min="16" max="80" step="1" id="slide-logo-bottom-size" oninput="setSlideLogoSize('bottom', this.value)" class="flex-1">
+                                </label>
+                            </div>
+                            <div>
+                                <p class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">Tamanho do texto</p>
+                                <input type="range" min="60" max="160" step="5" id="slide-text-scale" oninput="setSlideTextScale(this.value)" class="w-full">
+                            </div>
+                        </div>
+                    </div>
 
                     <div class="flex-1"></div>
 
@@ -1281,6 +1318,10 @@
             slides: JSON.parse(localStorage.getItem('monografia_slides')) || [],
             slideTheme: localStorage.getItem('monografia_slide_theme') || 'azul',
             slideLogoBase64: localStorage.getItem('monografia_slide_logo') || '',
+            slideLogoTopBase64: localStorage.getItem('monografia_slide_logo_top') || '',
+            slideLogoSize: parseInt(localStorage.getItem('monografia_slide_logo_size')) || 36,
+            slideLogoTopSize: parseInt(localStorage.getItem('monografia_slide_logo_top_size')) || 34,
+            slideTextScale: parseInt(localStorage.getItem('monografia_slide_text_scale')) || 100,
             activeSlideId: null
         };
 
@@ -2355,6 +2396,10 @@
             localStorage.setItem('monografia_slides', JSON.stringify(state.slides));
             localStorage.setItem('monografia_slide_theme', state.slideTheme);
             localStorage.setItem('monografia_slide_logo', state.slideLogoBase64 || '');
+            localStorage.setItem('monografia_slide_logo_top', state.slideLogoTopBase64 || '');
+            localStorage.setItem('monografia_slide_logo_size', state.slideLogoSize);
+            localStorage.setItem('monografia_slide_logo_top_size', state.slideLogoTopSize);
+            localStorage.setItem('monografia_slide_text_scale', state.slideTextScale);
         }
 
         function newSlideObj(type) {
@@ -2383,17 +2428,49 @@
             renderSlidesTab();
         }
 
-        function uploadSlideLogo(event) {
+        function uploadSlideLogo(event, which) {
             const file = event.target.files[0];
             if (!file) return;
             const reader = new FileReader();
             reader.onload = (evt) => {
-                state.slideLogoBase64 = evt.target.result;
+                if (which === 'top') state.slideLogoTopBase64 = evt.target.result;
+                else state.slideLogoBase64 = evt.target.result;
                 saveSlidesState();
                 renderSlidesTab();
             };
             reader.readAsDataURL(file);
         }
+
+        function removeSlideLogo(which) {
+            if (which === 'top') state.slideLogoTopBase64 = '';
+            else state.slideLogoBase64 = '';
+            saveSlidesState();
+            renderSlidesTab();
+        }
+
+        function setSlideLogoSize(which, value) {
+            if (which === 'top') state.slideLogoTopSize = parseInt(value);
+            else state.slideLogoSize = parseInt(value);
+            saveSlidesState();
+            renderSlidesTab();
+        }
+
+        function setSlideTextScale(value) {
+            state.slideTextScale = parseInt(value);
+            saveSlidesState();
+            renderSlidesTab();
+        }
+
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('#slides-export-wrap')) {
+                const m = document.getElementById('slides-export-menu');
+                if (m) m.classList.add('hidden-state');
+            }
+            if (!e.target.closest('#slides-style-wrap')) {
+                const m2 = document.getElementById('slides-style-menu');
+                if (m2) m2.classList.add('hidden-state');
+            }
+        });
 
         function renderSlidesTab() {
             renderSlideThemePicker();
@@ -2440,6 +2517,12 @@
             `;
             const colorInput = document.getElementById('slide-color-input');
             if (colorInput) colorInput.value = (active && active.bgColor) || theme.bg;
+            const logoTopSizeInput = document.getElementById('slide-logo-top-size');
+            if (logoTopSizeInput) logoTopSizeInput.value = state.slideLogoTopSize || 34;
+            const logoBottomSizeInput = document.getElementById('slide-logo-bottom-size');
+            if (logoBottomSizeInput) logoBottomSizeInput.value = state.slideLogoSize || 36;
+            const textScaleInput = document.getElementById('slide-text-scale');
+            if (textScaleInput) textScaleInput.value = state.slideTextScale || 100;
             lucide.createIcons();
         }
 
@@ -2469,8 +2552,9 @@
             const ce = editable ? 'contenteditable="true"' : '';
             const editAttrs = editable ? `onblur="updateSlideField('${s.id}', this.dataset.field, this.innerText)"` : '';
             const bg = s.bgColor || theme.bg;
+            const logoBottomSize = state.slideLogoSize || 36;
             const logo = state.slideLogoBase64
-                ? `<img src="${state.slideLogoBase64}" style="max-height:36px; max-width:120px; object-fit:contain;">`
+                ? `<img src="${state.slideLogoBase64}" style="max-height:${logoBottomSize}px; max-width:${logoBottomSize * 3.3}px; object-fit:contain;">`
                 : `<span style="font-size:10px; opacity:.6; color:${theme.light};">SEU LOGO</span>`;
             const watermark = `<div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; opacity:.06; pointer-events:none;">
                 <i data-lucide="graduation-cap" style="width:55%; height:55%; color:${theme.accent};"></i>
@@ -2478,15 +2562,17 @@
             const bottomBar = `<div style="position:absolute; left:0; right:0; bottom:0; height:11%; background:${theme.bar}; display:flex; align-items:center; justify-content:center; z-index:1;">${logo}</div>`;
             const imageInner = s.image ? `<img src="${s.image}" style="width:100%; max-height:32vh; object-fit:contain; border-radius:6px; box-shadow:0 6px 16px -6px rgba(0,0,0,.35); pointer-events:none;">` : '';
             const image = s.image ? slideFieldWrap(s, 'image', { x: 62, y: 6, w: 32 }, editable, imageInner) : '';
+            const logoTopSize = state.slideLogoTopSize || 34;
+            const textScaleVar = `--slide-text-scale:${(state.slideTextScale || 100) / 100};`;
 
             if (s.type === 'cover') {
-                const headingInner = `<div ${ce} ${editAttrs} data-field="heading" style="text-align:center; font-size:clamp(14px,3.4vw,30px); font-weight:800; color:${theme.accent}; outline:none;">${escapeHtml(s.heading || '')}</div>`;
-                const studentsInner = `<div style="text-align:left; font-size:clamp(8px,1.3vw,12px); color:${theme.text};"><b>DISCENTES:</b><br><span ${ce} ${editAttrs} data-field="students" style="outline:none;">${escapeHtml(s.students || '')}</span></div>`;
-                const professorInner = `<div style="text-align:right; font-size:clamp(8px,1.3vw,12px); color:${theme.text};"><b>DOCENTE:</b><br><span ${ce} ${editAttrs} data-field="professor" style="outline:none;">${escapeHtml(s.professor || '')}</span></div>`;
-                return `<div class="slide-canvas-box" style="position:relative; width:100%; height:100%; background:${bg}; font-family:'Times New Roman', serif; box-sizing:border-box;">
+                const headingInner = `<div ${ce} ${editAttrs} data-field="heading" style="text-align:center; font-size:calc(var(--slide-text-scale,1) * clamp(14px,3.4vw,30px)); font-weight:800; color:${theme.accent}; outline:none;">${escapeHtml(s.heading || '')}</div>`;
+                const studentsInner = `<div style="text-align:left; font-size:calc(var(--slide-text-scale,1) * clamp(8px,1.3vw,12px)); color:${theme.text};"><b>DISCENTES:</b><br><span ${ce} ${editAttrs} data-field="students" style="outline:none;">${escapeHtml(s.students || '')}</span></div>`;
+                const professorInner = `<div style="text-align:right; font-size:calc(var(--slide-text-scale,1) * clamp(8px,1.3vw,12px)); color:${theme.text};"><b>DOCENTE:</b><br><span ${ce} ${editAttrs} data-field="professor" style="outline:none;">${escapeHtml(s.professor || '')}</span></div>`;
+                return `<div class="slide-canvas-box" style="position:relative; width:100%; height:100%; background:${bg}; font-family:'Times New Roman', serif; box-sizing:border-box; ${textScaleVar}">
                     ${watermark}
                     ${image}
-                    <div style="position:absolute; top:6%; left:6%; z-index:1;">${state.slideLogoBase64 ? `<img src="${state.slideLogoBase64}" style="max-height:34px; max-width:140px; object-fit:contain;">` : ''}</div>
+                    <div style="position:absolute; top:6%; left:6%; z-index:1;">${state.slideLogoTopBase64 ? `<img src="${state.slideLogoTopBase64}" style="max-height:${logoTopSize}px; max-width:${logoTopSize * 4.1}px; object-fit:contain;">` : ''}</div>
                     ${slideFieldWrap(s, 'heading', { x: 10, y: 40, w: 80 }, editable, headingInner)}
                     ${slideFieldWrap(s, 'students', { x: 6, y: 80, w: 42 }, editable, studentsInner)}
                     ${slideFieldWrap(s, 'professor', { x: 52, y: 80, w: 42 }, editable, professorInner)}
@@ -2494,8 +2580,8 @@
             }
 
             if (s.type === 'closing') {
-                const headingInner = `<div ${ce} ${editAttrs} data-field="heading" style="text-align:center; font-size:clamp(14px,3vw,26px); font-weight:800; color:${theme.accent}; outline:none;">${escapeHtml(s.heading || '')}</div>`;
-                return `<div class="slide-canvas-box" style="position:relative; width:100%; height:100%; background:${bg}; font-family:'Times New Roman', serif; box-sizing:border-box;">
+                const headingInner = `<div ${ce} ${editAttrs} data-field="heading" style="text-align:center; font-size:calc(var(--slide-text-scale,1) * clamp(14px,3vw,26px)); font-weight:800; color:${theme.accent}; outline:none;">${escapeHtml(s.heading || '')}</div>`;
+                return `<div class="slide-canvas-box" style="position:relative; width:100%; height:100%; background:${bg}; font-family:'Times New Roman', serif; box-sizing:border-box; ${textScaleVar}">
                     ${watermark}
                     ${image}
                     ${slideFieldWrap(s, 'heading', { x: 10, y: 40, w: 80 }, editable, headingInner)}
@@ -2506,9 +2592,9 @@
             // content / conclusion / references
             const headingAlign = s.type === 'conclusion' ? 'center' : 'left';
             const bodyWidth = s.image ? 56 : 86;
-            const headingInner = `<div ${ce} ${editAttrs} data-field="heading" style="text-align:${headingAlign}; font-size:clamp(13px,2.6vw,22px); font-weight:800; ${s.type === 'conclusion' ? 'text-transform:uppercase;' : ''} color:${theme.accent}; outline:none;">${escapeHtml(s.heading || '')}</div>`;
-            const bodyInner = `<div ${ce} ${editAttrs} data-field="body" style="font-size:clamp(9px,1.5vw,13px); line-height:1.4; color:${theme.text}; outline:none; white-space:pre-wrap;">${escapeHtml(s.body || '')}</div>`;
-            return `<div class="slide-canvas-box" style="position:relative; width:100%; height:100%; background:${bg}; font-family:'Times New Roman', serif; box-sizing:border-box; overflow:hidden;">
+            const headingInner = `<div ${ce} ${editAttrs} data-field="heading" style="text-align:${headingAlign}; font-size:calc(var(--slide-text-scale,1) * clamp(13px,2.6vw,22px)); font-weight:800; ${s.type === 'conclusion' ? 'text-transform:uppercase;' : ''} color:${theme.accent}; outline:none;">${escapeHtml(s.heading || '')}</div>`;
+            const bodyInner = `<div ${ce} ${editAttrs} data-field="body" style="font-size:calc(var(--slide-text-scale,1) * clamp(9px,1.5vw,13px)); line-height:1.4; color:${theme.text}; outline:none; white-space:pre-wrap;">${escapeHtml(s.body || '')}</div>`;
+            return `<div class="slide-canvas-box" style="position:relative; width:100%; height:100%; background:${bg}; font-family:'Times New Roman', serif; box-sizing:border-box; overflow:hidden; ${textScaleVar}">
                 ${watermark}
                 ${image}
                 ${slideFieldWrap(s, 'heading', { x: 7, y: 6, w: 86 }, editable, headingInner)}
@@ -2775,6 +2861,12 @@ O campo "body" deve ser texto simples curto (pode usar quebras de linha com \\n 
                 const pos = slideFieldPos(s, key, def);
                 return { x: (pos.x / 100) * PW, y: (pos.y / 100) * PH, w: (pos.w / 100) * PW };
             };
+            // Os tamanhos de logo/texto configurados no editor (em px/%) são convertidos pra uma
+            // escala relativa ao tamanho padrão, assim o PPTX exportado fica fiel ao que foi
+            // ajustado na tela em vez de usar sempre os valores fixos originais.
+            const logoBottomScale = (state.slideLogoSize || 36) / 36;
+            const logoTopScale = (state.slideLogoTopSize || 34) / 34;
+            const textScale = (state.slideTextScale || 100) / 100;
 
             state.slides.forEach(s => {
                 const slide = pptx.addSlide();
@@ -2783,7 +2875,8 @@ O campo "body" deve ser texto simples curto (pode usar quebras de linha com \\n 
                 if (s.type !== 'cover') {
                     slide.addShape(pptx.ShapeType.rect, { x: 0, y: 5.0, w: 10, h: 0.63, fill: { color: theme.bar.replace('#', '') } });
                     if (state.slideLogoBase64) {
-                        slide.addImage({ data: state.slideLogoBase64, x: 4.3, y: 5.07, w: 1.4, h: 0.5, sizing: { type: 'contain', w: 1.4, h: 0.5 } });
+                        const lw = 1.4 * logoBottomScale, lh = 0.5 * logoBottomScale;
+                        slide.addImage({ data: state.slideLogoBase64, x: 5 - lw / 2, y: 5.32 - lh / 2, w: lw, h: lh, sizing: { type: 'contain', w: lw, h: lh } });
                     }
                 }
 
@@ -2793,25 +2886,28 @@ O campo "body" deve ser texto simples curto (pode usar quebras de linha com \\n 
                 }
 
                 if (s.type === 'cover') {
-                    if (state.slideLogoBase64) slide.addImage({ data: state.slideLogoBase64, x: 0.4, y: 0.3, w: 1.3, h: 0.5, sizing: { type: 'contain', w: 1.3, h: 0.5 } });
+                    if (state.slideLogoTopBase64) {
+                        const lw = 1.3 * logoTopScale, lh = 0.5 * logoTopScale;
+                        slide.addImage({ data: state.slideLogoTopBase64, x: 0.4, y: 0.3, w: lw, h: lh, sizing: { type: 'contain', w: lw, h: lh } });
+                    }
                     const hp = toIn(s, 'heading', { x: 10, y: 40, w: 80 });
-                    slide.addText(s.heading || '', { x: hp.x, y: hp.y, w: hp.w, h: 1.4, align: 'center', bold: true, fontSize: 28, color: theme.accent.replace('#', ''), fontFace: 'Times New Roman' });
+                    slide.addText(s.heading || '', { x: hp.x, y: hp.y, w: hp.w, h: 1.4, align: 'center', bold: true, fontSize: 28 * textScale, color: theme.accent.replace('#', ''), fontFace: 'Times New Roman' });
                     const sp = toIn(s, 'students', { x: 6, y: 80, w: 42 });
-                    slide.addText(`DISCENTES:\n${s.students || ''}`, { x: sp.x, y: sp.y, w: sp.w, h: 0.9, fontSize: 10, color: theme.text.replace('#', ''), fontFace: 'Times New Roman' });
+                    slide.addText(`DISCENTES:\n${s.students || ''}`, { x: sp.x, y: sp.y, w: sp.w, h: 0.9, fontSize: 10 * textScale, color: theme.text.replace('#', ''), fontFace: 'Times New Roman' });
                     const pp = toIn(s, 'professor', { x: 52, y: 80, w: 42 });
-                    slide.addText(`DOCENTE:\n${s.professor || ''}`, { x: pp.x, y: pp.y, w: pp.w, h: 0.9, align: 'right', fontSize: 10, color: theme.text.replace('#', ''), fontFace: 'Times New Roman' });
+                    slide.addText(`DOCENTE:\n${s.professor || ''}`, { x: pp.x, y: pp.y, w: pp.w, h: 0.9, align: 'right', fontSize: 10 * textScale, color: theme.text.replace('#', ''), fontFace: 'Times New Roman' });
                 } else if (s.type === 'closing') {
                     const hp = toIn(s, 'heading', { x: 10, y: 40, w: 80 });
-                    slide.addText(s.heading || '', { x: hp.x, y: hp.y, w: hp.w, h: 1.5, align: 'center', valign: 'middle', bold: true, fontSize: 24, color: theme.accent.replace('#', ''), fontFace: 'Times New Roman' });
+                    slide.addText(s.heading || '', { x: hp.x, y: hp.y, w: hp.w, h: 1.5, align: 'center', valign: 'middle', bold: true, fontSize: 24 * textScale, color: theme.accent.replace('#', ''), fontFace: 'Times New Roman' });
                 } else {
                     const hp = toIn(s, 'heading', { x: 7, y: 6, w: 86 });
                     slide.addText(s.heading || '', {
-                        x: hp.x, y: hp.y, w: hp.w, h: 0.8, bold: true, fontSize: 20,
+                        x: hp.x, y: hp.y, w: hp.w, h: 0.8, bold: true, fontSize: 20 * textScale,
                         align: s.type === 'conclusion' ? 'center' : 'left',
                         color: theme.accent.replace('#', ''), fontFace: 'Times New Roman'
                     });
                     const bp = toIn(s, 'body', { x: 7, y: 20, w: s.image ? 56 : 86 });
-                    slide.addText(s.body || '', { x: bp.x, y: bp.y, w: bp.w, h: 3.5, fontSize: 14, color: theme.text.replace('#', ''), fontFace: 'Times New Roman', valign: 'top' });
+                    slide.addText(s.body || '', { x: bp.x, y: bp.y, w: bp.w, h: 3.5, fontSize: 14 * textScale, color: theme.text.replace('#', ''), fontFace: 'Times New Roman', valign: 'top' });
                 }
             });
 
@@ -2893,6 +2989,15 @@ O campo "body" deve ser texto simples curto (pode usar quebras de linha com \\n 
             } else if (tabId === 'slides') {
                 document.getElementById('tab-slides').classList.remove('hidden-state');
                 renderSlidesTab();
+            }
+
+            // O botão flutuante do Modo Assistente (canto inferior direito) só faz sentido
+            // no Estúdio, onde ele autocompleta o texto da monografia. Nas outras abas
+            // (Slides etc.) ele não tinha nenhuma ação visível, então fica escondido lá.
+            const assistantBtn = document.getElementById('btn-assistant-mode');
+            if (assistantBtn) assistantBtn.classList.toggle('hidden-state', tabId !== 'generator');
+            if (tabId !== 'generator') {
+                document.getElementById('panel-assistant').classList.add('hidden-state');
             }
         }
 
@@ -3385,17 +3490,26 @@ Responda APENAS com o título, sem aspas, sem explicações, em uma única linha
             state.generatedSections.forEach(sec => {
                 tocHtml += `<li class="toc-item"><span class="toc-title">${sec.title}</span><span class="toc-dots"></span><span class="toc-page">${currentPage}</span></li>`;
 
-                // Lista também os subtítulos (H2/H3) inseridos dentro do conteúdo da seção
+                // Lista também os subtítulos (H2/H3) inseridos dentro do conteúdo da seção.
+                // Antes, todo título dentro da mesma seção recebia o número da página inicial
+                // da seção (por isso "Marco Teórico" e todos os seus subtítulos apareciam com
+                // o mesmo número) — agora soma as palavras que vêm ANTES de cada título pra
+                // estimar em qual página real, dentro da seção, ele efetivamente cai.
                 const temp = document.createElement('div');
                 temp.innerHTML = sec.content;
-                temp.querySelectorAll('h2, h3').forEach(heading => {
-                    const indent = heading.tagName === 'H3' ? '2.5cm' : '1.27cm';
-                    tocHtml += `<li class="toc-item" style="padding-left:${indent};"><span class="toc-title">${heading.innerText}</span><span class="toc-dots"></span><span class="toc-page">${currentPage}</span></li>`;
+                let wordsSoFar = 0;
+                Array.from(temp.children).forEach(node => {
+                    if (node.tagName === 'H2' || node.tagName === 'H3') {
+                        const indent = node.tagName === 'H3' ? '2.5cm' : '1.27cm';
+                        const headingPage = currentPage + Math.floor(wordsSoFar / 280);
+                        tocHtml += `<li class="toc-item" style="padding-left:${indent};"><span class="toc-title">${node.innerText}</span><span class="toc-dots"></span><span class="toc-page">${headingPage}</span></li>`;
+                    }
+                    const text = (node.innerText || node.textContent || '').trim();
+                    wordsSoFar += text ? text.split(/\s+/).length : 0;
                 });
 
                 // Cálculo APA real de páginas (~250 a 300 palavras por pág com interlineado duplo)
-                const words = sec.content.replace(/<[^>]*>?/gm, '').split(/\s+/).length;
-                currentPage += Math.max(1, Math.ceil(words / 280));
+                currentPage += Math.max(1, Math.ceil(wordsSoFar / 280));
             });
 
             tocHtml += `</ul></div>`;
