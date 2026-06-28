@@ -660,10 +660,10 @@
             <!-- Salvar fica fixo fora das abas (igual ao atalho Ctrl+S do Word, independe da aba ativa) -->
             <div class="flex items-center justify-center gap-1 py-2 px-1.5 border-t border-white/10">
                 <button onclick="saveCurrentWork()" title="Salvar Trabalho" class="word-tool-btn text-emerald-400"><i data-lucide="save" class="w-4 h-4"></i></button>
-                <!-- No celular, o Modo Assistente mora aqui dentro da barra de ferramentas em vez do botão flutuante -->
-                <button id="btn-assistant-mode-toolbar" onclick="toggleAssistantMode()" type="button" title="Ativar Modo Assistente: a IA sugere continuações e tópicos de pesquisa enquanto você escreve." class="btn-assistant-mode-toggle lg:hidden word-tool-btn text-indigo-400"><i data-lucide="sparkles" class="w-4 h-4"></i></button>
+                <!-- Modo Assistente mora aqui na barra de ferramentas (antes havia também um botão flutuante solto no canto da tela, removido por ser confuso/sem contexto) -->
+                <button id="btn-assistant-mode-toolbar" onclick="toggleAssistantMode()" type="button" title="Ativar Modo Assistente: a IA sugere continuações e tópicos de pesquisa enquanto você escreve." class="btn-assistant-mode-toggle word-tool-btn text-indigo-400"><i data-lucide="sparkles" class="w-4 h-4"></i></button>
                 <!-- Lupa de escrita: só no computador -->
-                <button id="btn-magnifier-toggle" onclick="toggleMagnifier()" type="button" title="Lupa de Escrita: mostra um zoom ao vivo da linha onde você está digitando (só no computador)." class="hidden lg:flex word-tool-btn text-sky-400"><i data-lucide="search" class="w-4 h-4"></i></button>
+                <button id="btn-magnifier-toggle" onclick="toggleMagnifier()" type="button" title="Lupa de Escrita: dá um zoom de verdade no documento e mantém o cursor sempre visível enquanto você digita (só no computador)." class="hidden lg:flex word-tool-btn text-sky-400"><i data-lucide="search" class="w-4 h-4"></i></button>
             </div>
         </div>
 
@@ -841,14 +841,10 @@
              mouse ali a fixa naquela parede. -->
         <div id="toolbar-dock-hint" class="hidden-state fixed z-[200] hide-on-print bg-primary-500/25 border-2 border-primary-400 border-dashed pointer-events-none rounded-lg"></div>
 
-        <!-- MODO ASSISTENTE: botão flutuante (estrela) no canto inferior direito — só no desktop;
-             no celular o botão equivalente fica dentro da barra de ferramentas (ver word-toolbar). -->
-        <button id="btn-assistant-mode" onclick="toggleAssistantMode()" type="button" title="Ativar Modo Assistente: a IA sugere continuações e tópicos de pesquisa enquanto você escreve."
-            class="btn-assistant-mode-toggle hidden lg:flex fixed bottom-6 right-6 z-[55] hide-on-print w-12 h-12 rounded-full bg-white dark:bg-slate-800 shadow-2xl border border-slate-200 dark:border-slate-700 items-center justify-center text-indigo-500 hover:scale-105 transition-transform">
-            <i data-lucide="sparkles" class="w-5 h-5"></i>
-        </button>
-
         <!-- MODO ASSISTENTE: painel com o histórico de sugestões de pesquisa -->
+        <!-- O toggle do Modo Assistente vive na barra de ferramentas (#btn-assistant-mode-toolbar);
+             antes havia também um botão flutuante solto no canto inferior direito, removido por ser
+             confuso e sem contexto. -->
         <div id="panel-assistant" class="hidden-state fixed lg:absolute left-4 right-4 lg:left-auto lg:right-24 bottom-24 lg:bottom-6 top-auto lg:top-auto lg:h-[60vh] lg:max-h-[70vh] lg:w-[320px] bg-white/95 dark:bg-slate-850/95 backdrop-blur-sm shadow-2xl rounded-3xl border border-white/40 dark:border-slate-700/50 flex flex-col z-[56] lg:min-w-[280px] lg:max-w-[40vw]">
             <div id="panel-assistant-header" class="p-5 border-b border-slate-200/50 dark:border-slate-800/50 flex justify-between items-center cursor-move rounded-t-3xl">
                 <h3 class="font-extrabold flex items-center gap-2 text-slate-800 dark:text-white"><i data-lucide="sparkles" class="w-5 h-5 text-indigo-500"></i> Assistente</h3>
@@ -857,18 +853,10 @@
             <div id="assistant-suggestions-list" class="flex-1 p-4 flex flex-col gap-2 overflow-y-auto custom-scrollbar"></div>
         </div>
 
-        <!-- LUPA DE ESCRITA: só no computador — um vidro flutuante e arrastável que mostra,
-             com zoom, a linha onde o cursor está digitando, sem alterar o zoom do documento. -->
-        <div id="magnifier-tool" class="hidden-state hidden lg:flex fixed z-[57] hide-on-print flex-col" style="top:18%; left:50%; width:680px; transform:translateX(-50%);">
-            <div id="magnifier-tool-header" class="flex items-center justify-between px-4 py-1.5 cursor-move rounded-t-2xl" style="background:rgba(255,255,255,0.25); backdrop-filter:blur(18px); border:1px solid rgba(255,255,255,0.5); border-bottom:none;">
-                <span class="text-[11px] font-bold text-slate-700 flex items-center gap-1.5"><i data-lucide="search" class="w-3.5 h-3.5"></i> Lupa de Escrita</span>
-                <button onclick="toggleMagnifier()" class="p-1 text-slate-600 hover:text-slate-900 rounded-full hover:bg-white/30"><i data-lucide="x" class="w-3.5 h-3.5"></i></button>
-            </div>
-            <div id="magnifier-viewport-outer" class="relative overflow-hidden" style="height:280px; background:#ffffff; border:1px solid rgba(255,255,255,0.5); border-top:none; box-shadow:0 20px 50px -15px rgba(0,0,0,0.4);">
-                <div id="magnifier-viewport" style="position:absolute; top:0; left:0; will-change:transform;"></div>
-                <div id="magnifier-empty-hint" class="absolute inset-0 flex items-center justify-center text-[11px] text-slate-500 font-medium pointer-events-none">Clique no texto da monografia para acompanhar aqui.</div>
-            </div>
-        </div>
+        <!-- A Lupa de Escrita não usa mais um painel flutuante com uma cópia clonada do texto
+             (ficava sem fundo/cursor/seleção reais). Agora ela aplica um zoom de verdade no
+             próprio documento (mesmo mecanismo do zoom automático no celular) e mantém o cursor
+             sempre visível enquanto você digita. Ver toggleMagnifier(). -->
 
         <!-- Aviso global de erro: fica fora dos painéis flutuantes para aparecer mesmo se o
              usuário estiver na aba do Assistente, Exportação etc. e o painel "Dados" estiver fechado. -->
@@ -1312,7 +1300,7 @@
             coverFrame: JSON.parse(localStorage.getItem('monografia_cover_frame')) || { enabled: true, color: '#000080', widthPt: 4 },
             shortcuts: JSON.parse(localStorage.getItem('monografia_shortcuts')) || { coverFrame: 'alt+m' },
             shortcutCapture: null,
-            assistantMode: localStorage.getItem('monografia_assistant_mode') === 'true',
+            assistantMode: localStorage.getItem('monografia_assistant_mode') !== null ? localStorage.getItem('monografia_assistant_mode') === 'true' : true,
             assistantSuggestions: JSON.parse(localStorage.getItem('monografia_assistant_suggestions')) || [],
             _lastAnalyzedParagraph: '',
             slides: JSON.parse(localStorage.getItem('monografia_slides')) || [],
@@ -1346,7 +1334,6 @@
             makeDraggable('panel-export', 'panel-export-header');
             makeDraggable('panel-assistant', 'panel-assistant-header');
             makeDraggable('word-toolbar', 'word-toolbar-header', { dockable: true, mobileDraggable: true });
-            makeDraggable('magnifier-tool', 'magnifier-tool-header');
             makeResizable('panel-left', { minW: 320, maxW: 0.5, minH: 400 });
             makeResizable('panel-right', { minW: 300, maxW: 0.4, minH: 400 });
             makeResizable('panel-export', { minW: 280, maxW: 0.4, minH: 400 });
@@ -2991,11 +2978,8 @@ O campo "body" deve ser texto simples curto (pode usar quebras de linha com \\n 
                 renderSlidesTab();
             }
 
-            // O botão flutuante do Modo Assistente (canto inferior direito) só faz sentido
-            // no Estúdio, onde ele autocompleta o texto da monografia. Nas outras abas
-            // (Slides etc.) ele não tinha nenhuma ação visível, então fica escondido lá.
-            const assistantBtn = document.getElementById('btn-assistant-mode');
-            if (assistantBtn) assistantBtn.classList.toggle('hidden-state', tabId !== 'generator');
+            // O painel do Modo Assistente só faz sentido no Estúdio, onde ele autocompleta
+            // o texto da monografia. Nas outras abas (Slides etc.) ele fica escondido.
             if (tabId !== 'generator') {
                 document.getElementById('panel-assistant').classList.add('hidden-state');
             }
@@ -3881,9 +3865,22 @@ Responda APENAS com o título, sem aspas, sem explicações, em uma única linha
                     const clean = (suggestion || '').trim().replace(/^["']|["']$/g, '');
                     if (clean) insertGhostSuggestion(clean.startsWith(' ') ? clean : (' ' + clean));
                 } catch (err) {
-                    console.error('Autocomplete IA falhou (silencioso):', err);
+                    notifyAssistantError(err);
                 }
             }, 1100);
+        }
+
+        // Erros de autocomplete/sugestão eram só logados no console e ficavam invisíveis
+        // para o usuário — quando a causa é algo que ele precisa resolver (sessão expirada,
+        // créditos insuficientes), avisamos uma vez via toast em vez de falhar em silêncio.
+        let _assistantErrorNotified = false;
+        function notifyAssistantError(err) {
+            console.error('Assistente IA falhou:', err);
+            const msg = (err && err.message) || '';
+            if (!_assistantErrorNotified && /créditos insuficientes|sessão expirada/i.test(msg)) {
+                _assistantErrorNotified = true;
+                showAssistantToast(msg);
+            }
         }
 
         function maybeAnalyzeFinishedParagraph(el) {
@@ -3904,7 +3901,7 @@ Responda APENAS com o título, sem aspas, sem explicações, em uma única linha
                 const clean = (suggestion || '').trim();
                 if (clean) addAssistantSuggestion(clean, paragraphText);
             } catch (err) {
-                console.error('Sugestão de parágrafo falhou (silencioso):', err);
+                notifyAssistantError(err);
             }
         }
 
@@ -4026,7 +4023,6 @@ Responda APENAS com o título, sem aspas, sem explicações, em uma única linha
                 const el = e.target.closest('.apa-content');
                 if (!el) return;
                 scrollCaretIntoViewMobile();
-                updateMagnifierContent();
             });
             container.addEventListener('focusout', function(e) {
                 const el = e.target.closest('.apa-content');
@@ -4034,10 +4030,10 @@ Responda APENAS com o título, sem aspas, sem explicações, em uma única linha
                 disableMobileTypingZoom();
             });
             container.addEventListener('click', function(e) {
-                if (e.target.closest('.apa-content')) setTimeout(updateMagnifierContent, 0);
+                if (e.target.closest('.apa-content')) setTimeout(scrollCaretIntoViewMobile, 0);
             });
             container.addEventListener('keyup', function(e) {
-                if (e.target.closest('.apa-content')) updateMagnifierContent();
+                if (e.target.closest('.apa-content')) scrollCaretIntoViewMobile();
             });
         })();
 
@@ -4049,81 +4045,48 @@ Responda APENAS com o título, sem aspas, sem explicações, em uma única linha
         let _mobileZoomPrevValue = 1;
 
         function enableMobileTypingZoom() {
-            if (!isMobileViewport()) return;
+            if (!isMobileViewport() && !magnifierEnabled) return;
             if (!_mobileTypingZoomActive) {
                 _mobileZoomPrevValue = currentZoom;
                 _mobileTypingZoomActive = true;
             }
-            if (currentZoom < 1.35) setZoom(1.35);
+            const target = magnifierEnabled ? MAGNIFIER_SCALE : 1.35;
+            if (currentZoom < target) setZoom(target);
             setTimeout(scrollCaretIntoViewMobile, 50);
         }
 
         function disableMobileTypingZoom() {
             if (!_mobileTypingZoomActive) return;
+            // A lupa do desktop fica ligada até o usuário clicar no botão de novo —
+            // só desativa o zoom automaticamente quando é o modo do celular.
+            if (magnifierEnabled) return;
             _mobileTypingZoomActive = false;
             setZoom(_mobileZoomPrevValue);
         }
 
         // ==========================================
-        // LUPA DE ESCRITA (desktop): acompanha o cursor com zoom, num vidro flutuante
+        // LUPA DE ESCRITA (desktop): liga um zoom de verdade no próprio documento (o
+        // mesmo --doc-zoom usado pelos controles de zoom e pelo zoom automático do
+        // celular) e mantém o cursor sempre visível enquanto digita — em vez de copiar
+        // o texto para um painel separado, que é o que tínhamos antes.
         // ==========================================
         let magnifierEnabled = false;
-        const MAGNIFIER_SCALE = 2.1;
+        const MAGNIFIER_SCALE = 1.9;
 
         function toggleMagnifier() {
             magnifierEnabled = !magnifierEnabled;
-            const tool = document.getElementById('magnifier-tool');
-            tool.classList.toggle('hidden-state', !magnifierEnabled);
-            document.getElementById('btn-magnifier-toggle').classList.toggle('!bg-sky-600', magnifierEnabled);
-            document.getElementById('btn-magnifier-toggle').classList.toggle('!text-white', magnifierEnabled);
+            const btn = document.getElementById('btn-magnifier-toggle');
+            btn.classList.toggle('!bg-sky-600', magnifierEnabled);
+            btn.classList.toggle('!text-white', magnifierEnabled);
             if (magnifierEnabled) {
-                const page = document.querySelector('.a4-page');
-                if (page && tool.dataset.dock !== 'true') {
-                    const w = Math.min(page.getBoundingClientRect().width, window.innerWidth * 0.9);
-                    tool.style.width = w + 'px';
-                }
-                updateMagnifierContent();
+                _mobileZoomPrevValue = currentZoom;
+                _mobileTypingZoomActive = true;
+                setZoom(Math.max(currentZoom, MAGNIFIER_SCALE));
+                setTimeout(scrollCaretIntoViewMobile, 50);
+            } else {
+                _mobileTypingZoomActive = false;
+                setZoom(_mobileZoomPrevValue);
             }
-        }
-
-        function updateMagnifierContent() {
-            if (!magnifierEnabled) return;
-            const sel = window.getSelection();
-            const anchorNode = sel && sel.anchorNode;
-            const el = anchorNode && (anchorNode.nodeType === 1 ? anchorNode : anchorNode.parentElement)?.closest('.apa-content');
-            const hint = document.getElementById('magnifier-empty-hint');
-            const viewport = document.getElementById('magnifier-viewport');
-            if (!el) { hint.classList.remove('hidden-state'); viewport.innerHTML = ''; return; }
-
-            const rect = getCaretRectMobile();
-            if (!rect) return;
-            hint.classList.add('hidden-state');
-
-            const pageRect = el.getBoundingClientRect();
-            const clone = el.cloneNode(true);
-            clone.removeAttribute('contenteditable');
-            clone.removeAttribute('id');
-            clone.querySelectorAll('[id]').forEach(n => n.removeAttribute('id'));
-            clone.style.pointerEvents = 'none';
-            clone.style.width = pageRect.width + 'px';
-            clone.style.margin = '0';
-            // O clone original não carrega o fundo branco/texto preto da página (eles ficam
-            // em .a4-page, não em .apa-content), então fora da página ele ficava transparente
-            // sobre o vidro borrado — texto quase invisível. Forçamos aqui o mesmo fundo/cor
-            // sólidos da folha real para a lupa ficar legível.
-            clone.style.background = '#ffffff';
-            clone.style.color = '#000000';
-
-            viewport.innerHTML = '';
-            viewport.appendChild(clone);
-
-            const outerRect = document.getElementById('magnifier-viewport-outer').getBoundingClientRect();
-            const offsetX = rect.left - pageRect.left;
-            const offsetY = rect.top - pageRect.top;
-            const translateX = (outerRect.width / 2) - offsetX * MAGNIFIER_SCALE;
-            const translateY = (outerRect.height / 2) - offsetY * MAGNIFIER_SCALE;
-            viewport.style.transform = `translate(${translateX}px, ${translateY}px) scale(${MAGNIFIER_SCALE})`;
-            viewport.style.transformOrigin = 'top left';
         }
 
         function getCaretRectMobile() {
