@@ -47,6 +47,14 @@
         const CREDITS_PER_EXPORT = 10; // remover marca d'água
         const AI_COST_PER_PAGE = 5;       // usar IA pra refinar 1 página
         const AI_COST_PER_SECTION = 10;   // gerar 1 seção da monografia com IA (5 seções = 50, igual ao custo anterior do doc inteiro)
+        const AI_COST_SLIDES = 30;        // gerar/atualizar a apresentação inteira com IA a partir da monografia
+
+        const SLIDE_THEMES = {
+            azul:   { name: 'Azul Acadêmico',     accent: '#16215c', bar: '#0f2a6b', bg: '#eef2f9', text: '#0f172a', light: '#ffffff' },
+            verde:  { name: 'Verde',               accent: '#064e3b', bar: '#065f46', bg: '#eefcf4', text: '#0f172a', light: '#ffffff' },
+            bordo:  { name: 'Vermelho/Bordô',       accent: '#5c1414', bar: '#7f1d1d', bg: '#fdf2f2', text: '#1f1f1f', light: '#ffffff' },
+            escuro: { name: 'Escuro/Minimalista',   accent: '#0b0f19', bar: '#000000', bg: '#111827', text: '#f1f5f9', light: '#e2e8f0' }
+        };
 
         // Campos da capa que o Assistente consegue perguntar um por um no chat guiado.
         // "default" é o valor de placeholder que cada campo traz de fábrica — se o input ainda
@@ -99,6 +107,9 @@
 
     <!-- docx.js: gera arquivos .docx nativos de verdade (não HTML disfarçado) -->
     <script src="https://unpkg.com/docx@9.7.1/dist/index.umd.cjs"></script>
+
+    <!-- pptxgenjs: gera arquivos .pptx nativos para a aba de Slides -->
+    <script src="https://unpkg.com/pptxgenjs@4.0.1/dist/pptxgen.bundle.js"></script>
 
     <style>
         /* Tipografia Académica */
@@ -345,6 +356,11 @@
         .btn-glow { animation: btn-glow-pulse 2.2s ease-in-out infinite; }
 
         @media print {
+            /* Sem isto, o Safari/WebKit do iOS (e alguns Android) descartam cores de fundo,
+               bordas e degradês na hora de imprimir/exportar PDF, deixando capa, marca d'água
+               e temas dos slides "lavados" — é o motivo nº1 de exportação feia no celular. */
+            * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
+
             /* O app inteiro vive numa "casca" de altura fixa com overflow:hidden para permitir
                rolagem interna na tela. Isso corta a impressão na primeira tela cheia, deixando
                só a capa visível. Aqui liberamos altura/overflow em toda a cadeia de ancestrais
@@ -367,6 +383,12 @@
             .page-break-marker::after { display: none; }
             @page { size: 21.59cm 27.94cm; margin: 0; }
             .hide-on-print { display: none !important; }
+
+            body.printing-slides #print-area { visibility: hidden !important; display: none !important; }
+            body.printing-slides #slides-print-area, body.printing-slides #slides-print-area * { visibility: visible !important; }
+            body.printing-slides #slides-print-area { display: block !important; position: absolute; left: 0; top: 0; width: 100%; }
+            body.printing-slides .slides-print-page { box-shadow: none !important; }
+            body.printing-slides { background: white; }
         }
 
         @keyframes assistantFadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
@@ -536,8 +558,8 @@
                         <div class="text-center w-full px-6">
                             <div class="opacity-40">
                                 <i data-lucide="file-signature" class="w-16 h-16 mx-auto mb-4"></i>
-                                <p class="font-sans text-lg font-bold" style="text-indent: 0;">O documento formatado aparecerá aqui.</p>
-                                <p class="font-sans text-sm mt-2 mb-6" style="text-indent: 0;">Configure a IA e os dados nos painéis laterais, ou comece manualmente.</p>
+                                <p class="font-sans text-lg font-bold" style="text-indent: 0; text-align: center !important;">O documento formatado aparecerá aqui.</p>
+                                <p class="font-sans text-sm mt-2 mb-6" style="text-indent: 0; text-align: center !important;">Configure a IA e os dados nos painéis laterais, ou comece manualmente.</p>
                             </div>
                             <button onclick="addNewSection()" class="btn-glow hide-on-print mx-auto flex items-center gap-2 px-6 py-4 bg-primary-600 text-white rounded-2xl hover:bg-primary-700 transition-all font-bold shadow-lg hover:-translate-y-0.5">
                                 <i data-lucide="plus-circle" class="w-5 h-5"></i> Adicionar Primeira Página (sem IA)
@@ -630,6 +652,10 @@
             <!-- Salvar fica fixo fora das abas (igual ao atalho Ctrl+S do Word, independe da aba ativa) -->
             <div class="flex items-center justify-center gap-1 py-2 px-1.5 border-t border-white/10">
                 <button onclick="saveCurrentWork()" title="Salvar Trabalho" class="word-tool-btn text-emerald-400"><i data-lucide="save" class="w-4 h-4"></i></button>
+                <!-- No celular, o Modo Assistente mora aqui dentro da barra de ferramentas em vez do botão flutuante -->
+                <button id="btn-assistant-mode-toolbar" onclick="toggleAssistantMode()" type="button" title="Ativar Modo Assistente: a IA sugere continuações e tópicos de pesquisa enquanto você escreve." class="btn-assistant-mode-toggle lg:hidden word-tool-btn text-indigo-400"><i data-lucide="sparkles" class="w-4 h-4"></i></button>
+                <!-- Lupa de escrita: só no computador -->
+                <button id="btn-magnifier-toggle" onclick="toggleMagnifier()" type="button" title="Lupa de Escrita: mostra um zoom ao vivo da linha onde você está digitando (só no computador)." class="hidden lg:flex word-tool-btn text-sky-400"><i data-lucide="search" class="w-4 h-4"></i></button>
             </div>
         </div>
 
@@ -807,9 +833,10 @@
              mouse ali a fixa naquela parede. -->
         <div id="toolbar-dock-hint" class="hidden-state fixed z-[200] hide-on-print bg-primary-500/25 border-2 border-primary-400 border-dashed pointer-events-none rounded-lg"></div>
 
-        <!-- MODO ASSISTENTE: botão flutuante (estrela) no canto inferior direito -->
+        <!-- MODO ASSISTENTE: botão flutuante (estrela) no canto inferior direito — só no desktop;
+             no celular o botão equivalente fica dentro da barra de ferramentas (ver word-toolbar). -->
         <button id="btn-assistant-mode" onclick="toggleAssistantMode()" type="button" title="Ativar Modo Assistente: a IA sugere continuações e tópicos de pesquisa enquanto você escreve."
-            class="fixed bottom-6 right-6 z-[55] hide-on-print w-12 h-12 rounded-full bg-white dark:bg-slate-800 shadow-2xl border border-slate-200 dark:border-slate-700 flex items-center justify-center text-indigo-500 hover:scale-105 transition-transform">
+            class="btn-assistant-mode-toggle hidden lg:flex fixed bottom-6 right-6 z-[55] hide-on-print w-12 h-12 rounded-full bg-white dark:bg-slate-800 shadow-2xl border border-slate-200 dark:border-slate-700 items-center justify-center text-indigo-500 hover:scale-105 transition-transform">
             <i data-lucide="sparkles" class="w-5 h-5"></i>
         </button>
 
@@ -820,6 +847,19 @@
                 <button onclick="document.getElementById('panel-assistant').classList.add('hidden-state')" class="p-1.5 text-slate-400 hover:text-slate-800 dark:hover:text-white rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition"><i data-lucide="x" class="w-4 h-4"></i></button>
             </div>
             <div id="assistant-suggestions-list" class="flex-1 p-4 flex flex-col gap-2 overflow-y-auto custom-scrollbar"></div>
+        </div>
+
+        <!-- LUPA DE ESCRITA: só no computador — um vidro flutuante e arrastável que mostra,
+             com zoom, a linha onde o cursor está digitando, sem alterar o zoom do documento. -->
+        <div id="magnifier-tool" class="hidden-state hidden lg:flex fixed z-[57] hide-on-print flex-col" style="top:18%; left:50%; width:680px; transform:translateX(-50%);">
+            <div id="magnifier-tool-header" class="flex items-center justify-between px-4 py-1.5 cursor-move rounded-t-2xl" style="background:rgba(255,255,255,0.25); backdrop-filter:blur(18px); border:1px solid rgba(255,255,255,0.5); border-bottom:none;">
+                <span class="text-[11px] font-bold text-slate-700 flex items-center gap-1.5"><i data-lucide="search" class="w-3.5 h-3.5"></i> Lupa de Escrita</span>
+                <button onclick="toggleMagnifier()" class="p-1 text-slate-600 hover:text-slate-900 rounded-full hover:bg-white/30"><i data-lucide="x" class="w-3.5 h-3.5"></i></button>
+            </div>
+            <div id="magnifier-viewport-outer" class="relative overflow-hidden" style="height:170px; background:rgba(255,255,255,0.35); backdrop-filter:blur(18px); border:1px solid rgba(255,255,255,0.5); border-top:none; box-shadow:0 20px 50px -15px rgba(0,0,0,0.4);">
+                <div id="magnifier-viewport" style="position:absolute; top:0; left:0; will-change:transform;"></div>
+                <div id="magnifier-empty-hint" class="absolute inset-0 flex items-center justify-center text-[11px] text-slate-500 font-medium pointer-events-none">Clique no texto da monografia para acompanhar aqui.</div>
+            </div>
         </div>
 
         <!-- Aviso global de erro: fica fora dos painéis flutuantes para aparecer mesmo se o
@@ -864,11 +904,16 @@
                     <span class="dock-tooltip">Estúdio</span>
                 </button>
                 
+                <button onclick="switchTab('slides')" class="dock-btn relative flex items-center justify-center w-12 h-12 lg:w-14 lg:h-14 rounded-full text-indigo-500 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-all active:scale-95 bg-transparent" id="dock-tab-slides">
+                    <i data-lucide="presentation" class="dock-icon w-5 h-5 lg:w-6 lg:h-6"></i>
+                    <span class="dock-tooltip">Slides</span>
+                </button>
+
                 <button onclick="switchTab('profile')" class="dock-btn relative flex items-center justify-center w-12 h-12 lg:w-14 lg:h-14 rounded-full text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all active:scale-95 bg-transparent" id="dock-tab-profile">
                     <i data-lucide="library" class="dock-icon w-5 h-5 lg:w-6 lg:h-6"></i>
                     <span class="dock-tooltip">Arquivo</span>
                 </button>
-                
+
                 <button onclick="switchTab('settings')" class="dock-btn relative flex items-center justify-center w-12 h-12 lg:w-14 lg:h-14 rounded-full text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all active:scale-95 bg-transparent" id="dock-tab-settings">
                     <i data-lucide="settings-2" class="dock-icon w-5 h-5 lg:w-6 lg:h-6"></i>
                     <span class="dock-tooltip">Ajustes</span>
@@ -929,6 +974,72 @@
                 </div>
             </div>
         </div>
+
+        <!-- Tab: Slides (editor estilo Canva, gerado a partir da monografia) -->
+        <div id="tab-slides" class="hidden-state absolute inset-0 z-40 bg-slate-100/95 dark:bg-slate-900/95 backdrop-blur-2xl overflow-y-auto pt-6 pb-32 px-3 lg:px-6 custom-scrollbar">
+            <div class="max-w-7xl mx-auto">
+                <!-- Barra superior: temas, logo, gerar IA, exportar -->
+                <div class="bg-white/80 dark:bg-slate-850/80 backdrop-blur rounded-2xl shadow border border-white/40 dark:border-slate-700 p-3 lg:p-4 mb-4 flex flex-wrap items-center gap-3">
+                    <div class="flex items-center gap-2">
+                        <i data-lucide="presentation" class="w-5 h-5 text-indigo-600 dark:text-indigo-400"></i>
+                        <h2 class="font-extrabold text-slate-800 dark:text-white text-sm lg:text-base">Slides da Apresentação</h2>
+                    </div>
+
+                    <div class="flex items-center gap-1.5" id="slide-theme-picker"></div>
+
+                    <label class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 cursor-pointer">
+                        <i data-lucide="image-up" class="w-3.5 h-3.5"></i> Logo
+                        <input type="file" accept="image/*" class="hidden" onchange="uploadSlideLogo(event)">
+                    </label>
+
+                    <div class="flex-1"></div>
+
+                    <button onclick="addSlide('content')" type="button" class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700">
+                        <i data-lucide="plus" class="w-3.5 h-3.5"></i> Slide
+                    </button>
+
+                    <button onclick="generateSlidesWithAI()" id="btn-generate-slides-ai" type="button" class="flex items-center gap-1.5 px-4 py-1.5 text-xs font-bold rounded-full bg-indigo-600 hover:bg-indigo-700 text-white shadow">
+                        <i data-lucide="sparkles" class="w-3.5 h-3.5"></i> Gerar com IA (<span id="slides-ai-cost-label">${AI_COST_SLIDES}</span> créditos)
+                    </button>
+
+                    <div class="relative" id="slides-export-wrap">
+                        <button onclick="document.getElementById('slides-export-menu').classList.toggle('hidden-state')" type="button" class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-full bg-slate-800 hover:bg-slate-900 text-white">
+                            <i data-lucide="download" class="w-3.5 h-3.5"></i> Exportar
+                        </button>
+                        <div id="slides-export-menu" class="hidden-state absolute right-0 mt-1 w-48 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 z-50 overflow-hidden">
+                            <button onclick="exportSlidesPptx()" class="w-full text-left px-4 py-2.5 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center gap-2"><i data-lucide="file-text" class="w-3.5 h-3.5"></i> PowerPoint (.pptx)</button>
+                            <button onclick="exportSlidesPdf()" class="w-full text-left px-4 py-2.5 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center gap-2"><i data-lucide="file-down" class="w-3.5 h-3.5"></i> PDF</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="slides-empty-state" class="hidden-state text-center py-20 text-slate-400 dark:text-slate-500">
+                    <i data-lucide="presentation" class="w-14 h-14 mx-auto mb-3 opacity-40"></i>
+                    <p class="font-semibold">Ainda não há slides.</p>
+                    <p class="text-sm">Escreva a monografia e clique em "Gerar com IA" para criar a apresentação automaticamente, ou adicione slides manualmente.</p>
+                </div>
+
+                <div id="slides-editor-body" class="hidden-state flex flex-col lg:flex-row gap-4">
+                    <!-- Lista de miniaturas -->
+                    <div id="slides-thumb-list" class="flex lg:flex-col gap-3 overflow-x-auto lg:overflow-y-auto lg:w-44 lg:max-h-[70vh] pb-2 lg:pb-0 shrink-0"></div>
+
+                    <!-- Canvas principal editável -->
+                    <div class="flex-1 flex flex-col items-center gap-3">
+                        <div id="slide-canvas-wrap" class="w-full max-w-3xl"></div>
+                        <div class="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                            <button onclick="moveSlide(-1)" type="button" class="p-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700"><i data-lucide="arrow-up" class="w-3.5 h-3.5"></i></button>
+                            <button onclick="moveSlide(1)" type="button" class="p-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700"><i data-lucide="arrow-down" class="w-3.5 h-3.5"></i></button>
+                            <button onclick="duplicateSlide()" type="button" class="p-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700"><i data-lucide="copy" class="w-3.5 h-3.5"></i></button>
+                            <button onclick="deleteSlide()" type="button" class="p-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-red-50 dark:hover:bg-red-900/30 hover:text-red-500"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>
+                            <span class="ml-2">Clique no título ou no texto do slide para editar diretamente.</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Área oculta usada apenas durante a impressão dos slides em PDF -->
+        <div id="slides-print-area" class="hidden-state"></div>
 
         <!-- Tab: Créditos / Loja -->
         <div id="tab-credits" class="hidden-state absolute inset-0 z-40 bg-slate-100/95 dark:bg-slate-900/95 backdrop-blur-2xl overflow-y-auto pt-10 pb-32 px-4 custom-scrollbar">
@@ -1147,7 +1258,11 @@
             shortcutCapture: null,
             assistantMode: localStorage.getItem('monografia_assistant_mode') === 'true',
             assistantSuggestions: JSON.parse(localStorage.getItem('monografia_assistant_suggestions')) || [],
-            _lastAnalyzedParagraph: ''
+            _lastAnalyzedParagraph: '',
+            slides: JSON.parse(localStorage.getItem('monografia_slides')) || [],
+            slideTheme: localStorage.getItem('monografia_slide_theme') || 'azul',
+            slideLogoBase64: localStorage.getItem('monografia_slide_logo') || '',
+            activeSlideId: null
         };
 
         document.addEventListener('DOMContentLoaded', () => {
@@ -1171,6 +1286,7 @@
             makeDraggable('panel-export', 'panel-export-header');
             makeDraggable('panel-assistant', 'panel-assistant-header');
             makeDraggable('word-toolbar', 'word-toolbar-header', { dockable: true, mobileDraggable: true });
+            makeDraggable('magnifier-tool', 'magnifier-tool-header');
             makeResizable('panel-left', { minW: 320, maxW: 0.5, minH: 400 });
             makeResizable('panel-right', { minW: 300, maxW: 0.4, minH: 400 });
             makeResizable('panel-export', { minW: 280, maxW: 0.4, minH: 400 });
@@ -2160,6 +2276,9 @@
             // A decisão de remover a marca d'água agora é feita uma vez por trabalho, pelo botão
             // dedicado no painel Assistente — aqui só refletimos o que já foi decidido.
             syncWatermarkRemovedClass();
+            // No celular a fonte Tinos às vezes ainda não tinha carregado quando o print
+            // disparava, trocando a serifada pela fonte padrão do sistema no PDF gerado.
+            if (document.fonts && document.fonts.ready) { try { await document.fonts.ready; } catch(e) {} }
             window.print();
         }
 
@@ -2210,6 +2329,316 @@
             lucide.createIcons();
         }
 
+        // ==========================================
+        // ABA SLIDES (editor estilo Canva gerado da monografia)
+        // ==========================================
+        function saveSlidesState() {
+            localStorage.setItem('monografia_slides', JSON.stringify(state.slides));
+            localStorage.setItem('monografia_slide_theme', state.slideTheme);
+            localStorage.setItem('monografia_slide_logo', state.slideLogoBase64 || '');
+        }
+
+        function newSlideObj(type) {
+            const base = { id: `slide-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, type };
+            if (type === 'cover') return { ...base, heading: 'TÍTULO DO TRABALHO', students: 'Nome do(s) discente(s)', professor: 'Nome do(a) docente', body: '' };
+            if (type === 'closing') return { ...base, heading: 'MUITO OBRIGADO PELA ATENÇÃO!', body: '' };
+            if (type === 'references') return { ...base, heading: 'REFERÊNCIAS', body: 'Liste aqui as referências bibliográficas.' };
+            if (type === 'conclusion') return { ...base, heading: 'CONCLUSÃO', body: 'Escreva aqui a conclusão.' };
+            return { ...base, heading: 'Título do tópico', body: 'Texto do slide. Clique para editar.' };
+        }
+
+        function renderSlideThemePicker() {
+            const wrap = document.getElementById('slide-theme-picker');
+            if (!wrap) return;
+            wrap.innerHTML = Object.keys(SLIDE_THEMES).map(key => {
+                const t = SLIDE_THEMES[key];
+                const active = state.slideTheme === key;
+                return `<button onclick="setSlideTheme('${key}')" title="${t.name}" type="button" class="w-7 h-7 rounded-full border-2 ${active ? 'border-indigo-500 scale-110' : 'border-white dark:border-slate-700'} shadow transition-all" style="background:${t.accent}"></button>`;
+            }).join('');
+        }
+
+        function setSlideTheme(key) {
+            state.slideTheme = key;
+            saveSlidesState();
+            renderSlideThemePicker();
+            renderSlidesTab();
+        }
+
+        function uploadSlideLogo(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (evt) => {
+                state.slideLogoBase64 = evt.target.result;
+                saveSlidesState();
+                renderSlidesTab();
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function renderSlidesTab() {
+            renderSlideThemePicker();
+            const hasSlides = state.slides.length > 0;
+            document.getElementById('slides-empty-state').classList.toggle('hidden-state', hasSlides);
+            document.getElementById('slides-editor-body').classList.toggle('hidden-state', !hasSlides);
+            if (!hasSlides) { lucide.createIcons(); return; }
+
+            if (!state.activeSlideId || !state.slides.find(s => s.id === state.activeSlideId)) {
+                state.activeSlideId = state.slides[0].id;
+            }
+
+            const theme = SLIDE_THEMES[state.slideTheme];
+            const thumbList = document.getElementById('slides-thumb-list');
+            thumbList.innerHTML = state.slides.map((s, i) => `
+                <div onclick="selectSlide('${s.id}')" class="shrink-0 w-28 lg:w-full cursor-pointer rounded-lg overflow-hidden border-2 ${s.id === state.activeSlideId ? 'border-indigo-500' : 'border-transparent'} shadow bg-white">
+                    <div style="width:100%; aspect-ratio:16/9; overflow:hidden; position:relative;">
+                        <div style="width:400px; height:225px; transform:scale(0.28); transform-origin: top left; pointer-events:none;">
+                            ${renderSlideMarkup(s, theme, false)}
+                        </div>
+                    </div>
+                    <div class="text-[10px] text-center py-0.5 bg-slate-700 text-white font-semibold">${i + 1}</div>
+                </div>
+            `).join('');
+
+            const active = state.slides.find(s => s.id === state.activeSlideId);
+            document.getElementById('slide-canvas-wrap').innerHTML = `
+                <div style="width:100%; aspect-ratio:16/9; box-shadow:0 10px 30px -10px rgba(0,0,0,.3); border-radius:10px; overflow:hidden;">
+                    ${renderSlideMarkup(active, theme, true)}
+                </div>
+            `;
+            lucide.createIcons();
+        }
+
+        function renderSlideMarkup(s, theme, editable) {
+            const ce = editable ? 'contenteditable="true"' : '';
+            const editAttrs = editable ? `onblur="updateSlideField('${s.id}', this.dataset.field, this.innerText)"` : '';
+            const logo = state.slideLogoBase64
+                ? `<img src="${state.slideLogoBase64}" style="max-height:36px; max-width:120px; object-fit:contain;">`
+                : `<span style="font-size:10px; opacity:.6; color:${theme.light};">SEU LOGO</span>`;
+            const watermark = `<div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; opacity:.06; pointer-events:none;">
+                <i data-lucide="graduation-cap" style="width:55%; height:55%; color:${theme.accent};"></i>
+            </div>`;
+            const bottomBar = `<div style="position:absolute; left:0; right:0; bottom:0; height:11%; background:${theme.bar}; display:flex; align-items:center; justify-content:center;">${logo}</div>`;
+
+            if (s.type === 'cover') {
+                return `<div style="position:relative; width:100%; height:100%; background:${theme.bg}; font-family:'Times New Roman', serif; padding:6%; box-sizing:border-box; display:flex; flex-direction:column; justify-content:space-between;">
+                    ${watermark}
+                    <div style="position:relative; z-index:1;">${state.slideLogoBase64 ? `<img src="${state.slideLogoBase64}" style="max-height:34px; max-width:140px; object-fit:contain;">` : ''}</div>
+                    <div style="position:relative; z-index:1; text-align:center;">
+                        <div ${ce} ${editAttrs} data-field="heading" style="font-size:clamp(14px,3.4vw,30px); font-weight:800; color:${theme.accent}; outline:none;">${escapeHtml(s.heading || '')}</div>
+                    </div>
+                    <div style="position:relative; z-index:1; display:flex; justify-content:space-between; font-size:clamp(8px,1.3vw,12px); color:${theme.text};">
+                        <div><b>DISCENTES:</b><br><span ${ce} ${editAttrs} data-field="students" style="outline:none;">${escapeHtml(s.students || '')}</span></div>
+                        <div style="text-align:right;"><b>DOCENTE:</b><br><span ${ce} ${editAttrs} data-field="professor" style="outline:none;">${escapeHtml(s.professor || '')}</span></div>
+                    </div>
+                </div>`;
+            }
+
+            if (s.type === 'closing') {
+                return `<div style="position:relative; width:100%; height:100%; background:${theme.bg}; font-family:'Times New Roman', serif; display:flex; align-items:center; justify-content:center; text-align:center; padding:8%; box-sizing:border-box;">
+                    ${watermark}
+                    <div ${ce} ${editAttrs} data-field="heading" style="position:relative; z-index:1; font-size:clamp(14px,3vw,26px); font-weight:800; color:${theme.accent}; outline:none;">${escapeHtml(s.heading || '')}</div>
+                    ${bottomBar}
+                </div>`;
+            }
+
+            // content / conclusion / references
+            const headingAlign = s.type === 'conclusion' ? 'center' : 'left';
+            return `<div style="position:relative; width:100%; height:100%; background:${theme.bg}; font-family:'Times New Roman', serif; padding:6% 7% 14% 7%; box-sizing:border-box; overflow:hidden;">
+                ${watermark}
+                <div ${ce} ${editAttrs} data-field="heading" style="position:relative; z-index:1; text-align:${headingAlign}; font-size:clamp(13px,2.6vw,22px); font-weight:800; ${s.type === 'conclusion' ? 'text-transform:uppercase;' : ''} color:${theme.accent}; outline:none; margin-bottom:3%;">${escapeHtml(s.heading || '')}</div>
+                <div ${ce} ${editAttrs} data-field="body" style="position:relative; z-index:1; font-size:clamp(9px,1.5vw,13px); line-height:1.4; color:${theme.text}; outline:none; white-space:pre-wrap;">${escapeHtml(s.body || '')}</div>
+                ${bottomBar}
+            </div>`;
+        }
+
+        function updateSlideField(slideId, field, value) {
+            const s = state.slides.find(x => x.id === slideId);
+            if (!s || !field) return;
+            s[field] = value;
+            saveSlidesState();
+        }
+
+        function selectSlide(id) {
+            state.activeSlideId = id;
+            renderSlidesTab();
+        }
+
+        function addSlide(type) {
+            const s = newSlideObj(type || 'content');
+            const idx = state.slides.findIndex(x => x.id === state.activeSlideId);
+            if (idx === -1) state.slides.push(s);
+            else state.slides.splice(idx + 1, 0, s);
+            state.activeSlideId = s.id;
+            saveSlidesState();
+            renderSlidesTab();
+        }
+
+        function duplicateSlide() {
+            const idx = state.slides.findIndex(x => x.id === state.activeSlideId);
+            if (idx === -1) return;
+            const copy = JSON.parse(JSON.stringify(state.slides[idx]));
+            copy.id = `slide-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+            state.slides.splice(idx + 1, 0, copy);
+            state.activeSlideId = copy.id;
+            saveSlidesState();
+            renderSlidesTab();
+        }
+
+        function deleteSlide() {
+            if (state.slides.length <= 1) { alert('É preciso manter pelo menos 1 slide.'); return; }
+            const idx = state.slides.findIndex(x => x.id === state.activeSlideId);
+            if (idx === -1) return;
+            state.slides.splice(idx, 1);
+            state.activeSlideId = state.slides[Math.max(0, idx - 1)].id;
+            saveSlidesState();
+            renderSlidesTab();
+        }
+
+        function moveSlide(dir) {
+            const idx = state.slides.findIndex(x => x.id === state.activeSlideId);
+            const newIdx = idx + dir;
+            if (idx === -1 || newIdx < 0 || newIdx >= state.slides.length) return;
+            const [s] = state.slides.splice(idx, 1);
+            state.slides.splice(newIdx, 0, s);
+            saveSlidesState();
+            renderSlidesTab();
+        }
+
+        function stripHtmlToText(html) {
+            const d = document.createElement('div');
+            d.innerHTML = html || '';
+            return (d.innerText || d.textContent || '').replace(/\s+/g, ' ').trim();
+        }
+
+        async function generateSlidesWithAI() {
+            if (state.isDemo) { alert('Modo demonstração: geração com IA desativada. Crie uma conta para usar de verdade.'); return; }
+            if (!state.profile) { alert('Aguarde o carregamento do seu perfil.'); return; }
+            if (!state.generatedSections || state.generatedSections.length === 0) {
+                alert('Escreva (ou gere) a monografia no Estúdio primeiro — os slides são criados a partir do conteúdo já redigido.');
+                return;
+            }
+            const confirmed = await showConfirmModal(
+                'Gerar slides com IA',
+                `A IA vai ler a monografia já escrita e montar uma apresentação completa (capa, tópicos, conclusão, referências e encerramento). Isso consome <b>${AI_COST_SLIDES} créditos</b> do seu saldo atual de <b>${state.profile.credits}</b>. ${state.slides.length > 0 ? 'Os slides atuais serão substituídos. ' : ''}Continuar?`
+            );
+            if (!confirmed) return;
+
+            const btn = document.getElementById('btn-generate-slides-ai');
+            const originalHtml = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = `<i data-lucide="loader-2" class="w-3.5 h-3.5 animate-spin"></i> Gerando...`;
+            lucide.createIcons();
+
+            try {
+                const docTitle = (document.getElementById('in-title') && document.getElementById('in-title').value) || 'Apresentação';
+                const sectionsText = state.generatedSections.map(s => `### ${s.title}\n${stripHtmlToText(s.content)}`).join('\n\n');
+
+                const prompt = `Atúa como designer de apresentações académicas. A partir do conteúdo da monografia abaixo, crie a estrutura de uma apresentação de slides em ${state.docLanguage}.
+
+TÍTULO DO TRABALHO: ${docTitle}
+
+CONTEÚDO DA MONOGRAFIA:
+${sectionsText.slice(0, 12000)}
+
+Gere entre 6 e 10 slides no total, seguindo esta ordem: 1 slide de capa (type "cover"), de 3 a 6 slides de conteúdo (type "content", um por tópico/seção principal, com texto curto e direto, tipo tópicos, no máximo 60 palavras cada), 1 slide de conclusão (type "conclusion"), 1 slide de referências (type "references", resumindo as principais referências em poucas linhas) e 1 slide de encerramento/agradecimento (type "closing").
+
+FORMATO DE SAÍDA ESTRITO: devolve APENAS um array JSON puro, sem markdown, no formato:
+[{"type":"cover","heading":"...","students":"","professor":""}, {"type":"content","heading":"...","body":"..."}, ..., {"type":"closing","heading":"..."}]
+O campo "body" deve ser texto simples curto (pode usar quebras de linha com \\n para separar pontos), nunca HTML.`;
+
+                let jsonText = await callAI(prompt, AI_COST_SLIDES, 'ai_generate_slides');
+                jsonText = jsonText.replace(/```json/gi, '').replace(/```/g, '').trim();
+                const firstBracket = jsonText.indexOf('[');
+                const lastBracket = jsonText.lastIndexOf(']');
+                if (firstBracket !== -1 && lastBracket !== -1) jsonText = jsonText.substring(firstBracket, lastBracket + 1);
+                const parsed = JSON.parse(jsonText);
+
+                state.slides = parsed.map(p => ({
+                    id: `slide-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+                    type: ['cover', 'content', 'conclusion', 'references', 'closing'].includes(p.type) ? p.type : 'content',
+                    heading: p.heading || '',
+                    body: p.body || '',
+                    students: p.students || '',
+                    professor: p.professor || ''
+                }));
+                state.activeSlideId = state.slides.length ? state.slides[0].id : null;
+                saveSlidesState();
+                renderSlidesTab();
+            } catch (err) {
+                console.error(err);
+                showError(err.message || 'Erro ao gerar os slides com IA.');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalHtml;
+                lucide.createIcons();
+            }
+        }
+
+        function exportSlidesPptx() {
+            document.getElementById('slides-export-menu').classList.add('hidden-state');
+            if (!state.slides.length) { alert('Não há slides para exportar.'); return; }
+            const theme = SLIDE_THEMES[state.slideTheme];
+            const pptx = new PptxGenJS();
+            pptx.layout = 'LAYOUT_16x9';
+
+            state.slides.forEach(s => {
+                const slide = pptx.addSlide();
+                slide.background = { color: theme.bg.replace('#', '') };
+
+                if (s.type !== 'cover') {
+                    slide.addShape(pptx.ShapeType.rect, { x: 0, y: 5.0, w: 10, h: 0.63, fill: { color: theme.bar.replace('#', '') } });
+                    if (state.slideLogoBase64) {
+                        slide.addImage({ data: state.slideLogoBase64, x: 4.3, y: 5.07, w: 1.4, h: 0.5, sizing: { type: 'contain', w: 1.4, h: 0.5 } });
+                    }
+                }
+
+                if (s.type === 'cover') {
+                    if (state.slideLogoBase64) slide.addImage({ data: state.slideLogoBase64, x: 0.4, y: 0.3, w: 1.3, h: 0.5, sizing: { type: 'contain', w: 1.3, h: 0.5 } });
+                    slide.addText(s.heading || '', { x: 0.5, y: 2.1, w: 9, h: 1.4, align: 'center', bold: true, fontSize: 28, color: theme.accent.replace('#', ''), fontFace: 'Times New Roman' });
+                    slide.addText(`DISCENTES:\n${s.students || ''}`, { x: 0.5, y: 4.4, w: 4, h: 0.9, fontSize: 10, color: theme.text.replace('#', ''), fontFace: 'Times New Roman' });
+                    slide.addText(`DOCENTE:\n${s.professor || ''}`, { x: 5.5, y: 4.4, w: 4, h: 0.9, align: 'right', fontSize: 10, color: theme.text.replace('#', ''), fontFace: 'Times New Roman' });
+                } else if (s.type === 'closing') {
+                    slide.addText(s.heading || '', { x: 0.6, y: 2.0, w: 8.8, h: 1.5, align: 'center', valign: 'middle', bold: true, fontSize: 24, color: theme.accent.replace('#', ''), fontFace: 'Times New Roman' });
+                } else {
+                    slide.addText(s.heading || '', {
+                        x: 0.6, y: 0.4, w: 8.8, h: 0.8, bold: true, fontSize: 20,
+                        align: s.type === 'conclusion' ? 'center' : 'left',
+                        color: theme.accent.replace('#', ''), fontFace: 'Times New Roman'
+                    });
+                    slide.addText(s.body || '', { x: 0.6, y: 1.3, w: 8.8, h: 3.5, fontSize: 14, color: theme.text.replace('#', ''), fontFace: 'Times New Roman', valign: 'top' });
+                }
+            });
+
+            pptx.writeFile({ fileName: `${(document.getElementById('in-title') && document.getElementById('in-title').value) || 'apresentacao'}.pptx` });
+        }
+
+        function exportSlidesPdf() {
+            document.getElementById('slides-export-menu').classList.add('hidden-state');
+            if (!state.slides.length) { alert('Não há slides para exportar.'); return; }
+            const theme = SLIDE_THEMES[state.slideTheme];
+            const area = document.getElementById('slides-print-area');
+            area.innerHTML = state.slides.map(s => `
+                <div class="slides-print-page" style="width:297mm; height:167mm; position:relative; page-break-after:always; overflow:hidden;">
+                    ${renderSlideMarkup(s, theme, false)}
+                </div>
+            `).join('');
+            const pageStyle = document.createElement('style');
+            pageStyle.id = 'slides-print-page-size';
+            pageStyle.media = 'print';
+            pageStyle.innerText = '@page { size: 297mm 167mm; margin: 0; }';
+            document.head.appendChild(pageStyle);
+            document.body.classList.add('printing-slides');
+            const cleanup = () => {
+                document.body.classList.remove('printing-slides');
+                const s = document.getElementById('slides-print-page-size');
+                if (s) s.remove();
+                window.removeEventListener('afterprint', cleanup);
+            };
+            window.addEventListener('afterprint', cleanup);
+            window.print();
+        }
+
         function switchTab(tabId) {
             if (state.isDemo && (tabId === 'credits' || tabId === 'myprofile')) {
                 alert('Modo demonstração: crie uma conta para acessar isto.');
@@ -2219,18 +2648,19 @@
                 return;
             }
 
-            const allTabs = ['generator', 'profile', 'settings', 'credits', 'myprofile', 'admin'];
+            const allTabs = ['generator', 'slides', 'profile', 'settings', 'credits', 'myprofile', 'admin'];
             allTabs.forEach(t => {
                 const btn = document.getElementById(`dock-tab-${t}`);
                 if(btn) {
                     if(t === tabId) {
                         btn.classList.add('bg-primary-600', 'text-white');
-                        btn.classList.remove('bg-transparent', 'text-slate-500', 'dark:text-slate-400', 'text-amber-500', 'dark:text-amber-400', 'text-emerald-500', 'dark:text-emerald-400', 'text-red-500', 'dark:text-red-400');
+                        btn.classList.remove('bg-transparent', 'text-slate-500', 'dark:text-slate-400', 'text-amber-500', 'dark:text-amber-400', 'text-emerald-500', 'dark:text-emerald-400', 'text-red-500', 'dark:text-red-400', 'text-indigo-500', 'dark:text-indigo-400');
                     } else {
                         btn.classList.remove('bg-primary-600', 'text-white');
                         if (t === 'credits') { btn.classList.add('bg-transparent', 'text-amber-500', 'dark:text-amber-400'); }
                         else if (t === 'myprofile') { btn.classList.add('bg-transparent', 'text-emerald-500', 'dark:text-emerald-400'); }
                         else if (t === 'admin') { btn.classList.add('bg-transparent', 'text-red-500', 'dark:text-red-400'); }
+                        else if (t === 'slides') { btn.classList.add('bg-transparent', 'text-indigo-500', 'dark:text-indigo-400'); }
                         else { btn.classList.add('bg-transparent', 'text-slate-500', 'dark:text-slate-400'); }
                     }
                 }
@@ -2255,6 +2685,9 @@
             } else if (tabId === 'admin') {
                 document.getElementById('tab-admin').classList.remove('hidden-state');
                 renderAdminTab();
+            } else if (tabId === 'slides') {
+                document.getElementById('tab-slides').classList.remove('hidden-state');
+                renderSlidesTab();
             }
         }
 
@@ -3182,13 +3615,13 @@
         }
 
         function updateAssistantModeButtonUI() {
-            const btn = document.getElementById('btn-assistant-mode');
-            if (!btn) return;
-            btn.classList.toggle('!bg-indigo-600', state.assistantMode);
-            btn.classList.toggle('!text-white', state.assistantMode);
-            btn.title = state.assistantMode
-                ? 'Modo Assistente ativo: a IA sugere continuações e tópicos de pesquisa enquanto você escreve. Clique para desativar.'
-                : 'Ativar Modo Assistente: a IA sugere continuações e tópicos de pesquisa enquanto você escreve.';
+            document.querySelectorAll('.btn-assistant-mode-toggle').forEach(btn => {
+                btn.classList.toggle('!bg-indigo-600', state.assistantMode);
+                btn.classList.toggle('!text-white', state.assistantMode);
+                btn.title = state.assistantMode
+                    ? 'Modo Assistente ativo: a IA sugere continuações e tópicos de pesquisa enquanto você escreve. Clique para desativar.'
+                    : 'Ativar Modo Assistente: a IA sugere continuações e tópicos de pesquisa enquanto você escreve.';
+            });
         }
 
         // Delegação de eventos no contêiner estável (os .apa-content são recriados a cada renderSections())
@@ -3224,7 +3657,140 @@
                 if (!el) return;
                 clearGhostSuggestion();
             });
+
+            // No celular, dá um zoom automático na linha que está sendo digitada pra
+            // ficar legível, mantendo o scroll livre pra ler trechos anteriores.
+            container.addEventListener('focusin', function(e) {
+                const el = e.target.closest('.apa-content');
+                if (!el) return;
+                enableMobileTypingZoom();
+            });
+            container.addEventListener('input', function(e) {
+                const el = e.target.closest('.apa-content');
+                if (!el) return;
+                scrollCaretIntoViewMobile();
+                updateMagnifierContent();
+            });
+            container.addEventListener('focusout', function(e) {
+                const el = e.target.closest('.apa-content');
+                if (!el) return;
+                disableMobileTypingZoom();
+            });
+            container.addEventListener('click', function(e) {
+                if (e.target.closest('.apa-content')) setTimeout(updateMagnifierContent, 0);
+            });
+            container.addEventListener('keyup', function(e) {
+                if (e.target.closest('.apa-content')) updateMagnifierContent();
+            });
         })();
+
+        function isMobileViewport() {
+            return window.innerWidth < 1024 || (window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+        }
+
+        let _mobileTypingZoomActive = false;
+        let _mobileZoomPrevValue = 1;
+
+        function enableMobileTypingZoom() {
+            if (!isMobileViewport()) return;
+            if (!_mobileTypingZoomActive) {
+                _mobileZoomPrevValue = currentZoom;
+                _mobileTypingZoomActive = true;
+            }
+            if (currentZoom < 1.35) setZoom(1.35);
+            setTimeout(scrollCaretIntoViewMobile, 50);
+        }
+
+        function disableMobileTypingZoom() {
+            if (!_mobileTypingZoomActive) return;
+            _mobileTypingZoomActive = false;
+            setZoom(_mobileZoomPrevValue);
+        }
+
+        // ==========================================
+        // LUPA DE ESCRITA (desktop): acompanha o cursor com zoom, num vidro flutuante
+        // ==========================================
+        let magnifierEnabled = false;
+        const MAGNIFIER_SCALE = 2.1;
+
+        function toggleMagnifier() {
+            magnifierEnabled = !magnifierEnabled;
+            const tool = document.getElementById('magnifier-tool');
+            tool.classList.toggle('hidden-state', !magnifierEnabled);
+            document.getElementById('btn-magnifier-toggle').classList.toggle('!bg-sky-600', magnifierEnabled);
+            document.getElementById('btn-magnifier-toggle').classList.toggle('!text-white', magnifierEnabled);
+            if (magnifierEnabled) {
+                const page = document.querySelector('.a4-page');
+                if (page && tool.dataset.dock !== 'true') {
+                    const w = Math.min(page.getBoundingClientRect().width, window.innerWidth * 0.9);
+                    tool.style.width = w + 'px';
+                }
+                updateMagnifierContent();
+            }
+        }
+
+        function updateMagnifierContent() {
+            if (!magnifierEnabled) return;
+            const sel = window.getSelection();
+            const anchorNode = sel && sel.anchorNode;
+            const el = anchorNode && (anchorNode.nodeType === 1 ? anchorNode : anchorNode.parentElement)?.closest('.apa-content');
+            const hint = document.getElementById('magnifier-empty-hint');
+            const viewport = document.getElementById('magnifier-viewport');
+            if (!el) { hint.classList.remove('hidden-state'); viewport.innerHTML = ''; return; }
+
+            const rect = getCaretRectMobile();
+            if (!rect) return;
+            hint.classList.add('hidden-state');
+
+            const pageRect = el.getBoundingClientRect();
+            const clone = el.cloneNode(true);
+            clone.removeAttribute('contenteditable');
+            clone.removeAttribute('id');
+            clone.querySelectorAll('[id]').forEach(n => n.removeAttribute('id'));
+            clone.style.pointerEvents = 'none';
+            clone.style.width = pageRect.width + 'px';
+            clone.style.margin = '0';
+
+            viewport.innerHTML = '';
+            viewport.appendChild(clone);
+
+            const outerRect = document.getElementById('magnifier-viewport-outer').getBoundingClientRect();
+            const offsetX = rect.left - pageRect.left;
+            const offsetY = rect.top - pageRect.top;
+            const translateX = (outerRect.width / 2) - offsetX * MAGNIFIER_SCALE;
+            const translateY = (outerRect.height / 2) - offsetY * MAGNIFIER_SCALE;
+            viewport.style.transform = `translate(${translateX}px, ${translateY}px) scale(${MAGNIFIER_SCALE})`;
+            viewport.style.transformOrigin = 'top left';
+        }
+
+        function getCaretRectMobile() {
+            const sel = window.getSelection();
+            if (!sel || sel.rangeCount === 0) return null;
+            const range = sel.getRangeAt(0).cloneRange();
+            range.collapse(true);
+            let rect = range.getClientRects()[0];
+            if (rect && rect.width === 0 && rect.height === 0) rect = null;
+            if (!rect) {
+                const marker = document.createElement('span');
+                marker.appendChild(document.createTextNode('​'));
+                range.insertNode(marker);
+                rect = marker.getBoundingClientRect();
+                const parent = marker.parentNode;
+                parent.removeChild(marker);
+                parent.normalize();
+            }
+            return rect;
+        }
+
+        function scrollCaretIntoViewMobile() {
+            if (!_mobileTypingZoomActive) return;
+            const rect = getCaretRectMobile();
+            const canvas = document.getElementById('main-canvas');
+            if (!rect || !canvas) return;
+            const canvasRect = canvas.getBoundingClientRect();
+            const targetY = canvasRect.top + canvasRect.height * 0.38;
+            canvas.scrollTop += (rect.top - targetY);
+        }
 
         function startNewBlankProject() {
             if (!confirm('Começar um novo projeto em branco? O trabalho atual continua salvo no histórico (se já foi salvo), mas a tela vai limpar para um documento novo.')) return;
@@ -3243,8 +3809,8 @@
                     <div class="text-center w-full px-6">
                         <div class="opacity-40">
                             <i data-lucide="file-signature" class="w-16 h-16 mx-auto mb-4"></i>
-                            <p class="font-sans text-lg font-bold" style="text-indent: 0;">O documento formatado aparecerá aqui.</p>
-                            <p class="font-sans text-sm mt-2 mb-6" style="text-indent: 0;">Configure a IA e os dados nos painéis laterais, ou comece manualmente.</p>
+                            <p class="font-sans text-lg font-bold" style="text-indent: 0; text-align: center !important;">O documento formatado aparecerá aqui.</p>
+                            <p class="font-sans text-sm mt-2 mb-6" style="text-indent: 0; text-align: center !important;">Configure a IA e os dados nos painéis laterais, ou comece manualmente.</p>
                         </div>
                         <button onclick="addNewSection()" class="btn-glow hide-on-print mx-auto flex items-center gap-2 px-6 py-4 bg-primary-600 text-white rounded-2xl hover:bg-primary-700 transition-all font-bold shadow-lg hover:-translate-y-0.5">
                             <i data-lucide="plus-circle" class="w-5 h-5"></i> Adicionar Primeira Página (sem IA)
