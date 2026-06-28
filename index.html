@@ -291,6 +291,14 @@
             #page-tracker, #btn-margin-toggle, #zoom-panel { opacity: 0.55; }
         }
 
+        /* Slides: alça de arraste para mover texto/imagem dentro do slide editável.
+           Só aparece no hover (mouse) e fica sempre visível em telas de toque, já que
+           não existe hover nesse caso. */
+        .slide-drag-wrap { touch-action: none; }
+        .slide-drag-handle { opacity: 0; }
+        .slide-drag-wrap:hover .slide-drag-handle, .slide-drag-handle.dragging { opacity: 1 !important; }
+        @media (pointer: coarse) { .slide-drag-handle { opacity: 0.85; } }
+
         /* No celular a fileira de botões (Dados...Estúdio...Assistente) era mais larga que a tela
            e os botões das pontas (Dados/Assistente) ficavam cortados fora da viewport. Encolhe
            tudo (botões, espaçamento, divisórias) só nessa faixa de tela pra caber sem cortar. */
@@ -856,7 +864,7 @@
                 <span class="text-[11px] font-bold text-slate-700 flex items-center gap-1.5"><i data-lucide="search" class="w-3.5 h-3.5"></i> Lupa de Escrita</span>
                 <button onclick="toggleMagnifier()" class="p-1 text-slate-600 hover:text-slate-900 rounded-full hover:bg-white/30"><i data-lucide="x" class="w-3.5 h-3.5"></i></button>
             </div>
-            <div id="magnifier-viewport-outer" class="relative overflow-hidden" style="height:170px; background:rgba(255,255,255,0.35); backdrop-filter:blur(18px); border:1px solid rgba(255,255,255,0.5); border-top:none; box-shadow:0 20px 50px -15px rgba(0,0,0,0.4);">
+            <div id="magnifier-viewport-outer" class="relative overflow-hidden" style="height:280px; background:#ffffff; border:1px solid rgba(255,255,255,0.5); border-top:none; box-shadow:0 20px 50px -15px rgba(0,0,0,0.4);">
                 <div id="magnifier-viewport" style="position:absolute; top:0; left:0; will-change:transform;"></div>
                 <div id="magnifier-empty-hint" class="absolute inset-0 flex items-center justify-center text-[11px] text-slate-500 font-medium pointer-events-none">Clique no texto da monografia para acompanhar aqui.</div>
             </div>
@@ -2435,6 +2443,28 @@
             lucide.createIcons();
         }
 
+        // Cada texto/imagem do slide pode ser arrastado livremente quando editável. A posição
+        // (em % do slide, independente do tamanho real na tela) fica salva em s.pos[chave].
+        function slideDragHandle(s, key, editable) {
+            if (!editable) return '';
+            return `<div class="slide-drag-handle" onpointerdown="startSlideFieldDrag(event,'${s.id}','${key}')" title="Arrastar para mover" style="position:absolute; top:-11px; left:-11px; width:20px; height:20px; background:#6366f1; border-radius:6px; cursor:grab; display:flex; align-items:center; justify-content:center; z-index:6; box-shadow:0 2px 6px rgba(0,0,0,.35);"><i data-lucide="move" style="width:12px;height:12px;color:#fff;"></i></div>`;
+        }
+        function slideFieldPos(s, key, def) {
+            const saved = (s.pos && s.pos[key]) || {};
+            return {
+                x: saved.x !== undefined ? saved.x : def.x,
+                y: saved.y !== undefined ? saved.y : def.y,
+                w: def.w
+            };
+        }
+        function slideFieldWrap(s, key, def, editable, innerHtml) {
+            const pos = slideFieldPos(s, key, def);
+            return `<div class="slide-drag-wrap" style="position:absolute; left:${pos.x}%; top:${pos.y}%; width:${pos.w}%; z-index:2;">
+                ${innerHtml}
+                ${slideDragHandle(s, key, editable)}
+            </div>`;
+        }
+
         function renderSlideMarkup(s, theme, editable) {
             const ce = editable ? 'contenteditable="true"' : '';
             const editAttrs = editable ? `onblur="updateSlideField('${s.id}', this.dataset.field, this.innerText)"` : '';
@@ -2445,42 +2475,93 @@
             const watermark = `<div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; opacity:.06; pointer-events:none;">
                 <i data-lucide="graduation-cap" style="width:55%; height:55%; color:${theme.accent};"></i>
             </div>`;
-            const bottomBar = `<div style="position:absolute; left:0; right:0; bottom:0; height:11%; background:${theme.bar}; display:flex; align-items:center; justify-content:center;">${logo}</div>`;
-            const image = s.image ? `<img src="${s.image}" style="position:absolute; top:6%; right:6%; max-width:32%; max-height:42%; object-fit:contain; border-radius:6px; box-shadow:0 6px 16px -6px rgba(0,0,0,.35); z-index:1;">` : '';
+            const bottomBar = `<div style="position:absolute; left:0; right:0; bottom:0; height:11%; background:${theme.bar}; display:flex; align-items:center; justify-content:center; z-index:1;">${logo}</div>`;
+            const imageInner = s.image ? `<img src="${s.image}" style="width:100%; max-height:32vh; object-fit:contain; border-radius:6px; box-shadow:0 6px 16px -6px rgba(0,0,0,.35); pointer-events:none;">` : '';
+            const image = s.image ? slideFieldWrap(s, 'image', { x: 62, y: 6, w: 32 }, editable, imageInner) : '';
 
             if (s.type === 'cover') {
-                return `<div style="position:relative; width:100%; height:100%; background:${bg}; font-family:'Times New Roman', serif; padding:6%; box-sizing:border-box; display:flex; flex-direction:column; justify-content:space-between;">
+                const headingInner = `<div ${ce} ${editAttrs} data-field="heading" style="text-align:center; font-size:clamp(14px,3.4vw,30px); font-weight:800; color:${theme.accent}; outline:none;">${escapeHtml(s.heading || '')}</div>`;
+                const studentsInner = `<div style="text-align:left; font-size:clamp(8px,1.3vw,12px); color:${theme.text};"><b>DISCENTES:</b><br><span ${ce} ${editAttrs} data-field="students" style="outline:none;">${escapeHtml(s.students || '')}</span></div>`;
+                const professorInner = `<div style="text-align:right; font-size:clamp(8px,1.3vw,12px); color:${theme.text};"><b>DOCENTE:</b><br><span ${ce} ${editAttrs} data-field="professor" style="outline:none;">${escapeHtml(s.professor || '')}</span></div>`;
+                return `<div class="slide-canvas-box" style="position:relative; width:100%; height:100%; background:${bg}; font-family:'Times New Roman', serif; box-sizing:border-box;">
                     ${watermark}
                     ${image}
-                    <div style="position:relative; z-index:1;">${state.slideLogoBase64 ? `<img src="${state.slideLogoBase64}" style="max-height:34px; max-width:140px; object-fit:contain;">` : ''}</div>
-                    <div style="position:relative; z-index:1; text-align:center;">
-                        <div ${ce} ${editAttrs} data-field="heading" style="font-size:clamp(14px,3.4vw,30px); font-weight:800; color:${theme.accent}; outline:none;">${escapeHtml(s.heading || '')}</div>
-                    </div>
-                    <div style="position:relative; z-index:1; display:flex; justify-content:space-between; font-size:clamp(8px,1.3vw,12px); color:${theme.text};">
-                        <div><b>DISCENTES:</b><br><span ${ce} ${editAttrs} data-field="students" style="outline:none;">${escapeHtml(s.students || '')}</span></div>
-                        <div style="text-align:right;"><b>DOCENTE:</b><br><span ${ce} ${editAttrs} data-field="professor" style="outline:none;">${escapeHtml(s.professor || '')}</span></div>
-                    </div>
+                    <div style="position:absolute; top:6%; left:6%; z-index:1;">${state.slideLogoBase64 ? `<img src="${state.slideLogoBase64}" style="max-height:34px; max-width:140px; object-fit:contain;">` : ''}</div>
+                    ${slideFieldWrap(s, 'heading', { x: 10, y: 40, w: 80 }, editable, headingInner)}
+                    ${slideFieldWrap(s, 'students', { x: 6, y: 80, w: 42 }, editable, studentsInner)}
+                    ${slideFieldWrap(s, 'professor', { x: 52, y: 80, w: 42 }, editable, professorInner)}
                 </div>`;
             }
 
             if (s.type === 'closing') {
-                return `<div style="position:relative; width:100%; height:100%; background:${bg}; font-family:'Times New Roman', serif; display:flex; align-items:center; justify-content:center; text-align:center; padding:8%; box-sizing:border-box;">
+                const headingInner = `<div ${ce} ${editAttrs} data-field="heading" style="text-align:center; font-size:clamp(14px,3vw,26px); font-weight:800; color:${theme.accent}; outline:none;">${escapeHtml(s.heading || '')}</div>`;
+                return `<div class="slide-canvas-box" style="position:relative; width:100%; height:100%; background:${bg}; font-family:'Times New Roman', serif; box-sizing:border-box;">
                     ${watermark}
                     ${image}
-                    <div ${ce} ${editAttrs} data-field="heading" style="position:relative; z-index:1; font-size:clamp(14px,3vw,26px); font-weight:800; color:${theme.accent}; outline:none;">${escapeHtml(s.heading || '')}</div>
+                    ${slideFieldWrap(s, 'heading', { x: 10, y: 40, w: 80 }, editable, headingInner)}
                     ${bottomBar}
                 </div>`;
             }
 
             // content / conclusion / references
             const headingAlign = s.type === 'conclusion' ? 'center' : 'left';
-            return `<div style="position:relative; width:100%; height:100%; background:${bg}; font-family:'Times New Roman', serif; padding:6% 7% 14% 7%; box-sizing:border-box; overflow:hidden;">
+            const bodyWidth = s.image ? 56 : 86;
+            const headingInner = `<div ${ce} ${editAttrs} data-field="heading" style="text-align:${headingAlign}; font-size:clamp(13px,2.6vw,22px); font-weight:800; ${s.type === 'conclusion' ? 'text-transform:uppercase;' : ''} color:${theme.accent}; outline:none;">${escapeHtml(s.heading || '')}</div>`;
+            const bodyInner = `<div ${ce} ${editAttrs} data-field="body" style="font-size:clamp(9px,1.5vw,13px); line-height:1.4; color:${theme.text}; outline:none; white-space:pre-wrap;">${escapeHtml(s.body || '')}</div>`;
+            return `<div class="slide-canvas-box" style="position:relative; width:100%; height:100%; background:${bg}; font-family:'Times New Roman', serif; box-sizing:border-box; overflow:hidden;">
                 ${watermark}
                 ${image}
-                <div ${ce} ${editAttrs} data-field="heading" style="position:relative; z-index:1; text-align:${headingAlign}; font-size:clamp(13px,2.6vw,22px); font-weight:800; ${s.type === 'conclusion' ? 'text-transform:uppercase;' : ''} color:${theme.accent}; outline:none; margin-bottom:3%;">${escapeHtml(s.heading || '')}</div>
-                <div ${ce} ${editAttrs} data-field="body" style="position:relative; z-index:1; font-size:clamp(9px,1.5vw,13px); line-height:1.4; color:${theme.text}; outline:none; white-space:pre-wrap; ${s.image ? 'width:64%;' : ''}">${escapeHtml(s.body || '')}</div>
+                ${slideFieldWrap(s, 'heading', { x: 7, y: 6, w: 86 }, editable, headingInner)}
+                ${slideFieldWrap(s, 'body', { x: 7, y: 20, w: bodyWidth }, editable, bodyInner)}
                 ${bottomBar}
             </div>`;
+        }
+
+        let _slideDrag = null;
+        function startSlideFieldDrag(e, slideId, key) {
+            e.preventDefault();
+            e.stopPropagation();
+            const wrap = e.currentTarget.closest('.slide-drag-wrap');
+            const container = e.currentTarget.closest('.slide-canvas-box');
+            if (!wrap || !container) return;
+            const containerRect = container.getBoundingClientRect();
+            const wrapRect = wrap.getBoundingClientRect();
+            e.currentTarget.classList.add('dragging');
+            _slideDrag = {
+                slideId, key, wrap, containerRect,
+                offsetX: e.clientX - wrapRect.left,
+                offsetY: e.clientY - wrapRect.top,
+                handle: e.currentTarget
+            };
+            document.addEventListener('pointermove', onSlideFieldDragMove);
+            document.addEventListener('pointerup', onSlideFieldDragEnd);
+        }
+        function onSlideFieldDragMove(e) {
+            if (!_slideDrag) return;
+            const { wrap, containerRect, offsetX, offsetY } = _slideDrag;
+            const x = Math.max(0, Math.min(94, ((e.clientX - containerRect.left - offsetX) / containerRect.width) * 100));
+            const y = Math.max(0, Math.min(94, ((e.clientY - containerRect.top - offsetY) / containerRect.height) * 100));
+            wrap.style.left = x + '%';
+            wrap.style.top = y + '%';
+            _slideDrag.lastX = x;
+            _slideDrag.lastY = y;
+        }
+        function onSlideFieldDragEnd() {
+            document.removeEventListener('pointermove', onSlideFieldDragMove);
+            document.removeEventListener('pointerup', onSlideFieldDragEnd);
+            if (!_slideDrag) return;
+            const { slideId, key, lastX, lastY, handle } = _slideDrag;
+            if (handle) handle.classList.remove('dragging');
+            if (lastX !== undefined) {
+                const s = state.slides.find(x => x.id === slideId);
+                if (s) {
+                    if (!s.pos) s.pos = {};
+                    s.pos[key] = { x: lastX, y: lastY };
+                    saveSlidesState();
+                }
+            }
+            _slideDrag = null;
+            renderSlidesTab();
         }
 
         function setSlideColor(color) {
@@ -2535,6 +2616,11 @@
         }
 
         function addSlide(type) {
+            // Toda apresentação tem que nascer com uma capa, igual ao padrão gerado pela IA —
+            // se o usuário monta o primeiro slide manualmente, garantimos a capa antes dele.
+            if (state.slides.length === 0 && type !== 'cover') {
+                state.slides.push(newSlideObj('cover'));
+            }
             const s = newSlideObj(type || 'content');
             const idx = state.slides.findIndex(x => x.id === state.activeSlideId);
             if (idx === -1) state.slides.push(s);
@@ -2682,6 +2768,13 @@ O campo "body" deve ser texto simples curto (pode usar quebras de linha com \\n 
             const theme = SLIDE_THEMES[state.slideTheme];
             const pptx = new PptxGenJS();
             pptx.layout = 'LAYOUT_16x9';
+            const PW = 10, PH = 5.63;
+            // Converte a posição em % (a mesma usada no editor e no PDF) pra polegadas do pptx,
+            // assim o slide exportado fica fiel ao que a pessoa arrastou na tela.
+            const toIn = (s, key, def) => {
+                const pos = slideFieldPos(s, key, def);
+                return { x: (pos.x / 100) * PW, y: (pos.y / 100) * PH, w: (pos.w / 100) * PW };
+            };
 
             state.slides.forEach(s => {
                 const slide = pptx.addSlide();
@@ -2694,22 +2787,31 @@ O campo "body" deve ser texto simples curto (pode usar quebras de linha com \\n 
                     }
                 }
 
-                if (s.image) slide.addImage({ data: s.image, x: 6.4, y: 0.4, w: 3.0, h: 2.1, sizing: { type: 'contain', w: 3.0, h: 2.1 } });
+                if (s.image) {
+                    const ip = toIn(s, 'image', { x: 62, y: 6, w: 32 });
+                    slide.addImage({ data: s.image, x: ip.x, y: ip.y, w: ip.w, h: ip.w * 0.7, sizing: { type: 'contain', w: ip.w, h: ip.w * 0.7 } });
+                }
 
                 if (s.type === 'cover') {
                     if (state.slideLogoBase64) slide.addImage({ data: state.slideLogoBase64, x: 0.4, y: 0.3, w: 1.3, h: 0.5, sizing: { type: 'contain', w: 1.3, h: 0.5 } });
-                    slide.addText(s.heading || '', { x: 0.5, y: 2.1, w: 9, h: 1.4, align: 'center', bold: true, fontSize: 28, color: theme.accent.replace('#', ''), fontFace: 'Times New Roman' });
-                    slide.addText(`DISCENTES:\n${s.students || ''}`, { x: 0.5, y: 4.4, w: 4, h: 0.9, fontSize: 10, color: theme.text.replace('#', ''), fontFace: 'Times New Roman' });
-                    slide.addText(`DOCENTE:\n${s.professor || ''}`, { x: 5.5, y: 4.4, w: 4, h: 0.9, align: 'right', fontSize: 10, color: theme.text.replace('#', ''), fontFace: 'Times New Roman' });
+                    const hp = toIn(s, 'heading', { x: 10, y: 40, w: 80 });
+                    slide.addText(s.heading || '', { x: hp.x, y: hp.y, w: hp.w, h: 1.4, align: 'center', bold: true, fontSize: 28, color: theme.accent.replace('#', ''), fontFace: 'Times New Roman' });
+                    const sp = toIn(s, 'students', { x: 6, y: 80, w: 42 });
+                    slide.addText(`DISCENTES:\n${s.students || ''}`, { x: sp.x, y: sp.y, w: sp.w, h: 0.9, fontSize: 10, color: theme.text.replace('#', ''), fontFace: 'Times New Roman' });
+                    const pp = toIn(s, 'professor', { x: 52, y: 80, w: 42 });
+                    slide.addText(`DOCENTE:\n${s.professor || ''}`, { x: pp.x, y: pp.y, w: pp.w, h: 0.9, align: 'right', fontSize: 10, color: theme.text.replace('#', ''), fontFace: 'Times New Roman' });
                 } else if (s.type === 'closing') {
-                    slide.addText(s.heading || '', { x: 0.6, y: 2.0, w: 8.8, h: 1.5, align: 'center', valign: 'middle', bold: true, fontSize: 24, color: theme.accent.replace('#', ''), fontFace: 'Times New Roman' });
+                    const hp = toIn(s, 'heading', { x: 10, y: 40, w: 80 });
+                    slide.addText(s.heading || '', { x: hp.x, y: hp.y, w: hp.w, h: 1.5, align: 'center', valign: 'middle', bold: true, fontSize: 24, color: theme.accent.replace('#', ''), fontFace: 'Times New Roman' });
                 } else {
+                    const hp = toIn(s, 'heading', { x: 7, y: 6, w: 86 });
                     slide.addText(s.heading || '', {
-                        x: 0.6, y: 0.4, w: 8.8, h: 0.8, bold: true, fontSize: 20,
+                        x: hp.x, y: hp.y, w: hp.w, h: 0.8, bold: true, fontSize: 20,
                         align: s.type === 'conclusion' ? 'center' : 'left',
                         color: theme.accent.replace('#', ''), fontFace: 'Times New Roman'
                     });
-                    slide.addText(s.body || '', { x: 0.6, y: 1.3, w: s.image ? 5.6 : 8.8, h: 3.5, fontSize: 14, color: theme.text.replace('#', ''), fontFace: 'Times New Roman', valign: 'top' });
+                    const bp = toIn(s, 'body', { x: 7, y: 20, w: s.image ? 56 : 86 });
+                    slide.addText(s.body || '', { x: bp.x, y: bp.y, w: bp.w, h: 3.5, fontSize: 14, color: theme.text.replace('#', ''), fontFace: 'Times New Roman', valign: 'top' });
                 }
             });
 
@@ -3853,6 +3955,12 @@ O campo "body" deve ser texto simples curto (pode usar quebras de linha com \\n 
             clone.style.pointerEvents = 'none';
             clone.style.width = pageRect.width + 'px';
             clone.style.margin = '0';
+            // O clone original não carrega o fundo branco/texto preto da página (eles ficam
+            // em .a4-page, não em .apa-content), então fora da página ele ficava transparente
+            // sobre o vidro borrado — texto quase invisível. Forçamos aqui o mesmo fundo/cor
+            // sólidos da folha real para a lupa ficar legível.
+            clone.style.background = '#ffffff';
+            clone.style.color = '#000000';
 
             viewport.innerHTML = '';
             viewport.appendChild(clone);
