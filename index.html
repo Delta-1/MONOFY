@@ -794,7 +794,7 @@
                     <button id="btn-generate" onclick="generateDocument()" class="w-full bg-slate-900 dark:bg-primary-600 hover:bg-slate-800 dark:hover:bg-primary-700 text-white font-extrabold py-4 rounded-xl transition-all flex items-center justify-center gap-2 shadow-xl hover:shadow-2xl hover:-translate-y-1 disabled:opacity-50 disabled:transform-none">
                         <i data-lucide="wand-2" id="icon-generate" class="w-5 h-5"></i>
                         <i data-lucide="loader-2" id="icon-loading" class="w-5 h-5 animate-spin hidden-state"></i>
-                        <span id="text-generate">Redigir Monografia</span>
+                        <span id="text-generate">Redigir Trabalho</span>
                     </button>
                 </div>
             </div>
@@ -3217,15 +3217,24 @@ O campo "body" deve ser texto simples curto (pode usar quebras de linha com \\n 
 
         async function generateDocument() {
             const rawText = document.getElementById('raw-text').value.trim();
-            if (!rawText && !state.uploadedContextText) { showError('Forneça texto ou ficheiros base.'); return; }
+            const hasChatContent = state.assistantChatMessages.some(m => m.role !== 'error');
+            if (!rawText && !state.uploadedContextText && !hasChatContent) { showError('Forneça texto, arquivos base, ou converse com o Assistente antes de gerar.'); return; }
 
             if (state.isDemo) { alert('Modo demonstração: geração com IA desativada. Crie uma conta para usar de verdade.'); return; }
             if (!state.profile) { alert('Aguarde o carregamento do seu perfil.'); return; }
 
-            const totalCost = AI_COST_PER_SECTION * DOC_SECTION_PLAN.length;
+            // Se o título ainda está vazio/padrão mas o usuário já discutiu o tema com o
+            // Assistente, a IA define o título a partir dessa conversa antes de redigir —
+            // assim a pessoa não precisa preencher a capa manualmente depois de já ter
+            // negociado o tema/título no chat.
+            const titleEl = document.getElementById('in-title');
+            const titleField = COVER_GUIDED_FIELDS.find(f => f.id === 'in-title');
+            const titleNeedsAI = hasChatContent && (!titleEl.value.trim() || titleEl.value.trim() === titleField.default);
+
+            const totalCost = AI_COST_PER_SECTION * DOC_SECTION_PLAN.length + (titleNeedsAI ? AI_COST_PER_PAGE : 0);
             const confirmed = await showConfirmModal(
-                'Gerar monografia com IA',
-                `A IA vai redigir o documento seção por seção (Resumo, Introdução, Marco Teórico, Conclusão e Referências). Isso consome até <b>${totalCost} créditos</b> no total — cada seção só é cobrada depois de gerada com sucesso — do seu saldo atual de <b>${state.profile.credits}</b>. Continuar?`
+                'Gerar trabalho com IA',
+                `A IA vai redigir o documento seção por seção (Resumo, Introdução, Marco Teórico, Conclusão e Referências)${titleNeedsAI ? ', e antes disso vai definir o título com base na sua conversa com o Assistente' : ''}. Isso consome até <b>${totalCost} créditos</b> no total — cada parte só é cobrada depois de gerada com sucesso — do seu saldo atual de <b>${state.profile.credits}</b>. Continuar?`
             );
             if (!confirmed) return;
 
@@ -3235,13 +3244,42 @@ O campo "body" deve ser texto simples curto (pode usar quebras de linha com \\n 
             document.getElementById('icon-loading').classList.remove('hidden-state');
             btnGenerate.disabled = true;
 
+            if (titleNeedsAI) {
+                textEl.innerText = 'Definindo título...';
+                try {
+                    const chatHistoryForTitle = state.assistantChatMessages
+                        .filter(m => m.role !== 'error')
+                        .map(m => `${m.role === 'user' ? 'Usuário' : 'Assistente'}: ${m.text}`)
+                        .join('\n');
+                    const titlePrompt = `Com base na conversa abaixo entre um estudante e um assistente sobre o tema do trabalho académico dele, defina um título académico claro e específico para o trabalho, em ${state.docLanguage}.
+
+CONVERSA:
+${chatHistoryForTitle}
+
+NOTAS ADICIONAIS DO USUÁRIO (se houver):
+${rawText}
+
+Responda APENAS com o título, sem aspas, sem explicações, em uma única linha.`;
+                    const aiTitle = await callAI(titlePrompt, AI_COST_PER_PAGE, 'ai_extract_title_from_chat');
+                    const cleanTitle = aiTitle.replace(/^["“”'\s]+|["“”'\s]+$/g, '');
+                    if (cleanTitle) {
+                        titleEl.value = cleanTitle;
+                        updateCoverPage();
+                    }
+                } catch (err) {
+                    console.error(err);
+                    // Se a definição do título falhar, segue com o que já estava no campo —
+                    // não trava a geração do trabalho por causa disso.
+                }
+            }
+
             const activeTpl = getActiveNormTemplate();
             const citStyle = state.citationStyle;
             const refRulesByStyle = citStyle === 'ABNT'
                 ? `Genera una lista bibliográfica en NORMAS ABNT (NBR 6023). Formato: SOBRENOME, Nome. Título: subtítulo. Edición. Local: Editora, Año. Las citas en el texto deben ser (SOBRENOME, año).`
                 : `Genera una lista bibliográfica APA 7 válida. Formato: Autor, A. (Año). Título. Fuente/Editorial. Las citas en el texto deben ser (Autor, año).`;
 
-            const docTitle = document.getElementById('in-title').value;
+            const docTitle = titleEl.value;
             state.generatedSections = [];
             document.getElementById('btn-export-word').disabled = true;
             document.getElementById('btn-export-pdf').disabled = true;
@@ -3323,12 +3361,12 @@ O campo "body" deve ser texto simples curto (pode usar quebras de linha com \\n 
             }
 
             if (failedSection) {
-                showError(`A seção "${failedSection}" falhou e a geração foi interrompida (nenhum crédito foi cobrado por ela). As seções já geradas com sucesso continuam no documento — você pode exportá-las ou completá-las manualmente, ou clicar em "Redigir Monografia" de novo para gerar tudo desde o início.`);
+                showError(`A seção "${failedSection}" falhou e a geração foi interrompida (nenhum crédito foi cobrado por ela). As seções já geradas com sucesso continuam no documento — você pode exportá-las ou completá-las manualmente, ou clicar em "Redigir Trabalho" de novo para gerar tudo desde o início.`);
             }
 
             document.getElementById('icon-generate').classList.remove('hidden-state');
             document.getElementById('icon-loading').classList.add('hidden-state');
-            textEl.innerText = 'Redigir Monografia';
+            textEl.innerText = 'Redigir Trabalho';
             btnGenerate.disabled = false;
         }
 
@@ -4295,7 +4333,7 @@ O campo "body" deve ser texto simples curto (pode usar quebras de linha com \\n 
                     return;
                 }
                 box.innerHTML = `<div class="bg-purple-50 dark:bg-purple-900/20 p-4 rounded-2xl border border-purple-100 dark:border-purple-900/30">
-                    <p class="text-sm text-purple-800 dark:text-purple-300 leading-relaxed font-medium">Olá! Antes de gerar, me conte o que você quer: o foco do tema, o tom de escrita, algo que não pode faltar... Quando estiver pronto, clique em "Redigir Monografia".</p>
+                    <p class="text-sm text-purple-800 dark:text-purple-300 leading-relaxed font-medium">Olá! Antes de gerar, me conte o que você quer: o foco do tema, o tom de escrita, algo que não pode faltar... Quando estiver pronto, clique em "Redigir Trabalho" — se você não tiver preenchido o título ainda, eu defino com base nessa conversa.</p>
                 </div>`;
                 return;
             }
