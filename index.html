@@ -999,7 +999,7 @@
                     </button>
 
                     <button onclick="generateSlidesWithAI()" id="btn-generate-slides-ai" type="button" class="flex items-center gap-1.5 px-4 py-1.5 text-xs font-bold rounded-full bg-indigo-600 hover:bg-indigo-700 text-white shadow">
-                        <i data-lucide="sparkles" class="w-3.5 h-3.5"></i> Gerar com IA (<span id="slides-ai-cost-label">${AI_COST_SLIDES}</span> créditos)
+                        <i data-lucide="sparkles" class="w-3.5 h-3.5"></i> Gerar com IA (<span id="slides-ai-cost-label">30</span> créditos)
                     </button>
 
                     <div class="relative" id="slides-export-wrap">
@@ -1031,6 +1031,17 @@
                             <button onclick="moveSlide(1)" type="button" class="p-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700"><i data-lucide="arrow-down" class="w-3.5 h-3.5"></i></button>
                             <button onclick="duplicateSlide()" type="button" class="p-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700"><i data-lucide="copy" class="w-3.5 h-3.5"></i></button>
                             <button onclick="deleteSlide()" type="button" class="p-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-red-50 dark:hover:bg-red-900/30 hover:text-red-500"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>
+                            <div class="w-px h-6 bg-slate-300 dark:bg-slate-600 mx-1"></div>
+                            <label title="Cor de fundo deste slide" class="p-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer flex items-center justify-center">
+                                <i data-lucide="palette" class="w-3.5 h-3.5"></i>
+                                <input type="color" id="slide-color-input" class="w-0 h-0 opacity-0 absolute" onchange="setSlideColor(this.value)">
+                            </label>
+                            <button onclick="resetSlideColor()" title="Restaurar cor do tema" type="button" class="p-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700"><i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i></button>
+                            <label title="Adicionar imagem a este slide" class="p-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer flex items-center justify-center">
+                                <i data-lucide="image-plus" class="w-3.5 h-3.5"></i>
+                                <input type="file" accept="image/*" class="hidden" onchange="uploadSlideImage(event)">
+                            </label>
+                            <button onclick="removeSlideImage()" title="Remover imagem deste slide" type="button" class="p-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-red-50 dark:hover:bg-red-900/30 hover:text-red-500"><i data-lucide="image-off" class="w-3.5 h-3.5"></i></button>
                             <span class="ml-2">Clique no título ou no texto do slide para editar diretamente.</span>
                         </div>
                     </div>
@@ -2378,6 +2389,9 @@
 
         function renderSlidesTab() {
             renderSlideThemePicker();
+            const costLabel = document.getElementById('slides-ai-cost-label');
+            if (costLabel) costLabel.textContent = AI_COST_SLIDES;
+
             const hasSlides = state.slides.length > 0;
             document.getElementById('slides-empty-state').classList.toggle('hidden-state', hasSlides);
             document.getElementById('slides-editor-body').classList.toggle('hidden-state', !hasSlides);
@@ -2390,15 +2404,25 @@
             const theme = SLIDE_THEMES[state.slideTheme];
             const thumbList = document.getElementById('slides-thumb-list');
             thumbList.innerHTML = state.slides.map((s, i) => `
-                <div onclick="selectSlide('${s.id}')" class="shrink-0 w-28 lg:w-full cursor-pointer rounded-lg overflow-hidden border-2 ${s.id === state.activeSlideId ? 'border-indigo-500' : 'border-transparent'} shadow bg-white">
-                    <div style="width:100%; aspect-ratio:16/9; overflow:hidden; position:relative;">
-                        <div style="width:400px; height:225px; transform:scale(0.28); transform-origin: top left; pointer-events:none;">
+                <div onclick="selectSlide('${s.id}')" class="slide-thumb shrink-0 w-28 lg:w-full cursor-pointer rounded-lg overflow-hidden border-2 ${s.id === state.activeSlideId ? 'border-indigo-500' : 'border-transparent'} shadow bg-white">
+                    <div class="slide-thumb-frame" style="width:100%; aspect-ratio:16/9; overflow:hidden; position:relative;">
+                        <div class="slide-thumb-inner" style="width:400px; height:225px; transform-origin: top left; pointer-events:none;">
                             ${renderSlideMarkup(s, theme, false)}
                         </div>
                     </div>
                     <div class="text-[10px] text-center py-0.5 bg-slate-700 text-white font-semibold">${i + 1}</div>
                 </div>
             `).join('');
+            // O scale fixo anterior assumia uma largura de miniatura específica; como o
+            // container muda de tamanho entre celular (w-28) e desktop (lg:w-full), o slide
+            // "vazava" pra fora da moldura. Aqui calculamos o scale real com base na largura
+            // que a miniatura de fato ocupa na tela.
+            requestAnimationFrame(() => {
+                thumbList.querySelectorAll('.slide-thumb-frame').forEach(frame => {
+                    const inner = frame.querySelector('.slide-thumb-inner');
+                    if (inner) inner.style.transform = `scale(${frame.clientWidth / 400})`;
+                });
+            });
 
             const active = state.slides.find(s => s.id === state.activeSlideId);
             document.getElementById('slide-canvas-wrap').innerHTML = `
@@ -2406,12 +2430,15 @@
                     ${renderSlideMarkup(active, theme, true)}
                 </div>
             `;
+            const colorInput = document.getElementById('slide-color-input');
+            if (colorInput) colorInput.value = (active && active.bgColor) || theme.bg;
             lucide.createIcons();
         }
 
         function renderSlideMarkup(s, theme, editable) {
             const ce = editable ? 'contenteditable="true"' : '';
             const editAttrs = editable ? `onblur="updateSlideField('${s.id}', this.dataset.field, this.innerText)"` : '';
+            const bg = s.bgColor || theme.bg;
             const logo = state.slideLogoBase64
                 ? `<img src="${state.slideLogoBase64}" style="max-height:36px; max-width:120px; object-fit:contain;">`
                 : `<span style="font-size:10px; opacity:.6; color:${theme.light};">SEU LOGO</span>`;
@@ -2419,10 +2446,12 @@
                 <i data-lucide="graduation-cap" style="width:55%; height:55%; color:${theme.accent};"></i>
             </div>`;
             const bottomBar = `<div style="position:absolute; left:0; right:0; bottom:0; height:11%; background:${theme.bar}; display:flex; align-items:center; justify-content:center;">${logo}</div>`;
+            const image = s.image ? `<img src="${s.image}" style="position:absolute; top:6%; right:6%; max-width:32%; max-height:42%; object-fit:contain; border-radius:6px; box-shadow:0 6px 16px -6px rgba(0,0,0,.35); z-index:1;">` : '';
 
             if (s.type === 'cover') {
-                return `<div style="position:relative; width:100%; height:100%; background:${theme.bg}; font-family:'Times New Roman', serif; padding:6%; box-sizing:border-box; display:flex; flex-direction:column; justify-content:space-between;">
+                return `<div style="position:relative; width:100%; height:100%; background:${bg}; font-family:'Times New Roman', serif; padding:6%; box-sizing:border-box; display:flex; flex-direction:column; justify-content:space-between;">
                     ${watermark}
+                    ${image}
                     <div style="position:relative; z-index:1;">${state.slideLogoBase64 ? `<img src="${state.slideLogoBase64}" style="max-height:34px; max-width:140px; object-fit:contain;">` : ''}</div>
                     <div style="position:relative; z-index:1; text-align:center;">
                         <div ${ce} ${editAttrs} data-field="heading" style="font-size:clamp(14px,3.4vw,30px); font-weight:800; color:${theme.accent}; outline:none;">${escapeHtml(s.heading || '')}</div>
@@ -2435,8 +2464,9 @@
             }
 
             if (s.type === 'closing') {
-                return `<div style="position:relative; width:100%; height:100%; background:${theme.bg}; font-family:'Times New Roman', serif; display:flex; align-items:center; justify-content:center; text-align:center; padding:8%; box-sizing:border-box;">
+                return `<div style="position:relative; width:100%; height:100%; background:${bg}; font-family:'Times New Roman', serif; display:flex; align-items:center; justify-content:center; text-align:center; padding:8%; box-sizing:border-box;">
                     ${watermark}
+                    ${image}
                     <div ${ce} ${editAttrs} data-field="heading" style="position:relative; z-index:1; font-size:clamp(14px,3vw,26px); font-weight:800; color:${theme.accent}; outline:none;">${escapeHtml(s.heading || '')}</div>
                     ${bottomBar}
                 </div>`;
@@ -2444,12 +2474,52 @@
 
             // content / conclusion / references
             const headingAlign = s.type === 'conclusion' ? 'center' : 'left';
-            return `<div style="position:relative; width:100%; height:100%; background:${theme.bg}; font-family:'Times New Roman', serif; padding:6% 7% 14% 7%; box-sizing:border-box; overflow:hidden;">
+            return `<div style="position:relative; width:100%; height:100%; background:${bg}; font-family:'Times New Roman', serif; padding:6% 7% 14% 7%; box-sizing:border-box; overflow:hidden;">
                 ${watermark}
+                ${image}
                 <div ${ce} ${editAttrs} data-field="heading" style="position:relative; z-index:1; text-align:${headingAlign}; font-size:clamp(13px,2.6vw,22px); font-weight:800; ${s.type === 'conclusion' ? 'text-transform:uppercase;' : ''} color:${theme.accent}; outline:none; margin-bottom:3%;">${escapeHtml(s.heading || '')}</div>
-                <div ${ce} ${editAttrs} data-field="body" style="position:relative; z-index:1; font-size:clamp(9px,1.5vw,13px); line-height:1.4; color:${theme.text}; outline:none; white-space:pre-wrap;">${escapeHtml(s.body || '')}</div>
+                <div ${ce} ${editAttrs} data-field="body" style="position:relative; z-index:1; font-size:clamp(9px,1.5vw,13px); line-height:1.4; color:${theme.text}; outline:none; white-space:pre-wrap; ${s.image ? 'width:64%;' : ''}">${escapeHtml(s.body || '')}</div>
                 ${bottomBar}
             </div>`;
+        }
+
+        function setSlideColor(color) {
+            const active = state.slides.find(x => x.id === state.activeSlideId);
+            if (!active) return;
+            active.bgColor = color;
+            saveSlidesState();
+            renderSlidesTab();
+        }
+
+        function resetSlideColor() {
+            const active = state.slides.find(x => x.id === state.activeSlideId);
+            if (!active) return;
+            delete active.bgColor;
+            saveSlidesState();
+            renderSlidesTab();
+        }
+
+        function uploadSlideImage(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const active = state.slides.find(x => x.id === state.activeSlideId);
+            if (!active) return;
+            const reader = new FileReader();
+            reader.onload = (evt) => {
+                active.image = evt.target.result;
+                saveSlidesState();
+                renderSlidesTab();
+            };
+            reader.readAsDataURL(file);
+            event.target.value = '';
+        }
+
+        function removeSlideImage() {
+            const active = state.slides.find(x => x.id === state.activeSlideId);
+            if (!active) return;
+            delete active.image;
+            saveSlidesState();
+            renderSlidesTab();
         }
 
         function updateSlideField(slideId, field, value) {
@@ -2505,6 +2575,28 @@
             renderSlidesTab();
         }
 
+        function sanitizeJsonControlChars(text) {
+            let result = '';
+            let inString = false;
+            let escaped = false;
+            for (let i = 0; i < text.length; i++) {
+                const ch = text[i];
+                if (inString) {
+                    if (escaped) { result += ch; escaped = false; continue; }
+                    if (ch === '\\') { result += ch; escaped = true; continue; }
+                    if (ch === '"') { inString = false; result += ch; continue; }
+                    if (ch === '\n') { result += '\\n'; continue; }
+                    if (ch === '\r') { continue; }
+                    if (ch === '\t') { result += '\\t'; continue; }
+                    result += ch;
+                } else {
+                    if (ch === '"') { inString = true; }
+                    result += ch;
+                }
+            }
+            return result;
+        }
+
         function stripHtmlToText(html) {
             const d = document.createElement('div');
             d.innerHTML = html || '';
@@ -2552,7 +2644,16 @@ O campo "body" deve ser texto simples curto (pode usar quebras de linha com \\n 
                 const firstBracket = jsonText.indexOf('[');
                 const lastBracket = jsonText.lastIndexOf(']');
                 if (firstBracket !== -1 && lastBracket !== -1) jsonText = jsonText.substring(firstBracket, lastBracket + 1);
-                const parsed = JSON.parse(jsonText);
+                let parsed;
+                try {
+                    parsed = JSON.parse(jsonText);
+                } catch (parseErr) {
+                    // A IA às vezes devolve quebras de linha "cruas" dentro dos textos em vez de
+                    // \n escapado, o que invalida o JSON mesmo a chamada à IA tendo funcionado
+                    // perfeitamente — por isso o botão "parecia" não fazer nada. Tenta corrigir
+                    // antes de desistir.
+                    parsed = JSON.parse(sanitizeJsonControlChars(jsonText));
+                }
 
                 state.slides = parsed.map(p => ({
                     id: `slide-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
@@ -2584,7 +2685,7 @@ O campo "body" deve ser texto simples curto (pode usar quebras de linha com \\n 
 
             state.slides.forEach(s => {
                 const slide = pptx.addSlide();
-                slide.background = { color: theme.bg.replace('#', '') };
+                slide.background = { color: (s.bgColor || theme.bg).replace('#', '') };
 
                 if (s.type !== 'cover') {
                     slide.addShape(pptx.ShapeType.rect, { x: 0, y: 5.0, w: 10, h: 0.63, fill: { color: theme.bar.replace('#', '') } });
@@ -2592,6 +2693,8 @@ O campo "body" deve ser texto simples curto (pode usar quebras de linha com \\n 
                         slide.addImage({ data: state.slideLogoBase64, x: 4.3, y: 5.07, w: 1.4, h: 0.5, sizing: { type: 'contain', w: 1.4, h: 0.5 } });
                     }
                 }
+
+                if (s.image) slide.addImage({ data: s.image, x: 6.4, y: 0.4, w: 3.0, h: 2.1, sizing: { type: 'contain', w: 3.0, h: 2.1 } });
 
                 if (s.type === 'cover') {
                     if (state.slideLogoBase64) slide.addImage({ data: state.slideLogoBase64, x: 0.4, y: 0.3, w: 1.3, h: 0.5, sizing: { type: 'contain', w: 1.3, h: 0.5 } });
@@ -2606,7 +2709,7 @@ O campo "body" deve ser texto simples curto (pode usar quebras de linha com \\n 
                         align: s.type === 'conclusion' ? 'center' : 'left',
                         color: theme.accent.replace('#', ''), fontFace: 'Times New Roman'
                     });
-                    slide.addText(s.body || '', { x: 0.6, y: 1.3, w: 8.8, h: 3.5, fontSize: 14, color: theme.text.replace('#', ''), fontFace: 'Times New Roman', valign: 'top' });
+                    slide.addText(s.body || '', { x: 0.6, y: 1.3, w: s.image ? 5.6 : 8.8, h: 3.5, fontSize: 14, color: theme.text.replace('#', ''), fontFace: 'Times New Roman', valign: 'top' });
                 }
             });
 
