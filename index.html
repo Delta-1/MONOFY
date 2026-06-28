@@ -3385,17 +3385,26 @@ Responda APENAS com o título, sem aspas, sem explicações, em uma única linha
             state.generatedSections.forEach(sec => {
                 tocHtml += `<li class="toc-item"><span class="toc-title">${sec.title}</span><span class="toc-dots"></span><span class="toc-page">${currentPage}</span></li>`;
 
-                // Lista também os subtítulos (H2/H3) inseridos dentro do conteúdo da seção
+                // Lista também os subtítulos (H2/H3) inseridos dentro do conteúdo da seção.
+                // Antes, todo título dentro da mesma seção recebia o número da página inicial
+                // da seção (por isso "Marco Teórico" e todos os seus subtítulos apareciam com
+                // o mesmo número) — agora soma as palavras que vêm ANTES de cada título pra
+                // estimar em qual página real, dentro da seção, ele efetivamente cai.
                 const temp = document.createElement('div');
                 temp.innerHTML = sec.content;
-                temp.querySelectorAll('h2, h3').forEach(heading => {
-                    const indent = heading.tagName === 'H3' ? '2.5cm' : '1.27cm';
-                    tocHtml += `<li class="toc-item" style="padding-left:${indent};"><span class="toc-title">${heading.innerText}</span><span class="toc-dots"></span><span class="toc-page">${currentPage}</span></li>`;
+                let wordsSoFar = 0;
+                Array.from(temp.children).forEach(node => {
+                    if (node.tagName === 'H2' || node.tagName === 'H3') {
+                        const indent = node.tagName === 'H3' ? '2.5cm' : '1.27cm';
+                        const headingPage = currentPage + Math.floor(wordsSoFar / 280);
+                        tocHtml += `<li class="toc-item" style="padding-left:${indent};"><span class="toc-title">${node.innerText}</span><span class="toc-dots"></span><span class="toc-page">${headingPage}</span></li>`;
+                    }
+                    const text = (node.innerText || node.textContent || '').trim();
+                    wordsSoFar += text ? text.split(/\s+/).length : 0;
                 });
 
                 // Cálculo APA real de páginas (~250 a 300 palavras por pág com interlineado duplo)
-                const words = sec.content.replace(/<[^>]*>?/gm, '').split(/\s+/).length;
-                currentPage += Math.max(1, Math.ceil(words / 280));
+                currentPage += Math.max(1, Math.ceil(wordsSoFar / 280));
             });
 
             tocHtml += `</ul></div>`;
