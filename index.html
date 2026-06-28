@@ -268,6 +268,18 @@
         #main-dock-zone:hover, #main-dock-zone:focus-within { opacity: 1; }
         @media (pointer: coarse) { #main-dock-zone { opacity: 0.55; } }
 
+        /* Indicador de página, botão de margens e painel de zoom: ficam só meio
+           apagados por padrão (nunca somem de vez, igual ao dock de baixo) e voltam
+           a ficar nítidos no hover. O indicador de página também "acende" sozinho
+           por um instante via JS (.page-tracker-flash) sempre que o número da página muda. */
+        #page-tracker, #btn-margin-toggle, #zoom-panel { opacity: 0.35; transition: opacity 0.4s ease; }
+        #page-tracker:hover, #btn-margin-toggle:hover, #zoom-panel:hover,
+        #btn-margin-toggle:focus-within, #zoom-panel:focus-within { opacity: 1; }
+        #page-tracker.float-ctrl-flash, #btn-margin-toggle.float-ctrl-flash, #zoom-panel.float-ctrl-flash { opacity: 1; }
+        @media (pointer: coarse) {
+            #page-tracker, #btn-margin-toggle, #zoom-panel { opacity: 0.55; }
+        }
+
         /* No celular a fileira de botões (Dados...Estúdio...Assistente) era mais larga que a tela
            e os botões das pontas (Dados/Assistente) ficavam cortados fora da viewport. Encolhe
            tudo (botões, espaçamento, divisórias) só nessa faixa de tela pra caber sem cortar. */
@@ -434,7 +446,7 @@
                 </div>
 
                 <!-- Botão Flutuante Margens -->
-                <button onclick="toggleMarginSettings()" class="p-3 bg-white/90 dark:bg-slate-850/90 backdrop-blur shadow-xl rounded-2xl border border-slate-200/50 dark:border-slate-700/50 text-slate-600 dark:text-slate-300 hover:text-primary-600 dark:hover:text-primary-400 transition-colors group relative">
+                <button id="btn-margin-toggle" onclick="toggleMarginSettings()" class="p-3 bg-white/90 dark:bg-slate-850/90 backdrop-blur shadow-xl rounded-2xl border border-slate-200/50 dark:border-slate-700/50 text-slate-600 dark:text-slate-300 hover:text-primary-600 dark:hover:text-primary-400 transition-colors group relative">
                     <i data-lucide="ruler"></i>
                     <span class="absolute right-full mr-3 top-1/2 -translate-y-1/2 bg-slate-800 text-white text-xs px-2 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition whitespace-nowrap pointer-events-none">Ajustar Margens</span>
                 </button>
@@ -466,7 +478,7 @@
                 </div>
 
                 <!-- Painel de Zoom Visível -->
-                <div class="flex flex-col items-center bg-white/90 dark:bg-slate-850/90 backdrop-blur shadow-xl rounded-2xl border border-slate-200/50 dark:border-slate-700/50 overflow-hidden">
+                <div id="zoom-panel" class="flex flex-col items-center bg-white/90 dark:bg-slate-850/90 backdrop-blur shadow-xl rounded-2xl border border-slate-200/50 dark:border-slate-700/50 overflow-hidden">
                     <button onclick="changeZoom(0.1)" class="p-3 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors" title="Zoom In"><i data-lucide="zoom-in" class="w-4 h-4"></i></button>
                     <span id="zoom-level-text" class="text-xs font-bold py-1 w-full text-center text-slate-600 dark:text-slate-400">100%</span>
                     <button onclick="changeZoom(-0.1)" class="p-3 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors" title="Zoom Out"><i data-lucide="zoom-out" class="w-4 h-4"></i></button>
@@ -1378,14 +1390,17 @@
         // ==========================================
         function toggleMarginSettings() {
             const panel = document.getElementById('margin-settings-panel');
+            const btn = document.getElementById('btn-margin-toggle');
             if(panel.classList.contains('hidden-state')) {
                 panel.classList.remove('hidden-state');
+                btn.classList.add('float-ctrl-flash');
                 ['mt', 'mb', 'ml', 'mr'].forEach(side => {
                     document.getElementById(`val-${side}`).value = state.margins[side];
                     document.getElementById(`sl-${side}`).value = state.margins[side];
                 });
             } else {
                 panel.classList.add('hidden-state');
+                btn.classList.remove('float-ctrl-flash');
             }
         }
 
@@ -1728,10 +1743,16 @@
             setZoom(currentZoom + delta);
         }
 
+        let _zoomFlashTimer = null;
         function setZoom(val) {
-            currentZoom = Math.max(0.4, Math.min(val, 3)); 
+            currentZoom = Math.max(0.4, Math.min(val, 3));
             document.documentElement.style.setProperty('--doc-zoom', currentZoom);
             document.getElementById('zoom-level-text').innerText = Math.round(currentZoom * 100) + '%';
+
+            const panel = document.getElementById('zoom-panel');
+            panel.classList.add('float-ctrl-flash');
+            clearTimeout(_zoomFlashTimer);
+            _zoomFlashTimer = setTimeout(() => panel.classList.remove('float-ctrl-flash'), 1200);
         }
 
         function initPinchZoom() {
@@ -1793,25 +1814,35 @@
             setTimeout(updatePageTrackerDisplay, 500); 
         }
 
+        let _pageTrackerFlashTimer = null;
+        let _lastTrackedPage = null;
         function updatePageTrackerDisplay() {
             const pages = document.querySelectorAll('.a4-page');
             let currentPage = 1;
             let minDistance = Infinity;
-            
+
             pages.forEach((page, index) => {
                 const rect = page.getBoundingClientRect();
-                const distance = Math.abs(rect.top - (window.innerHeight / 3)); 
+                const distance = Math.abs(rect.top - (window.innerHeight / 3));
                 if (distance < minDistance) {
                     minDistance = distance;
                     currentPage = index + 1;
                 }
             });
-            
+
             const curEl = document.getElementById('current-page-num');
             const totEl = document.getElementById('total-pages-num');
             if(curEl && totEl) {
                 curEl.innerText = currentPage;
                 totEl.innerText = pages.length;
+            }
+
+            if (currentPage !== _lastTrackedPage) {
+                _lastTrackedPage = currentPage;
+                const tracker = document.getElementById('page-tracker');
+                tracker.classList.add('float-ctrl-flash');
+                clearTimeout(_pageTrackerFlashTimer);
+                _pageTrackerFlashTimer = setTimeout(() => tracker.classList.remove('float-ctrl-flash'), 1200);
             }
         }
 
