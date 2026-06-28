@@ -986,8 +986,12 @@
         <!-- Tab: Slides (editor estilo Canva, gerado a partir da monografia) -->
         <div id="tab-slides" class="hidden-state absolute inset-0 z-40 bg-slate-100/95 dark:bg-slate-900/95 backdrop-blur-2xl overflow-y-auto pt-6 pb-32 px-3 lg:px-6 custom-scrollbar">
             <div class="max-w-7xl mx-auto">
-                <!-- Barra superior: temas, logo, gerar IA, exportar -->
-                <div class="bg-white/80 dark:bg-slate-850/80 backdrop-blur rounded-2xl shadow border border-white/40 dark:border-slate-700 p-3 lg:p-4 mb-4 flex flex-wrap items-center gap-3">
+                <!-- Barra superior: temas, logo, gerar IA, exportar.
+                     Precisa de "relative z-20": o backdrop-blur cria um stacking context próprio,
+                     então sem um z-index explícito aqui o menu "Exportar" (z-50, mas só dentro
+                     desse contexto) acabava pintado atrás do canvas do slide, que vem depois no
+                     HTML e também não tinha z-index. -->
+                <div class="relative z-20 bg-white/80 dark:bg-slate-850/80 backdrop-blur rounded-2xl shadow border border-white/40 dark:border-slate-700 p-3 lg:p-4 mb-4 flex flex-wrap items-center gap-3">
                     <div class="flex items-center gap-2">
                         <i data-lucide="presentation" class="w-5 h-5 text-indigo-600 dark:text-indigo-400"></i>
                         <h2 class="font-extrabold text-slate-800 dark:text-white text-sm lg:text-base">Slides da Apresentação</h2>
@@ -2893,6 +2897,15 @@ O campo "body" deve ser texto simples curto (pode usar quebras de linha com \\n 
             } else if (tabId === 'slides') {
                 document.getElementById('tab-slides').classList.remove('hidden-state');
                 renderSlidesTab();
+            }
+
+            // O botão flutuante do Modo Assistente (canto inferior direito) só faz sentido
+            // no Estúdio, onde ele autocompleta o texto da monografia. Nas outras abas
+            // (Slides etc.) ele não tinha nenhuma ação visível, então fica escondido lá.
+            const assistantBtn = document.getElementById('btn-assistant-mode');
+            if (assistantBtn) assistantBtn.classList.toggle('hidden-state', tabId !== 'generator');
+            if (tabId !== 'generator') {
+                document.getElementById('panel-assistant').classList.add('hidden-state');
             }
         }
 
