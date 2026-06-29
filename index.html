@@ -1348,6 +1348,14 @@
             if(state.logoBase64 && state.logoBase64.startsWith('data:')) { setCustomLogo(state.logoBase64); }
             
             renderHistory();
+            // Antes, atualizar a página perdia o trabalho em andamento no editor — só a
+            // lista do histórico ficava salva, e a pessoa tinha que lembrar de ir até a
+            // aba Histórico e clicar em "Abrir e Editar". Agora o documento mais recente é
+            // restaurado automaticamente (sem trocar de aba, pra não tirar quem ainda está
+            // na tela de login/onboarding do lugar onde estava).
+            if (state.history.length > 0 && state.history[0].sections && state.history[0].sections.length > 0) {
+                applyDocumentState(state.history[0]);
+            }
             applyNormTemplate(getActiveNormTemplate());
             applyCoverFrameToCSS();
             updateCoverFrameButtonTooltip();
@@ -3785,6 +3793,7 @@ Responda APENAS com o título, sem aspas, sem explicações, em uma única linha
             if (state.history.length > 0) {
                 state.history[0].sections = state.generatedSections;
                 state.history[0].references = state.references;
+                state.history[0].cover = captureCoverFields();
                 localStorage.setItem('monografia_history', JSON.stringify(state.history));
             }
         }
@@ -4217,6 +4226,7 @@ Responda APENAS com o título, sem aspas, sem explicações, em uma única linha
                 state.history[0].references = state.references;
                 state.history[0].title = title;
                 state.history[0].watermarkRemoved = state.currentDocWatermarkRemoved;
+                state.history[0].cover = captureCoverFields();
                 localStorage.setItem('monografia_history', JSON.stringify(state.history));
             } else {
                 saveDocumentToHistory(title, state.generatedSections, state.references);
@@ -4593,6 +4603,20 @@ Responda APENAS com o título, sem aspas, sem explicações, em uma única linha
 
 
         // --- 7. HISTÓRICO ---
+        // Captura os campos da capa no mesmo formato (uni/fac/car/sub/stu/prof/city/year)
+        // que loadFromHistory espera ao restaurar — sem isso, "Abrir e Editar" não tinha
+        // de onde ler os dados da capa.
+        function captureCoverFields() {
+            const map = { uni: 'university', fac: 'faculty', car: 'career', sub: 'subject', stu: 'student', prof: 'professor' };
+            const cover = {};
+            ['uni', 'fac', 'car', 'sub', 'stu', 'prof', 'city', 'year'].forEach(f => {
+                const elemId = map[f] || f;
+                const el = document.getElementById(`in-${elemId}`);
+                cover[f] = el ? el.value : '';
+            });
+            return cover;
+        }
+
         function saveDocumentToHistory(title, sections, references) {
             state.history.unshift({
                 id: 'doc-' + Date.now(),
@@ -4600,6 +4624,7 @@ Responda APENAS com o título, sem aspas, sem explicações, em uma única linha
                 sections,
                 references: references || [],
                 logo: state.logoBase64,
+                cover: captureCoverFields(),
                 date: new Date().toLocaleString()
             });
             localStorage.setItem('monografia_history', JSON.stringify(state.history));
@@ -4638,20 +4663,22 @@ Responda APENAS com o título, sem aspas, sem explicações, em uma única linha
             }
         }
 
-        window.loadFromHistory = function(id) {
-            const doc = state.history.find(d => d.id === id);
-            if(!doc) return;
-            
+        // Restaura um documento do histórico para a tela de edição. Usado tanto pelo botão
+        // "Abrir e Editar" quanto pela restauração automática ao atualizar a página, por
+        // isso a troca de aba (switchTab) é opcional — no load automático não queremos
+        // tirar o usuário de onde ele estava (ex.: tela de login ainda nem carregou).
+        function applyDocumentState(doc) {
             document.getElementById('in-title').value = doc.title;
+            const cover = doc.cover || {};
             ['uni', 'fac', 'car', 'sub', 'stu', 'prof', 'city', 'year'].forEach(f => {
                 const map = {uni:'university', fac:'faculty', car:'career', sub:'subject', stu:'student', prof:'professor'};
                 const elemId = map[f] || f;
                 const el = document.getElementById(`in-${elemId}`);
-                if(el) el.value = doc.cover[f] || '';
+                if(el) el.value = cover[f] || '';
             });
-            
+
             if(doc.logo) setCustomLogo(doc.logo);
-            
+
             updateCoverPage();
             state.generatedSections = doc.sections;
             state.references = doc.references || [];
@@ -4663,6 +4690,12 @@ Responda APENAS com o título, sem aspas, sem explicações, em uma única linha
             document.getElementById('btn-export-word').disabled = false;
             document.getElementById('btn-export-pdf').disabled = false;
             document.getElementById('btn-export-txt').disabled = false;
+        }
+
+        window.loadFromHistory = function(id) {
+            const doc = state.history.find(d => d.id === id);
+            if(!doc) return;
+            applyDocumentState(doc);
             switchTab('generator');
         }
 
