@@ -922,8 +922,11 @@
             </div>
         </div>
 
-        <div id="main-dock-zone" class="fixed inset-x-0 bottom-0 h-28 lg:h-32 z-[60] hide-on-print flex items-end justify-center">
-            <div id="main-dock" class="mb-4 lg:mb-6 bg-white/80 dark:bg-slate-800/80 backdrop-blur-2xl shadow-[0_20px_40px_-10px_rgba(0,0,0,0.3)] rounded-full px-3 py-2 flex items-center gap-2 border border-white/50 dark:border-slate-700/50">
+        <!-- pointer-events-none na faixa inteira (que cobre toda a largura por causa do inset-x-0)
+             e pointer-events-auto só no pill visível: sem isso, a parte transparente da faixa
+             ficava acima (z-60) do badge do usuário/botão "Sair" (z-40) e bloqueava o clique. -->
+        <div id="main-dock-zone" class="fixed inset-x-0 bottom-0 h-28 lg:h-32 z-[60] hide-on-print flex items-end justify-center pointer-events-none">
+            <div id="main-dock" class="pointer-events-auto mb-4 lg:mb-6 bg-white/80 dark:bg-slate-800/80 backdrop-blur-2xl shadow-[0_20px_40px_-10px_rgba(0,0,0,0.3)] rounded-full px-3 py-2 flex items-center gap-2 border border-white/50 dark:border-slate-700/50">
                 
                 <!-- Mobile/Desktop Toggle Esquerda -->
                 <button onclick="togglePanelVisibility('panel-left')" id="dock-toggle-data" class="dock-btn relative flex items-center justify-center w-10 h-10 lg:w-12 lg:h-12 rounded-full text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition">
