@@ -383,16 +383,41 @@
                 position: static !important;
                 display: block !important;
             }
-            body { background: white; }
+            /* Sem o !important aqui, o dark:bg-[...] do Tailwind (injetado no <head> depois
+               deste <style>, então ganha a queda de braço da cascata quando o modo escuro
+               está ativo) continuava valendo na impressão. Qualquer trecho sem conteúdo —
+               por exemplo o resto da folha depois que um sumário grande ou um texto longo
+               (marco teórico etc.) termina no meio da página — mostrava esse fundo escuro
+               em vez do branco do papel, e por isso aparecia como "página toda preta". */
+            html, body { background: #ffffff !important; }
             body * { visibility: hidden; }
             #print-area, #print-area * { visibility: visible; }
-            #print-area { position: absolute; left: 0; top: 0; width: 100%; padding: 0; margin: 0; display: block; zoom: 1 !important; transform: none !important;}
-            .a4-page { box-shadow: none; margin: 0; border: none; padding: var(--page-mt) var(--page-mr) var(--page-mb) var(--page-ml) !important; width: var(--page-w); min-height: var(--page-h); }
-            .a4-cover-page { padding: 1cm !important; }
+            #print-area { position: absolute; left: 0; top: 0; width: 100%; padding: 0; margin: 0; display: block; zoom: 1 !important; transform: none !important; background: #ffffff !important; }
+
+            /* As margens deixam de ser o padding manual de cada .a4-page e passam a ser
+               margem nativa de página (@page), que o navegador reaplica automaticamente em
+               TODA página física impressa — inclusive quando o conteúdo de uma única seção
+               (sumário grande, marco teórico longo etc.) não cabe numa página só e continua
+               sozinho na próxima. Antes, esse padding só existia nas bordas reais da div, então
+               o que "vazava" para a página seguinte ficava colado, sem margem no topo/rodapé.
+               A capa usa uma margem física menor (1cm) porque a moldura (.cover-border) é que
+               cria o respiro até o texto — @page :first cobre só a primeira página (a capa). */
+            @page { size: 21.59cm 27.94cm; margin: var(--page-mt) var(--page-mr) var(--page-mb) var(--page-ml); }
+            @page :first { margin: 1cm; }
+
+            .a4-page { box-shadow: none; margin: 0 auto; border: none; padding: 0 !important; width: auto; }
+            .a4-cover-page { padding: 0 !important; }
             .page-break-marker { border: none; margin: 0; }
             .page-break-marker::after { display: none; }
-            @page { size: 21.59cm 27.94cm; margin: 0; }
             .hide-on-print { display: none !important; }
+
+            /* Evita que uma linha do sumário ou um título fique "decapitado" — sozinho no
+               fim de uma página enquanto o resto do bloco continua na próxima de forma feia. */
+            .toc-item, .a4-page h1, .a4-page h2, .a4-page h3, .a4-page h4, .a4-page h5 {
+                page-break-inside: avoid;
+                break-inside: avoid;
+            }
+            .a4-page p { orphans: 3; widows: 3; }
 
             body.printing-slides #print-area { visibility: hidden !important; display: none !important; }
             body.printing-slides #slides-print-area, body.printing-slides #slides-print-area * { visibility: visible !important; }
@@ -1721,7 +1746,14 @@
             document.documentElement.style.setProperty('--page-w', size.w);
             document.documentElement.style.setProperty('--page-h', size.h);
             const styleEl = document.getElementById('dynamic-page-size');
-            if (styleEl) styleEl.textContent = `@media print { @page { size: ${size.w} ${size.h}; margin: 0; } }`;
+            // Tem que repetir aqui a mesma margem nativa (@page) do bloco principal de
+            // impressão — como esta tag fica depois dele no <head>, "margin: 0" aqui
+            // sobrescrevia a margem de toda página física sempre que o papel A4 (ex.: norma
+            // ABNT) era aplicado, voltando a colar o conteúdo na borda do papel.
+            if (styleEl) styleEl.textContent = `@media print {
+                @page { size: ${size.w} ${size.h}; margin: var(--page-mt) var(--page-mr) var(--page-mb) var(--page-ml); }
+                @page :first { margin: 1cm; }
+            }`;
         }
 
         function resetMargins() {
