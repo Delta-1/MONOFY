@@ -3001,7 +3001,7 @@ O campo "body" deve ser texto simples curto (pode usar quebras de linha com \\n 
             }
         }
 
-        function exportSlidesPptx() {
+        async function exportSlidesPptx() {
             document.getElementById('slides-export-menu').classList.add('hidden-state');
             if (!state.slides.length) { alert('Não há slides para exportar.'); return; }
             const theme = SLIDE_THEMES[state.slideTheme];
@@ -3021,27 +3021,36 @@ O campo "body" deve ser texto simples curto (pode usar quebras de linha com \\n 
             const logoTopScale = (state.slideLogoTopSize || 34) / 34;
             const textScale = (state.slideTextScale || 100) / 100;
 
+            // O PowerPoint não abre imagens em webp/avif (comuns em prints de tela de
+            // celular) — normaliza pra PNG antes de embutir, senão o .pptx fica corrompido.
+            const logoBottom = state.slideLogoBase64 ? await normalizeImageDataUri(state.slideLogoBase64) : null;
+            const logoTop = state.slideLogoTopBase64 ? await normalizeImageDataUri(state.slideLogoTopBase64) : null;
+            const slideImages = {};
+            for (const s of state.slides) {
+                if (s.image) slideImages[s.id] = await normalizeImageDataUri(s.image);
+            }
+
             state.slides.forEach(s => {
                 const slide = pptx.addSlide();
                 slide.background = { color: (s.bgColor || theme.bg).replace('#', '') };
 
                 if (s.type !== 'cover') {
                     slide.addShape(pptx.ShapeType.rect, { x: 0, y: 5.0, w: 10, h: 0.63, fill: { color: theme.bar.replace('#', '') } });
-                    if (state.slideLogoBase64) {
+                    if (logoBottom) {
                         const lw = 1.4 * logoBottomScale, lh = 0.5 * logoBottomScale;
-                        slide.addImage({ data: state.slideLogoBase64, x: 5 - lw / 2, y: 5.32 - lh / 2, w: lw, h: lh, sizing: { type: 'contain', w: lw, h: lh } });
+                        slide.addImage({ data: logoBottom, x: 5 - lw / 2, y: 5.32 - lh / 2, w: lw, h: lh, sizing: { type: 'contain', w: lw, h: lh } });
                     }
                 }
 
-                if (s.image) {
+                if (slideImages[s.id]) {
                     const ip = toIn(s, 'image', { x: 62, y: 6, w: 32 });
-                    slide.addImage({ data: s.image, x: ip.x, y: ip.y, w: ip.w, h: ip.w * 0.7, sizing: { type: 'contain', w: ip.w, h: ip.w * 0.7 } });
+                    slide.addImage({ data: slideImages[s.id], x: ip.x, y: ip.y, w: ip.w, h: ip.w * 0.7, sizing: { type: 'contain', w: ip.w, h: ip.w * 0.7 } });
                 }
 
                 if (s.type === 'cover') {
-                    if (state.slideLogoTopBase64) {
+                    if (logoTop) {
                         const lw = 1.3 * logoTopScale, lh = 0.5 * logoTopScale;
-                        slide.addImage({ data: state.slideLogoTopBase64, x: 0.4, y: 0.3, w: lw, h: lh, sizing: { type: 'contain', w: lw, h: lh } });
+                        slide.addImage({ data: logoTop, x: 0.4, y: 0.3, w: lw, h: lh, sizing: { type: 'contain', w: lw, h: lh } });
                     }
                     const hp = toIn(s, 'heading', { x: 10, y: 40, w: 80 });
                     slide.addText(s.heading || '', { x: hp.x, y: hp.y, w: hp.w, h: 1.4, align: 'center', bold: true, fontSize: 28 * textScale, color: theme.accent.replace('#', ''), fontFace: 'Times New Roman' });
@@ -4858,11 +4867,37 @@ Responda APENAS com o título, sem aspas, sem explicações, em uma única linha
             });
         }
 
+        // Imagens de telefone/print de tela costumam vir em webp/avif — nem o Word nem o
+        // PowerPoint abrem esses formatos embutidos, então redesenha em PNG via canvas
+        // quando o formato não é um dos que esses programas realmente suportam nativamente.
+        // Usado tanto na exportação Word (buildWordBlob) quanto PowerPoint (exportSlidesPptx).
+        async function normalizeImageDataUri(dataUri) {
+            const match = dataUri.match(/^data:image\/(\w+);base64,/i);
+            const mime = match ? match[1].toLowerCase() : '';
+            if (['png', 'jpeg', 'jpg'].includes(mime)) return dataUri;
+            const img = await new Promise((resolve, reject) => {
+                const el = new Image();
+                el.onload = () => resolve(el);
+                el.onerror = reject;
+                el.src = dataUri;
+            });
+            const canvas = document.createElement('canvas');
+            canvas.width = img.naturalWidth || 400;
+            canvas.height = img.naturalHeight || 300;
+            canvas.getContext('2d').drawImage(img, 0, 0);
+            return canvas.toDataURL('image/png');
+        }
+
+        async function normalizeImageForDocx(dataUri) {
+            const normalized = await normalizeImageDataUri(dataUri);
+            return { bytes: base64ToUint8Array(normalized), type: imageTypeFromDataUri(normalized) };
+        }
+
         async function imageParagraphFromImg(imgEl) {
             const src = imgEl.getAttribute('src');
             if (!src || !src.startsWith('data:')) return null;
             try {
-                const bytes = base64ToUint8Array(src);
+                const { bytes, type } = await normalizeImageForDocx(src);
                 const natural = await loadImageNaturalSize(src);
                 const maxWidth = 420; // px, cabe confortavelmente dentro da área útil da página A4
                 const scale = Math.min(1, maxWidth / natural.width);
@@ -4871,7 +4906,7 @@ Responda APENAS com o título, sem aspas, sem explicações, em uma única linha
                     spacing: { before: 200, after: 200 },
                     children: [new docx.ImageRun({
                         data: bytes,
-                        type: imageTypeFromDataUri(src),
+                        type,
                         transformation: { width: Math.round(natural.width * scale), height: Math.round(natural.height * scale) }
                     })]
                 });
@@ -4881,6 +4916,26 @@ Responda APENAS com o título, sem aspas, sem explicações, em uma única linha
         }
 
         // Converte os <b>/<i>/<strong>/<em> dentro de um parágrafo em vários TextRun formatados
+        // Converte qualquer cor CSS (#hex ou rgb()/rgba(), formatos que o execCommand do
+        // navegador costuma gerar nos estilos inline) pra hex de 6 dígitos sem # — formato
+        // que o docx.js espera em TextRun.color e em shading.fill.
+        function cssColorToHex(input) {
+            if (!input) return null;
+            input = input.trim();
+            let m = input.match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i);
+            if (m) {
+                let hex = m[1];
+                if (hex.length === 3) hex = hex.split('').map(c => c + c).join('');
+                return hex.toUpperCase();
+            }
+            m = input.match(/^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i);
+            if (m) {
+                const toHex = n => Math.max(0, Math.min(255, parseInt(n, 10))).toString(16).padStart(2, '0');
+                return (toHex(m[1]) + toHex(m[2]) + toHex(m[3])).toUpperCase();
+            }
+            return null;
+        }
+
         function runsFromInlineNode(node, baseOpts) {
             let runs = [];
             node.childNodes.forEach(child => {
@@ -4891,14 +4946,28 @@ Responda APENAS com o título, sem aspas, sem explicações, em uma única linha
                     const opts = { ...baseOpts };
                     if (tag === 'b' || tag === 'strong') opts.bold = true;
                     if (tag === 'i' || tag === 'em') opts.italics = true;
+                    if (tag === 'u') opts.underline = { type: docx.UnderlineType.SINGLE };
+                    if (tag === 'strike' || tag === 's' || tag === 'del') opts.strike = true;
                     // Cobre formatação aplicada via style inline (ex: legendas de tabela/figura,
-                    // ou spans gerados pelo execCommand do navegador), não só por tag.
+                    // ou spans gerados pelo execCommand do navegador — sublinhado, cor de texto e
+                    // realce vêm assim, não como tags), não só por tag.
                     const style = child.getAttribute && child.getAttribute('style');
                     if (style) {
                         if (/font-weight\s*:\s*(bold|[6-9]00)/i.test(style)) opts.bold = true;
                         if (/font-style\s*:\s*italic/i.test(style)) opts.italics = true;
                         const sizeMatch = style.match(/font-size\s*:\s*([\d.]+)pt/i);
                         if (sizeMatch) opts.size = ptToHalfPt(parseFloat(sizeMatch[1]));
+                        if (/text-decoration[^;]*underline/i.test(style)) opts.underline = { type: docx.UnderlineType.SINGLE };
+                        const colorMatch = style.match(/(?:^|;)\s*color\s*:\s*([^;]+)/i);
+                        if (colorMatch) {
+                            const hex = cssColorToHex(colorMatch[1]);
+                            if (hex) opts.color = hex;
+                        }
+                        const bgMatch = style.match(/background-color\s*:\s*([^;]+)/i);
+                        if (bgMatch) {
+                            const hex = cssColorToHex(bgMatch[1]);
+                            if (hex) opts.shading = { type: docx.ShadingType.SOLID, color: 'auto', fill: hex };
+                        }
                     }
                     runs = runs.concat(runsFromInlineNode(child, opts));
                 }
@@ -4912,8 +4981,10 @@ Responda APENAS com o título, sem aspas, sem explicações, em uma única linha
             const rows = Array.from(tableEl.querySelectorAll('tr')).map(tr => {
                 const cells = Array.from(tr.children).map(cellEl => {
                     const isHeader = cellEl.tagName.toLowerCase() === 'th';
+                    let runs = runsFromInlineNode(cellEl, { size: tableFontHalfPt, bold: isHeader || undefined });
+                    if (runs.length === 0) runs = [new docx.TextRun({ text: cellEl.innerText, bold: isHeader, size: tableFontHalfPt })];
                     return new docx.TableCell({
-                        children: [new docx.Paragraph({ children: [new docx.TextRun({ text: cellEl.innerText, bold: isHeader, size: tableFontHalfPt })] })],
+                        children: [new docx.Paragraph({ children: runs })],
                         verticalAlign: docx.VerticalAlign.CENTER,
                         margins: { top: 60, bottom: 60, left: 100, right: 100 }
                     });
@@ -4939,9 +5010,19 @@ Responda APENAS com o título, sem aspas, sem explicações, em uma única linha
                         const isHanging = child.classList.contains('hanging-indent');
                         let runs = runsFromInlineNode(child, { size: fontHalfPt });
                         if (runs.length === 0) runs = [new docx.TextRun({ text: '', size: fontHalfPt })];
+                        // Respeita o alinhamento que a pessoa escolheu manualmente na barra de
+                        // ferramentas (justifyLeft/Center/Right/Full grava text-align inline no
+                        // <p>) — sem isso a exportação ignorava o botão e forçava sempre justificado.
+                        let alignment = docx.AlignmentType.JUSTIFIED;
+                        const alignMatch = (child.getAttribute('style') || '').match(/text-align\s*:\s*(left|center|right|justify)/i);
+                        if (isHanging) {
+                            alignment = docx.AlignmentType.LEFT;
+                        } else if (alignMatch) {
+                            alignment = { left: docx.AlignmentType.LEFT, center: docx.AlignmentType.CENTER, right: docx.AlignmentType.RIGHT, justify: docx.AlignmentType.JUSTIFIED }[alignMatch[1].toLowerCase()];
+                        }
                         blocks.push(new docx.Paragraph({
                             children: runs,
-                            alignment: isHanging ? docx.AlignmentType.LEFT : docx.AlignmentType.JUSTIFIED,
+                            alignment,
                             spacing: { line: lineSpacing, lineRule: docx.LineRuleType.AUTO },
                             indent: isHanging ? { left: indentTwips, hanging: indentTwips } : { firstLine: indentTwips }
                         }));
@@ -4953,6 +5034,22 @@ Responda APENAS com o título, sem aspas, sem explicações, em uma única linha
                             indent: isIndented ? { left: indentTwips } : undefined,
                             spacing: { before: 480, after: 240, line: lineSpacing, lineRule: docx.LineRuleType.AUTO }
                         }));
+                    } else if (tag === 'ul' || tag === 'ol') {
+                        // docx.js exigiria registrar uma definição de numeração no Document pra
+                        // ter marcadores/numeração nativos do Word; pra manter simples, emulamos
+                        // com "• " ou "1. " na frente de cada item, preservando negrito/itálico/etc.
+                        const items = Array.from(child.children).filter(li => li.tagName.toLowerCase() === 'li');
+                        items.forEach((li, idx) => {
+                            const prefix = tag === 'ol' ? `${idx + 1}. ` : '• ';
+                            let runs = runsFromInlineNode(li, { size: fontHalfPt });
+                            if (runs.length === 0) runs = [new docx.TextRun({ text: li.innerText || '', size: fontHalfPt })];
+                            runs.unshift(new docx.TextRun({ text: prefix, size: fontHalfPt }));
+                            blocks.push(new docx.Paragraph({
+                                children: runs,
+                                spacing: { line: lineSpacing, lineRule: docx.LineRuleType.AUTO },
+                                indent: { left: indentTwips }
+                            }));
+                        });
                     } else if (tag === 'table') {
                         blocks.push(tableFromHTML(child, fontHalfPt));
                     } else if (tag === 'img') {
@@ -5000,13 +5097,13 @@ Responda APENAS com o título, sem aspas, sem explicações, em uma única linha
 
             if (state.logoBase64 && state.logoBase64.startsWith('data:')) {
                 try {
-                    const bytes = base64ToUint8Array(state.logoBase64);
+                    const { bytes, type } = await normalizeImageForDocx(state.logoBase64);
                     const natural = await loadImageNaturalSize(state.logoBase64);
                     const scale = Math.min(1, 227 / natural.width, 227 / natural.height); // 6cm x 6cm conforme manual UPDS
                     blocks.push(new docx.Paragraph({
                         alignment: docx.AlignmentType.CENTER,
                         spacing: { before: cmToTwip(1.5), after: 0 }, // margin-top: 1.5cm na pré-visualização
-                        children: [new docx.ImageRun({ data: bytes, type: imageTypeFromDataUri(state.logoBase64), transformation: { width: Math.round(natural.width * scale), height: Math.round(natural.height * scale) } })]
+                        children: [new docx.ImageRun({ data: bytes, type, transformation: { width: Math.round(natural.width * scale), height: Math.round(natural.height * scale) } })]
                     }));
                 } catch (e) { /* sem logo válido, segue sem imagem */ }
             }
