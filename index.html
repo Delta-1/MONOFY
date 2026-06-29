@@ -1190,10 +1190,35 @@
                     <button onclick="saveMyProfile()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 rounded-xl transition-all">Salvar Alterações</button>
                 </div>
 
+                <div class="bg-white/80 dark:bg-slate-850/80 backdrop-blur p-8 rounded-3xl shadow-xl border border-white/40 dark:border-slate-700 space-y-4">
+                    <h3 class="font-extrabold text-slate-800 dark:text-white flex items-center gap-2"><i data-lucide="shield-check" class="w-5 h-5 text-emerald-600"></i> Legal</h3>
+                    <button onclick="openLegalModal('privacy')" class="w-full flex items-center justify-between gap-2 px-5 py-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 rounded-2xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-all font-bold text-sm">
+                        <span class="flex items-center gap-2"><i data-lucide="lock" class="w-4 h-4"></i> Política de Privacidade</span>
+                        <i data-lucide="chevron-right" class="w-4 h-4 text-slate-400"></i>
+                    </button>
+                    <button onclick="openLegalModal('terms')" class="w-full flex items-center justify-between gap-2 px-5 py-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 rounded-2xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-all font-bold text-sm">
+                        <span class="flex items-center gap-2"><i data-lucide="file-text" class="w-4 h-4"></i> Termos de Serviço</span>
+                        <i data-lucide="chevron-right" class="w-4 h-4 text-slate-400"></i>
+                    </button>
+                </div>
 
                 <a href="https://wa.me/5519989765398?text=Ol%C3%A1!%20Quero%20adquirir%20minha%20licen%C3%A7a%20Monofy" target="_blank" id="whatsapp-support-link" class="w-full flex items-center justify-center gap-2 px-6 py-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-900/40 text-green-700 dark:text-green-400 rounded-2xl hover:bg-green-100 transition-all font-bold">
                     <i data-lucide="message-circle" class="w-5 h-5"></i> Falar com Suporte (WhatsApp) para Licença
                 </a>
+            </div>
+        </div>
+
+        <!-- Política de Privacidade / Termos de Serviço: aberto pelos botões "Legal" na tela de Perfil. -->
+        <div id="legal-modal" class="hidden-state fixed inset-0 z-[230] hide-on-print flex items-end lg:items-center justify-center bg-slate-900/60 backdrop-blur-sm p-0 lg:p-6">
+            <div class="bg-white dark:bg-slate-850 w-full lg:max-w-2xl lg:rounded-3xl rounded-t-3xl shadow-2xl border border-white/40 dark:border-slate-700/50 flex flex-col h-[85vh] lg:h-[640px] max-h-[90vh]">
+                <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800">
+                    <h3 id="legal-modal-title" class="font-extrabold text-lg text-slate-800 dark:text-white flex items-center gap-2"><i data-lucide="shield-check" class="w-5 h-5 text-emerald-600"></i> Política de Privacidade</h3>
+                    <button onclick="closeLegalModal()" type="button" class="text-slate-400 hover:text-slate-700 dark:hover:text-white p-1"><i data-lucide="x" class="w-5 h-5"></i></button>
+                </div>
+                <div id="legal-modal-body" class="flex-1 overflow-y-auto custom-scrollbar px-6 py-5 text-sm text-slate-600 dark:text-slate-300 leading-relaxed space-y-4"></div>
+                <div class="px-6 py-4 border-t border-slate-100 dark:border-slate-800 flex justify-end">
+                    <button onclick="closeLegalModal()" type="button" class="text-sm font-bold bg-primary-600 hover:bg-primary-700 text-white px-5 py-2.5 rounded-xl shadow">Fechar</button>
+                </div>
             </div>
         </div>
 
@@ -2295,6 +2320,59 @@
                 document.getElementById('user-avatar-fallback').classList.add('hidden-state');
             }
             alert('Perfil atualizado!');
+        }
+
+        // ==========================================
+        // LEGAL (Política de Privacidade / Termos de Serviço)
+        // ==========================================
+        const LEGAL_DOCS = {
+            privacy: {
+                title: 'Política de Privacidade',
+                icon: 'lock',
+                paragraphs: [
+                    'Última atualização: 29 de junho de 2026.',
+                    'Esta Política de Privacidade descreve como o Monofy ("nós", "nosso aplicativo") coleta, usa e protege os dados pessoais de quem utiliza a plataforma.',
+                    '1. Dados que coletamos: nome, e-mail e foto de perfil (fornecidos diretamente por você ou via login com Google); conteúdo dos documentos e apresentações que você cria no Monofy; informações técnicas básicas como fuso horário, usadas apenas para fins estatísticos no painel administrativo; dados de pagamento processados por provedores terceiros (Stripe e/ou Mercado Pago) — não armazenamos números de cartão de crédito em nossos servidores.',
+                    '2. Login com Google e Google Drive: se você optar por entrar com sua conta Google, utilizamos apenas as informações básicas de perfil (nome, e-mail, foto) para criar sua conta no Monofy. Caso você autorize o salvamento automático no Google Drive, usamos exclusivamente o escopo "drive.file", que dá acesso apenas aos arquivos criados pelo próprio Monofy na sua conta do Drive — nunca a outros arquivos ou pastas suas.',
+                    '3. Como usamos seus dados: para fornecer e manter as funcionalidades do Monofy (geração e edição de monografias e apresentações, exportação para Word/PowerPoint/PDF, salvamento automático); para autenticação e segurança da sua conta; para suporte ao usuário via WhatsApp, quando você optar por entrar em contato; para processar pagamentos de licenças e créditos.',
+                    '4. Compartilhamento de dados: não vendemos seus dados pessoais. Compartilhamos informações apenas com prestadores de serviço essenciais ao funcionamento do app (ex.: Supabase para hospedagem e banco de dados, Google para autenticação/Drive, Stripe/Mercado Pago para pagamentos), que tratam os dados sob suas próprias políticas de privacidade e segurança.',
+                    '5. Armazenamento e segurança: os dados são armazenados em servidores do Supabase com controles de acesso e criptografia em trânsito. Tomamos medidas razoáveis para proteger seus dados, mas nenhum sistema é 100% livre de riscos.',
+                    '6. Seus direitos: você pode, a qualquer momento, solicitar a atualização ou exclusão da sua conta e dos seus dados pessoais entrando em contato pelo suporte via WhatsApp disponível na tela de Perfil.',
+                    '7. Alterações nesta política: podemos atualizar esta Política de Privacidade periodicamente. Mudanças relevantes serão comunicadas dentro do próprio aplicativo.',
+                    '8. Contato: em caso de dúvidas sobre esta política, utilize o canal de suporte via WhatsApp disponível na tela de Perfil.'
+                ]
+            },
+            terms: {
+                title: 'Termos de Serviço',
+                icon: 'file-text',
+                paragraphs: [
+                    'Última atualização: 29 de junho de 2026.',
+                    'Ao utilizar o Monofy, você concorda com os termos descritos abaixo. Leia com atenção antes de continuar usando o aplicativo.',
+                    '1. Objeto: o Monofy é uma ferramenta de criação, edição e exportação de monografias acadêmicas e apresentações de slides, oferecida em formato de aplicativo web.',
+                    '2. Conta de usuário: você é responsável por manter a confidencialidade das suas credenciais de acesso (login/senha ou login com Google) e por todas as atividades realizadas na sua conta.',
+                    '3. Uso de créditos e licenças: determinadas funcionalidades do Monofy podem exigir créditos ou uma licença paga, adquiridos através dos canais de pagamento indicados no aplicativo (Stripe e/ou Mercado Pago) ou diretamente via suporte por WhatsApp. Os créditos e licenças adquiridos não são reembolsáveis, salvo disposição legal em contrário.',
+                    '4. Conteúdo gerado: você é o único responsável pelo conteúdo que cria, edita ou exporta usando o Monofy, incluindo a precisão, originalidade e conformidade com normas acadêmicas (ex.: regras de plágio da sua instituição). O Monofy é uma ferramenta de apoio à escrita e formatação, e não garante aprovação acadêmica do conteúdo gerado.',
+                    '5. Uso aceitável: você concorda em não utilizar o Monofy para fins ilegais, para violar direitos de terceiros, ou para tentar comprometer a segurança da plataforma.',
+                    '6. Disponibilidade do serviço: nos esforçamos para manter o Monofy disponível e funcional, mas não garantimos operação ininterrupta. Manutenções, atualizações ou problemas técnicos podem causar indisponibilidade temporária.',
+                    '7. Propriedade intelectual: o código, design e marca do Monofy pertencem aos seus desenvolvedores. O conteúdo que você cria dentro do app é de sua propriedade.',
+                    '8. Cancelamento e suspensão: podemos suspender ou cancelar contas que violem estes Termos de Serviço ou que sejam usadas de forma fraudulenta.',
+                    '9. Alterações nos termos: estes Termos de Serviço podem ser atualizados periodicamente. O uso continuado do Monofy após uma atualização representa sua concordância com os novos termos.',
+                    '10. Contato: dúvidas sobre estes termos podem ser enviadas pelo canal de suporte via WhatsApp disponível na tela de Perfil.'
+                ]
+            }
+        };
+
+        function openLegalModal(docKey) {
+            const doc = LEGAL_DOCS[docKey];
+            if (!doc) return;
+            document.getElementById('legal-modal-title').innerHTML = `<i data-lucide="${doc.icon}" class="w-5 h-5 text-emerald-600"></i> ${doc.title}`;
+            document.getElementById('legal-modal-body').innerHTML = doc.paragraphs.map(p => `<p>${p}</p>`).join('');
+            document.getElementById('legal-modal').classList.remove('hidden-state');
+            if (window.lucide) lucide.createIcons();
+        }
+
+        function closeLegalModal() {
+            document.getElementById('legal-modal').classList.add('hidden-state');
         }
 
         // ==========================================
