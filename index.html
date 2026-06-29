@@ -1217,6 +1217,14 @@
                     <i data-lucide="download" class="w-5 h-5 text-primary-500"></i> Instalar o Monofy no dispositivo
                 </button>
 
+                <div id="drive-save-status-box" class="hidden-state w-full flex items-center gap-3 bg-white/80 dark:bg-slate-850/80 backdrop-blur p-5 rounded-3xl shadow-xl border border-white/40 dark:border-slate-700">
+                    <i data-lucide="cloud" class="w-5 h-5 text-emerald-500 shrink-0"></i>
+                    <div>
+                        <p class="font-bold text-slate-700 dark:text-slate-200 text-sm">Salvamento automático no Google Drive ativo</p>
+                        <p id="drive-save-status-text" class="text-xs text-slate-400">Salva uma cópia em .docx a cada poucos minutos.</p>
+                    </div>
+                </div>
+
                 <div class="bg-white/80 dark:bg-slate-850/80 backdrop-blur p-8 rounded-3xl shadow-xl border border-white/40 dark:border-slate-700 space-y-8">
 
                     <div>
@@ -1375,7 +1383,8 @@
             slideLogoTopSize: parseInt(localStorage.getItem('monografia_slide_logo_top_size')) || 34,
             slideTextScale: parseInt(localStorage.getItem('monografia_slide_text_scale')) || 100,
             activeSlideId: null,
-            paperSizeOverride: localStorage.getItem('monografia_paper_override') || null
+            paperSizeOverride: localStorage.getItem('monografia_paper_override') || null,
+            driveAccessToken: null
         };
 
         document.addEventListener('DOMContentLoaded', () => {
@@ -2164,7 +2173,17 @@
             // de OAuth velha, e o onAuthStateChange (já existente) cuida do resto do login
             // quando a sessão chega de volta.
             const redirectTo = window.location.origin + window.location.pathname;
-            const { error } = await supabaseClient.auth.signInWithOAuth({ provider: 'google', options: { redirectTo } });
+            // Escopo extra do Drive (só os arquivos criados pelo próprio Monofy, não o Drive
+            // inteiro) pra poder salvar o documento automaticamente lá. access_type=offline +
+            // prompt=consent é o jeito de pedir esse escopo "de verdade" ao Google.
+            const { error } = await supabaseClient.auth.signInWithOAuth({
+                provider: 'google',
+                options: {
+                    redirectTo,
+                    scopes: 'https://www.googleapis.com/auth/drive.file',
+                    queryParams: { access_type: 'offline', prompt: 'consent' }
+                }
+            });
             if (error) showAuthError(error.message);
         }
 
@@ -2180,6 +2199,7 @@
             state.session = null;
             state.profile = null;
             state.isDemo = false;
+            stopDriveAutosave();
             document.getElementById('app-screen').classList.add('opacity-0', 'pointer-events-none');
             document.getElementById('login-screen').classList.remove('hidden-state', 'opacity-0', 'pointer-events-none');
         }
@@ -2337,6 +2357,12 @@
         async function onAuthenticated(session) {
             state.session = session;
             await loadProfile();
+            // provider_token só vem quando o login foi com o Google (não existe em
+            // login por email/senha) — é ele que liberta o autosave no Drive.
+            if (session.provider_token) {
+                state.driveAccessToken = session.provider_token;
+                startDriveAutosave();
+            }
             document.getElementById('login-screen').classList.add('opacity-0', 'pointer-events-none');
             setTimeout(() => {
                 document.getElementById('login-screen').classList.add('hidden-state');
@@ -5043,10 +5069,11 @@ Responda APENAS com o título, sem aspas, sem explicações, em uma única linha
             return blocks;
         }
 
-        window.exportWord = async function() {
+        // Extraído de exportWord pra poder ser reaproveitado pelo autosave do Google
+        // Drive (que precisa do mesmo .docx, só que sem disparar o download local).
+        async function buildWordBlob() {
             if (typeof docx === 'undefined') {
-                alert('Não foi possível carregar o gerador de Word (biblioteca docx.js). Verifique sua conexão e tente novamente.');
-                return;
+                throw new Error('Biblioteca docx.js não carregada.');
             }
 
             const docTitle = document.getElementById('in-title').value || 'Monografia';
@@ -5202,6 +5229,17 @@ Responda APENAS com o título, sem aspas, sem explicações, em uma única linha
             });
 
             const blob = await docx.Packer.toBlob(doc);
+            return { blob, docTitle };
+        }
+
+        window.exportWord = async function() {
+            let blob, docTitle;
+            try {
+                ({ blob, docTitle } = await buildWordBlob());
+            } catch (err) {
+                alert('Não foi possível carregar o gerador de Word (biblioteca docx.js). Verifique sua conexão e tente novamente.');
+                return;
+            }
             const url = URL.createObjectURL(blob);
             const fileDownload = document.createElement('a');
             fileDownload.href = url;
@@ -5233,6 +5271,81 @@ Responda APENAS com o título, sem aspas, sem explicações, em uma única linha
             document.body.removeChild(fileDownload);
             URL.revokeObjectURL(url);
         };
+
+        /* SALVAMENTO AUTOMÁTICO NO GOOGLE DRIVE */
+        // Só funciona pra quem entrou com "Entrar com Google" (login por email/senha
+        // e modo demonstração não geram token do Google). O token dura ~1h e o
+        // Supabase não o renova sozinho — quando ele expira, paramos o autosave em
+        // silêncio até a pessoa logar de novo com o Google.
+        let driveAutosaveIntervalId = null;
+        let driveAutosaveFileId = null;
+
+        function startDriveAutosave() {
+            if (driveAutosaveIntervalId) return;
+            // A cada 4 minutos, dentro da janela de 3-5 min pedida.
+            driveAutosaveIntervalId = setInterval(saveToGoogleDrive, 4 * 60 * 1000);
+        }
+
+        function stopDriveAutosave() {
+            if (driveAutosaveIntervalId) {
+                clearInterval(driveAutosaveIntervalId);
+                driveAutosaveIntervalId = null;
+            }
+            driveAutosaveFileId = null;
+            state.driveAccessToken = null;
+            document.getElementById('drive-save-status-box')?.classList.add('hidden-state');
+        }
+
+        async function driveApiRequest(path, options = {}) {
+            const res = await fetch(`https://www.googleapis.com/drive/v3${path}`, {
+                ...options,
+                headers: { Authorization: `Bearer ${state.driveAccessToken}`, ...(options.headers || {}) }
+            });
+            if (!res.ok) throw new Error(`Drive API ${res.status}`);
+            return res.json();
+        }
+
+        async function driveFindFileId(fileName) {
+            const q = encodeURIComponent(`name='${fileName.replace(/'/g, "\\'")}' and trashed=false`);
+            const data = await driveApiRequest(`/files?q=${q}&fields=files(id,name)`);
+            return (data.files && data.files.length) ? data.files[0].id : null;
+        }
+
+        async function driveUploadFile(fileName, blob, existingId) {
+            const metadata = { name: fileName, mimeType: blob.type };
+            const form = new FormData();
+            form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+            form.append('file', blob);
+            const url = existingId
+                ? `https://www.googleapis.com/upload/drive/v3/files/${existingId}?uploadType=multipart`
+                : `https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart`;
+            const res = await fetch(url, {
+                method: existingId ? 'PATCH' : 'POST',
+                headers: { Authorization: `Bearer ${state.driveAccessToken}` },
+                body: form
+            });
+            if (!res.ok) throw new Error(`Falha no upload pro Drive: ${res.status}`);
+            return res.json();
+        }
+
+        async function saveToGoogleDrive() {
+            if (!state.driveAccessToken || state.isDemo) return;
+            if (!state.generatedSections || state.generatedSections.length === 0) return;
+            try {
+                const { blob, docTitle } = await buildWordBlob();
+                const fileName = `${docTitle} (Monofy).docx`;
+                if (!driveAutosaveFileId) driveAutosaveFileId = await driveFindFileId(fileName);
+                const result = await driveUploadFile(fileName, blob, driveAutosaveFileId);
+                driveAutosaveFileId = result.id;
+                const box = document.getElementById('drive-save-status-box');
+                const text = document.getElementById('drive-save-status-text');
+                if (box) box.classList.remove('hidden-state');
+                if (text) text.innerText = `Última cópia salva às ${new Date().toLocaleTimeString()}.`;
+            } catch (err) {
+                console.warn('Falha ao salvar no Google Drive (o token do Google pode ter expirado):', err);
+                if (String(err.message).includes('401')) stopDriveAutosave();
+            }
+        }
 
         /* REGISTRO DO SERVICE WORKER (PWA) */
         if ('serviceWorker' in navigator) {
