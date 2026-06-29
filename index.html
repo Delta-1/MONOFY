@@ -2131,7 +2131,14 @@
         }
 
         async function signOut() {
-            if (!state.isDemo) await supabaseClient.auth.signOut();
+            // supabaseClient.auth.signOut() pode rejeitar (sessão já expirada, erro de rede
+            // etc.) — sem o try/catch, esse erro interrompia a função antes de esconder o
+            // app-screen e mostrar o login-screen, deixando o botão "Sair" parecendo travado.
+            try {
+                if (!state.isDemo) await supabaseClient.auth.signOut();
+            } catch (err) {
+                console.error('Erro ao encerrar sessão:', err);
+            }
             state.session = null;
             state.profile = null;
             state.isDemo = false;
