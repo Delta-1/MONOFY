@@ -75,6 +75,7 @@
 
         const DOC_SECTION_PLAN = [
             { id: 'resumo', label: 'Resumo', instructions: `Redacta un RESUMEN/ABSTRACT breve (alrededor de 250 palabras) que sintetice el propósito u objetivo del trabajo, el problema, el método utilizado, las teorías de sustentación y una conclusión general, basado en las notas del usuario. Escríbelo en un solo párrafo, sin subtítulos.` },
+            { id: 'abstract', label: 'Abstract', instructions: null },
             { id: 'introducao', label: 'Introdução', instructions: `Redacta la INTRODUCCIÓN: contextualiza el tema, presenta el problema, los objetivos y la justificación del trabajo. 2 a 4 párrafos.` },
             { id: 'marco_teorico', label: 'Marco Teórico', instructions: `Redacta el MARCO TEÓRICO completo: desarrolla analíticamente los conceptos y argumentos de las notas y del material de referencia. Crea subtítulos con <h2> para cada subtema relevante. Esta es la sección más extensa y profunda del trabajo.` },
             { id: 'conclusao', label: 'Conclusão', instructions: `Redacta la CONCLUSIÓN: sintetiza los hallazgos, retoma los objetivos planteados en la introducción y propone consideraciones finales. 2 a 3 párrafos.` },
@@ -3357,7 +3358,7 @@ O campo "body" deve ser texto simples curto (pode usar quebras de linha com \\n 
             const totalCost = AI_COST_PER_SECTION * DOC_SECTION_PLAN.length + (titleNeedsAI ? AI_COST_PER_PAGE : 0);
             const confirmed = await showConfirmModal(
                 'Gerar trabalho com IA',
-                `A IA vai redigir o documento seção por seção (Resumo, Introdução, Marco Teórico, Conclusão e Referências)${titleNeedsAI ? ', e antes disso vai definir o título com base na sua conversa com o Assistente' : ''}. Isso consome até <b>${totalCost} créditos</b> no total — cada parte só é cobrada depois de gerada com sucesso — do seu saldo atual de <b>${state.profile.credits}</b>. Continuar?`
+                `A IA vai redigir o documento seção por seção (Resumo, Abstract, Introdução, Marco Teórico, Conclusão e Referências)${titleNeedsAI ? ', e antes disso vai definir o título com base na sua conversa com o Assistente' : ''}. Isso consome até <b>${totalCost} créditos</b> no total — cada parte só é cobrada depois de gerada com sucesso — do seu saldo atual de <b>${state.profile.credits}</b>. Continuar?`
             );
             if (!confirmed) return;
 
@@ -3423,25 +3424,45 @@ Responda APENAS com o título, sem aspas, sem explicações, em uma única linha
                     : plan.instructions;
                 const otherLabels = DOC_SECTION_PLAN.filter(p => p.id !== plan.id).map(p => p.label).join(', ');
 
-                const sectionPrompt = `Actúa como un profesor universitario y revisor experto en Normas ${citStyle} (modelo "${activeTpl.nome}").
-                IDIOMA DE SALIDA OBLIGATORIO: ${state.docLanguage}. Escribe TODO estrictamente en este idioma.
-                TÍTULO DEL TRABAJO: ${docTitle}
+                // O Abstract é sempre a tradução fiel do Resumo já gerado (que vem antes
+                // dele no DOC_SECTION_PLAN), independente do idioma de saída escolhido pelo
+                // usuário para o resto do documento — por isso usa um prompt próprio.
+                let sectionPrompt;
+                if (plan.id === 'abstract') {
+                    const resumoSec = state.generatedSections.find(s => s.id.startsWith('sec-resumo-'));
+                    sectionPrompt = `Actúa como un traductor académico experto en Normas ${citStyle} (modelo "${activeTpl.nome}").
+                    IDIOMA DE SALIDA OBLIGATORIO: inglés (English). Escribe TODO estrictamente en inglés, sin importar el idioma del resto del documento.
+                    TÍTULO DEL TRABAJO: ${docTitle}
 
-                Estás redactando una monografía académica formal sección por sección. Esta llamada es SOLO para la sección "${plan.label}". Las demás secciones (${otherLabels}) ya serán redactadas en otras llamadas — NO las repitas ni las anticipes aquí.
+                    Traduce el siguiente RESUMEN al inglés para que sirva como ABSTRACT del trabajo. Debe ser una traducción fiel y académica, en un solo párrafo, sin subtítulos.
 
-                ${sectionInstructions}
+                    RESUMEN ORIGINAL:
+                    ${resumoSec ? stripHtmlToText(resumoSec.content) : rawText}
 
-                JERARQUÍA DE TÍTULOS DENTRO DEL CONTENIDO: usa <h2> para subtítulos y <h3> para sub-subtítulos si es necesario. Usa <p> para párrafos.
+                    FORMATO DE SALIDA ESTRICTO:
+                    Devuelve ÚNICAMENTE un objeto JSON crudo, SIN markdown:
+                    {"title": "Abstract", "content": "<p>...</p>"}`;
+                } else {
+                    sectionPrompt = `Actúa como un profesor universitario y revisor experto en Normas ${citStyle} (modelo "${activeTpl.nome}").
+                    IDIOMA DE SALIDA OBLIGATORIO: ${state.docLanguage}. Escribe TODO estrictamente en este idioma.
+                    TÍTULO DEL TRABAJO: ${docTitle}
 
-                MATERIAL DE REFERENCIA DEL USUARIO (Extrae argumentos de aquí si los hay):
-                ${state.uploadedContextText}
+                    Estás redactando una monografía académica formal sección por sección. Esta llamada es SOLO para la sección "${plan.label}". Las demás secciones (${otherLabels}) ya serán redactadas en otras llamadas — NO las repitas ni las anticipes aquí.
 
-                NOTAS DEL USUARIO:
-                ${rawText}${chatContext}
+                    ${sectionInstructions}
 
-                FORMATO DE SALIDA ESTRICTO:
-                Devuelve ÚNICAMENTE un objeto JSON crudo, SIN markdown:
-                {"title": "Título de esta sección en el idioma de salida", "content": "<p>...</p>"}`;
+                    JERARQUÍA DE TÍTULOS DENTRO DEL CONTENIDO: usa <h2> para subtítulos y <h3> para sub-subtítulos si es necesario. Usa <p> para párrafos.
+
+                    MATERIAL DE REFERENCIA DEL USUARIO (Extrae argumentos de aquí si los hay):
+                    ${state.uploadedContextText}
+
+                    NOTAS DEL USUARIO:
+                    ${rawText}${chatContext}
+
+                    FORMATO DE SALIDA ESTRICTO:
+                    Devuelve ÚNICAMENTE un objeto JSON crudo, SIN markdown:
+                    {"title": "Título de esta sección en el idioma de salida", "content": "<p>...</p>"}`;
+                }
 
                 try {
                     let jsonText = await callAI(sectionPrompt, AI_COST_PER_SECTION, `ai_section_${plan.id}`);
@@ -4226,7 +4247,7 @@ Responda APENAS com o título, sem aspas, sem explicações, em uma única linha
                                 <button onclick="refineInline('${section.id}', '${pageKey}')" title="Refinar com IA (5 créditos)" class="p-2.5 bg-purple-600 text-white rounded-lg shadow-xl hover:-translate-y-0.5"><i data-lucide="sparkles" class="w-3.5 h-3.5"></i></button>
                             </div>
                             ${idx === 0 ? `<h1 contenteditable="true" data-section-title="${section.id}" oninput="scheduleSyncSection('${section.id}')" style="text-indent: 0; outline: none;">${section.title}</h1>` : ''}
-                            <div class="apa-content${section.id.startsWith('sec-resumo-') ? ' resumo-block' : ''}" id="apa-content-${pageKey}" data-page-index="${idx}" contenteditable="true" data-section-id="${section.id}" oninput="scheduleSyncSection('${section.id}')" onblur="checkAndSplitOverflow('${section.id}')" style="outline: none; min-height: 2em;">${chunk}</div>
+                            <div class="apa-content${(section.id.startsWith('sec-resumo-') || section.id.startsWith('sec-abstract-')) ? ' resumo-block' : ''}" id="apa-content-${pageKey}" data-page-index="${idx}" contenteditable="true" data-section-id="${section.id}" oninput="scheduleSyncSection('${section.id}')" onblur="checkAndSplitOverflow('${section.id}')" style="outline: none; min-height: 2em;">${chunk}</div>
                         </div>
                     `;
                 });
@@ -4950,23 +4971,25 @@ Responda APENAS com o título, sem aspas, sem explicações, em uma única linha
                 };
             }
 
-            // Seção 2: páginas preliminares (sumário + resumo) — numeração romana, superior direita.
+            // Seção 2: páginas preliminares (sumário + resumo + abstract) — numeração romana, superior direita.
             const frontMatterChildren = [];
             const tocBlocks = buildTOCBlocks(usableWidthTwips);
             frontMatterChildren.push(...tocBlocks);
 
             const resumoSection = state.generatedSections.find(s => s.id.startsWith('sec-resumo-'));
-            if (resumoSection) {
-                const pageChunks = splitContentIntoPages(resumoSection.content);
+            const abstractSection = state.generatedSections.find(s => s.id.startsWith('sec-abstract-'));
+            for (const frontSection of [resumoSection, abstractSection]) {
+                if (!frontSection) continue;
+                const pageChunks = splitContentIntoPages(frontSection.content);
                 for (let idx = 0; idx < pageChunks.length; idx++) {
-                    // Resumo: sem sangria e a um espaço (1.0), independente da norma do documento.
+                    // Resumo/Abstract: sem sangria e a um espaço (1.0), independente da norma do documento.
                     const blocks = await blocksFromHTML(pageChunks[idx], fontHalfPt, 240, 0);
                     frontMatterChildren.push(new docx.Paragraph({ children: [], pageBreakBefore: true }));
                     if (idx === 0) {
                         frontMatterChildren.push(new docx.Paragraph({
                             alignment: docx.AlignmentType.CENTER,
                             spacing: { after: 240 },
-                            children: [new docx.TextRun({ text: resumoSection.title, bold: true, size: fontHalfPt })]
+                            children: [new docx.TextRun({ text: frontSection.title, bold: true, size: fontHalfPt })]
                         }));
                     }
                     frontMatterChildren.push(...blocks);
@@ -4976,7 +4999,7 @@ Responda APENAS com o título, sem aspas, sem explicações, em uma única linha
             // Seção 3: corpo principal (Introdução em diante) — numeração arábiga reiniciando em 1.
             const bodyChildren = [];
             for (const section of state.generatedSections) {
-                if (section === resumoSection) continue;
+                if (section === resumoSection || section === abstractSection) continue;
                 const pageChunks = splitContentIntoPages(section.content);
                 for (let idx = 0; idx < pageChunks.length; idx++) {
                     const blocks = await blocksFromHTML(pageChunks[idx], fontHalfPt, lineSpacing, indentTwips);
