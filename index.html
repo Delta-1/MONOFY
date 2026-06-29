@@ -320,8 +320,11 @@
             #word-toolbar { display: none; }
             #word-toolbar.mobile-toolbar-open {
                 display: flex !important;
-                left: 3.5rem; right: 1rem; top: 5rem; bottom: auto;
-                width: auto !important; height: auto !important; max-height: calc(100vh - 9rem) !important;
+                /* top empurrado pra baixo do badge de usuário/créditos/Sair (fixed top-6,
+                   z-[40]) — com top: 5rem a gaveta ficava colada/embaixo do badge, que tem
+                   z-index maior e tampava as abas "Página Inicial" etc. */
+                left: 3.5rem; right: 1rem; top: 7.5rem; bottom: auto;
+                width: auto !important; height: auto !important; max-height: calc(100vh - 11.5rem) !important;
             }
             #word-toolbar .resize-handle { display: none !important; }
         }
@@ -474,6 +477,10 @@
             </button>
 
             <button type="button" onclick="enterDemoMode()" class="w-full text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 font-medium text-xs underline">Ver demonstração sem criar conta</button>
+
+            <a href="https://wa.me/5519989765398" target="_blank" rel="noopener" class="w-full flex items-center justify-center gap-2 text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 font-bold text-xs">
+                <i data-lucide="message-circle" class="w-4 h-4"></i> Falar no WhatsApp
+            </a>
         </div>
     </div>
 
@@ -501,6 +508,11 @@
                 </button>
             </div>
         </div>
+
+        <!-- BOTÃO INSTALAR PWA (só aparece quando o navegador permite instalar) -->
+        <button id="pwa-install-btn" onclick="installPWA()" class="hidden-state fixed top-6 right-6 z-[40] hide-on-print bg-white/90 dark:bg-slate-850/90 backdrop-blur-md shadow-xl rounded-2xl border border-slate-200/50 dark:border-slate-700/50 flex items-center gap-2 px-4 py-2.5 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition">
+            <i data-lucide="download" class="w-4 h-4"></i> Instalar app
+        </button>
 
         <!-- NOTA: absolute inset-0 força ocupação do ecrã; overscroll-behavior para scroll perfeito -->
         <div id="main-canvas" class="absolute inset-0 pt-8 pb-40 flex flex-col items-center custom-scrollbar">
@@ -685,6 +697,12 @@
 
             <!-- Aba: Layout -->
             <div data-tab-panel="layout" class="toolbar-tab-panel hidden flex flex-wrap content-start items-center justify-center gap-1 py-2 px-1.5 overflow-auto custom-scrollbar">
+                <select id="quick-paper-size-select" onchange="quickApplyPaperSize()" title="Tamanho do Papel" class="w-full text-[10px] p-1 bg-slate-800 text-slate-200 border border-slate-700 rounded-md outline-none">
+                    <option value="a4">A4</option>
+                    <option value="a3">A3</option>
+                    <option value="carta">Carta</option>
+                </select>
+                <div class="word-tool-sep"></div>
                 <button onclick="execFormat('outdent')" title="Diminuir Recuo" class="word-tool-btn"><i data-lucide="indent-decrease" class="w-4 h-4"></i></button>
                 <button onclick="execFormat('indent')" title="Aumentar Recuo" class="word-tool-btn"><i data-lucide="indent-increase" class="w-4 h-4"></i></button>
                 <div class="word-tool-sep"></div>
@@ -1195,8 +1213,12 @@
             <div class="max-w-2xl mx-auto space-y-8">
                 <h2 class="text-3xl font-extrabold text-slate-800 dark:text-white">Ajustes da Ferramenta</h2>
 
+                <button id="pwa-install-btn-settings" onclick="installPWA()" class="hidden-state w-full flex items-center justify-center gap-2 bg-white/80 dark:bg-slate-850/80 backdrop-blur p-5 rounded-3xl shadow-xl border border-white/40 dark:border-slate-700 font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition">
+                    <i data-lucide="download" class="w-5 h-5 text-primary-500"></i> Instalar o Monofy no dispositivo
+                </button>
+
                 <div class="bg-white/80 dark:bg-slate-850/80 backdrop-blur p-8 rounded-3xl shadow-xl border border-white/40 dark:border-slate-700 space-y-8">
-                    
+
                     <div>
                         <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-3 flex items-center gap-2">
                             <i data-lucide="languages" class="w-5 h-5 text-primary-500"></i> Idioma da Redação
@@ -1352,7 +1374,8 @@
             slideLogoSize: parseInt(localStorage.getItem('monografia_slide_logo_size')) || 36,
             slideLogoTopSize: parseInt(localStorage.getItem('monografia_slide_logo_top_size')) || 34,
             slideTextScale: parseInt(localStorage.getItem('monografia_slide_text_scale')) || 100,
-            activeSlideId: null
+            activeSlideId: null,
+            paperSizeOverride: localStorage.getItem('monografia_paper_override') || null
         };
 
         document.addEventListener('DOMContentLoaded', () => {
@@ -1762,7 +1785,7 @@
         });
 
         // Carta (UPDS/APA): 21,59 x 27,94 cm. A4 (ABNT e outras normas): 21 x 29,7 cm.
-        const PAPER_SIZES = { carta: { w: '21.59cm', h: '27.94cm' }, a4: { w: '21cm', h: '29.7cm' } };
+        const PAPER_SIZES = { carta: { w: '21.59cm', h: '27.94cm' }, a4: { w: '21cm', h: '29.7cm' }, a3: { w: '29.7cm', h: '42cm' } };
 
         function applyPaperSizeToCSS(papel) {
             const size = PAPER_SIZES[papel] || PAPER_SIZES.carta;
@@ -1852,7 +1875,12 @@
             state.margins = { ...tpl.margens };
             localStorage.setItem('monografia_margins', JSON.stringify(state.margins));
             applyMarginsToCSS();
-            applyPaperSizeToCSS(tpl.papel);
+            // Se a pessoa já escolheu manualmente um tamanho de papel na barra de
+            // ferramentas, isso tem prioridade sobre o tamanho padrão da norma.
+            const effectivePaperSize = state.paperSizeOverride || tpl.papel;
+            applyPaperSizeToCSS(effectivePaperSize);
+            const paperSelect = document.getElementById('quick-paper-size-select');
+            if (paperSelect) paperSelect.value = effectivePaperSize;
             ['mt', 'mb', 'ml', 'mr'].forEach(side => {
                 const valEl = document.getElementById(`val-${side}`);
                 const slEl = document.getElementById(`sl-${side}`);
@@ -1933,6 +1961,13 @@
             const id = document.getElementById('quick-norm-select').value;
             const tpl = getAllNormTemplates().find(t => t.id === id);
             if (tpl) applyNormTemplate(tpl);
+        }
+
+        function quickApplyPaperSize() {
+            const size = document.getElementById('quick-paper-size-select').value;
+            state.paperSizeOverride = size;
+            localStorage.setItem('monografia_paper_override', size);
+            applyPaperSizeToCSS(size);
         }
 
         // Rastreia em qual página (apa-content) o cursor está, pra saber onde as ferramentas
@@ -2167,7 +2202,7 @@
         async function loadProfile() {
             const { data, error } = await supabaseClient
                 .from('profiles')
-                .select('credits, email, full_name, avatar_url, role')
+                .select('credits, email, full_name, avatar_url, role, region')
                 .eq('id', state.session.user.id)
                 .single();
             if (!error && data) {
@@ -2186,6 +2221,15 @@
                 }
                 updateWatermarkButtonUI();
                 syncWatermarkRemovedClass();
+
+                // Salva a região (fuso horário) só na primeira vez — usada no painel
+                // admin pra dar uma ideia de onde cada usuário está, sem pedir GPS.
+                if (!data.region) {
+                    try {
+                        const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+                        if (tz) await supabaseClient.from('profiles').update({ region: tz }).eq('id', state.session.user.id);
+                    } catch (e) { /* não crítico */ }
+                }
             }
         }
 
@@ -2241,23 +2285,31 @@
             list.innerHTML = '<p class="p-6 text-slate-400">Carregando...</p>';
             const { data, error } = await supabaseClient
                 .from('profiles')
-                .select('id, email, full_name, credits, role')
+                .select('id, email, full_name, credits, role, region')
                 .order('email');
 
             if (error || !data) { list.innerHTML = '<p class="p-6 text-red-500">Erro ao carregar usuários.</p>'; return; }
 
             list.innerHTML = data.map(u => `
                 <div class="flex items-center justify-between gap-4 p-5 flex-wrap">
-                    <div>
+                    <div class="min-w-[180px]">
                         <p class="font-bold text-slate-800 dark:text-white">${u.full_name || u.email}</p>
                         <p class="text-xs text-slate-400">${u.email} ${u.role === 'admin' ? '· <span class="text-red-500 font-bold">ADMIN</span>' : ''}</p>
+                        <p class="text-xs text-slate-400 flex items-center gap-1 mt-0.5"><i data-lucide="map-pin" class="w-3 h-3"></i> ${u.region || 'desconhecida'}</p>
                     </div>
                     <div class="flex items-center gap-2">
+                        <label class="text-xs text-slate-400">Créditos</label>
                         <input type="number" id="admin-credits-${u.id}" value="${u.credits}" class="w-24 p-2 text-center border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 rounded-lg outline-none">
                         <button onclick="adminSetCredits('${u.id}')" class="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-bold hover:bg-red-700">Aplicar</button>
                     </div>
+                    <div class="flex items-center gap-2">
+                        <label class="text-xs text-slate-400">Nova senha</label>
+                        <input type="password" id="admin-password-${u.id}" placeholder="mín. 6 caracteres" class="w-40 p-2 text-center border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 rounded-lg outline-none">
+                        <button onclick="adminSetPassword('${u.id}')" class="px-4 py-2 bg-slate-800 dark:bg-amber-600 text-white rounded-lg text-sm font-bold hover:bg-slate-700 dark:hover:bg-amber-700">Trocar</button>
+                    </div>
                 </div>
             `).join('');
+            lucide.createIcons();
         }
 
         async function adminSetCredits(userId) {
@@ -2265,6 +2317,21 @@
             const { data, error } = await supabaseClient.rpc('admin_set_credits', { p_target_user_id: userId, p_new_credits: newCredits });
             if (error || !data) { alert('Erro: ' + (error?.message || 'falha desconhecida')); return; }
             alert('Créditos atualizados!');
+        }
+
+        // Por segurança, o Supabase nunca expõe a senha real de ninguém (nem em texto
+        // puro nem com hash reversível) — o admin não consegue "ver" a senha de um
+        // usuário, só definir uma nova em nome dele via Edge Function com service role.
+        async function adminSetPassword(userId) {
+            const input = document.getElementById(`admin-password-${userId}`);
+            const newPassword = input.value;
+            if (!newPassword || newPassword.length < 6) { alert('A senha precisa ter ao menos 6 caracteres.'); return; }
+            const { data, error } = await supabaseClient.functions.invoke('admin-update-password', {
+                body: { target_user_id: userId, new_password: newPassword }
+            });
+            if (error || data?.error) { alert('Erro: ' + (data?.error || error?.message || 'falha desconhecida')); return; }
+            input.value = '';
+            alert('Senha atualizada!');
         }
 
         async function onAuthenticated(session) {
@@ -5174,6 +5241,31 @@ Responda APENAS com o título, sem aspas, sem explicações, em uma única linha
                     .then(reg => console.log('Service Worker ativo para o Monofy.', reg.scope))
                     .catch(err => console.warn('Falha ao registrar Service Worker do PWA:', err));
             });
+        }
+
+        /* BOTÃO DE INSTALAÇÃO DO PWA */
+        // O navegador só dispara beforeinstallprompt quando considera o app "instalável"
+        // (manifest + service worker ok) — guardamos o evento aqui pra poder chamar
+        // .prompt() depois, no clique do usuário (não pode ser disparado sem gesto dele).
+        let deferredPWAInstallPrompt = null;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPWAInstallPrompt = e;
+            document.getElementById('pwa-install-btn')?.classList.remove('hidden-state');
+            document.getElementById('pwa-install-btn-settings')?.classList.remove('hidden-state');
+        });
+        window.addEventListener('appinstalled', () => {
+            deferredPWAInstallPrompt = null;
+            document.getElementById('pwa-install-btn')?.classList.add('hidden-state');
+            document.getElementById('pwa-install-btn-settings')?.classList.add('hidden-state');
+        });
+        async function installPWA() {
+            if (!deferredPWAInstallPrompt) return;
+            deferredPWAInstallPrompt.prompt();
+            await deferredPWAInstallPrompt.userChoice;
+            deferredPWAInstallPrompt = null;
+            document.getElementById('pwa-install-btn')?.classList.add('hidden-state');
+            document.getElementById('pwa-install-btn-settings')?.classList.add('hidden-state');
         }
     </script>
 </body>
