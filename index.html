@@ -1291,7 +1291,20 @@
             <div class="max-w-3xl mx-auto space-y-8">
                 <div class="bg-purple-600 rounded-[2rem] p-8 md:p-10 text-white shadow-xl">
                     <h2 class="text-3xl font-extrabold mb-3 flex items-center gap-2"><i data-lucide="flask-conical" class="w-7 h-7"></i> LAB</h2>
-                    <p class="text-purple-50 text-sm">Crie a sua própria formatação (margens, fonte, capa, citação). Por enquanto, só admins têm acesso a esta aba — mas qualquer modelo criado aqui já fica disponível para uso nos seus projetos, em Ajustes &gt; Modelo de Norma.</p>
+                    <p class="text-purple-50 text-sm">Crie a sua própria formatação (margens, fonte, capa, citação, estrutura de seções). Por enquanto, só admins têm acesso a esta aba — mas qualquer modelo criado aqui já fica disponível para uso nos seus projetos, em Ajustes &gt; Modelo de Norma, e pode ser exportado em .json para compartilhar.</p>
+                </div>
+
+                <div class="bg-white/80 dark:bg-slate-850/80 backdrop-blur p-6 rounded-3xl shadow-xl border border-white/40 dark:border-slate-700">
+                    <h3 class="text-sm font-bold text-slate-700 dark:text-slate-300 mb-3 flex items-center gap-2"><i data-lucide="eye" class="w-4 h-4 text-purple-500"></i> Pré-visualização ao vivo</h3>
+                    <div class="bg-slate-200 dark:bg-slate-950 rounded-2xl p-6 flex justify-center overflow-auto">
+                        <div id="lab-preview-page" style="background:#fff;position:relative;box-shadow:0 4px 16px rgba(0,0,0,.2);flex-shrink:0;">
+                            <div id="lab-preview-frame" style="position:absolute;inset:6px;border:3px double #1e293b;pointer-events:none;"></div>
+                            <div id="lab-preview-content" style="position:absolute;box-sizing:border-box;overflow:hidden;color:#1e293b;">
+                                <p id="lab-preview-title" style="margin:0 0 10px 0;font-weight:bold;text-transform:uppercase;">Título de Exemplo do Trabalho</p>
+                                <p id="lab-preview-paragraph" style="margin:0;text-align:justify;">Este é um parágrafo de exemplo para você ver como o texto vai ficar com a fonte, o tamanho, o espaçamento entre linhas e o recuo de parágrafo escolhidos abaixo <span id="lab-preview-citation">(Silva, 2026)</span>.</p>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="bg-white/80 dark:bg-slate-850/80 backdrop-blur p-8 rounded-3xl shadow-xl border border-white/40 dark:border-slate-700 space-y-6">
@@ -1303,7 +1316,7 @@
                     <div class="grid grid-cols-2 gap-4">
                         <div>
                             <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Papel</label>
-                            <select id="lab-papel" class="w-full p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none font-medium shadow-sm">
+                            <select id="lab-papel" onchange="updateLabPreview()" class="w-full p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none font-medium shadow-sm">
                                 <option value="carta">Carta</option>
                                 <option value="a4">A4</option>
                                 <option value="a3">A3</option>
@@ -1311,7 +1324,7 @@
                         </div>
                         <div>
                             <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Estilo de citação</label>
-                            <select id="lab-citacao" class="w-full p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none font-medium shadow-sm">
+                            <select id="lab-citacao" onchange="updateLabPreview()" class="w-full p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none font-medium shadow-sm">
                                 <option value="APA">APA</option>
                                 <option value="ABNT">ABNT</option>
                             </select>
@@ -1323,19 +1336,19 @@
                         <div class="grid grid-cols-4 gap-3">
                             <div>
                                 <label class="block text-xs text-slate-400 mb-1">Superior</label>
-                                <input type="number" step="0.1" id="lab-mt" value="2.54" class="w-full p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none font-medium shadow-sm">
+                                <input type="number" step="0.1" id="lab-mt" value="2.54" oninput="updateLabPreview()" class="w-full p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none font-medium shadow-sm">
                             </div>
                             <div>
                                 <label class="block text-xs text-slate-400 mb-1">Inferior</label>
-                                <input type="number" step="0.1" id="lab-mb" value="2.54" class="w-full p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none font-medium shadow-sm">
+                                <input type="number" step="0.1" id="lab-mb" value="2.54" oninput="updateLabPreview()" class="w-full p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none font-medium shadow-sm">
                             </div>
                             <div>
                                 <label class="block text-xs text-slate-400 mb-1">Esquerda</label>
-                                <input type="number" step="0.1" id="lab-ml" value="3.0" class="w-full p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none font-medium shadow-sm">
+                                <input type="number" step="0.1" id="lab-ml" value="3.0" oninput="updateLabPreview()" class="w-full p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none font-medium shadow-sm">
                             </div>
                             <div>
                                 <label class="block text-xs text-slate-400 mb-1">Direita</label>
-                                <input type="number" step="0.1" id="lab-mr" value="2.54" class="w-full p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none font-medium shadow-sm">
+                                <input type="number" step="0.1" id="lab-mr" value="2.54" oninput="updateLabPreview()" class="w-full p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none font-medium shadow-sm">
                             </div>
                         </div>
                     </div>
@@ -1343,35 +1356,35 @@
                     <div class="grid grid-cols-2 gap-4">
                         <div>
                             <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Fonte</label>
-                            <input type="text" id="lab-fonte" value="Times New Roman" class="w-full p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none font-medium shadow-sm">
+                            <input type="text" id="lab-fonte" value="Times New Roman" oninput="updateLabPreview()" class="w-full p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none font-medium shadow-sm">
                         </div>
                         <div>
                             <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Tamanho da fonte (pt)</label>
-                            <input type="number" step="0.5" id="lab-tamanho-fonte" value="12" class="w-full p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none font-medium shadow-sm">
+                            <input type="number" step="0.5" id="lab-tamanho-fonte" value="12" oninput="updateLabPreview()" class="w-full p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none font-medium shadow-sm">
                         </div>
                     </div>
 
                     <div class="grid grid-cols-2 gap-4">
                         <div>
                             <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Espaçamento entre linhas</label>
-                            <input type="number" step="0.1" id="lab-espacamento" value="1.5" class="w-full p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none font-medium shadow-sm">
+                            <input type="number" step="0.1" id="lab-espacamento" value="1.5" oninput="updateLabPreview()" class="w-full p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none font-medium shadow-sm">
                         </div>
                         <div>
                             <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Recuo de parágrafo (cm)</label>
-                            <input type="number" step="0.01" id="lab-recuo" value="1.27" class="w-full p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none font-medium shadow-sm">
+                            <input type="number" step="0.01" id="lab-recuo" value="1.27" oninput="updateLabPreview()" class="w-full p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none font-medium shadow-sm">
                         </div>
                     </div>
 
                     <div class="grid grid-cols-2 gap-4 items-end">
                         <div>
                             <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Alinhamento da capa</label>
-                            <select id="lab-capa-alinhamento" class="w-full p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none font-medium shadow-sm">
+                            <select id="lab-capa-alinhamento" onchange="updateLabPreview()" class="w-full p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none font-medium shadow-sm">
                                 <option value="center">Centralizado</option>
                                 <option value="left">Esquerda</option>
                             </select>
                         </div>
                         <label class="flex items-center gap-2 p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl cursor-pointer">
-                            <input type="checkbox" id="lab-capa-moldura" class="w-5 h-5 accent-purple-600">
+                            <input type="checkbox" id="lab-capa-moldura" onchange="updateLabPreview()" class="w-5 h-5 accent-purple-600">
                             <span class="text-sm font-bold text-slate-700 dark:text-slate-300">Capa com moldura</span>
                         </label>
                     </div>
@@ -1379,6 +1392,28 @@
                     <button onclick="saveLabTemplate()" class="w-full py-4 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold shadow-lg transition active:scale-95 flex items-center justify-center gap-2">
                         <i data-lucide="sparkles" class="w-5 h-5"></i> Criar e aplicar modelo
                     </button>
+                </div>
+
+                <div class="bg-white/80 dark:bg-slate-850/80 backdrop-blur p-8 rounded-3xl shadow-xl border border-white/40 dark:border-slate-700 space-y-4">
+                    <div>
+                        <h3 class="text-sm font-bold text-slate-700 dark:text-slate-300 flex items-center gap-2"><i data-lucide="list-tree" class="w-4 h-4 text-purple-500"></i> Estrutura do documento (seções que a IA vai redigir)</h3>
+                        <p class="text-xs text-slate-400 mt-1">Adicione, remova e reordene as seções, e diga à IA o que escrever em cada uma. Essa estrutura vale só para quem estiver usando este modelo.</p>
+                    </div>
+                    <div id="lab-sections-list" class="space-y-3"></div>
+                    <button onclick="addLabSection()" class="w-full py-3 border-2 border-dashed border-purple-300 dark:border-purple-700/50 text-purple-600 dark:text-purple-400 rounded-xl font-bold text-sm hover:bg-purple-50 dark:hover:bg-purple-900/20 transition flex items-center justify-center gap-2">
+                        <i data-lucide="plus" class="w-4 h-4"></i> Adicionar seção
+                    </button>
+                </div>
+
+                <div class="bg-white/80 dark:bg-slate-850/80 backdrop-blur p-6 rounded-3xl shadow-xl border border-white/40 dark:border-slate-700">
+                    <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-3 flex items-center gap-2">
+                        <i data-lucide="upload-cloud" class="w-5 h-5 text-purple-500"></i> Importar modelo compartilhado
+                    </label>
+                    <div id="lab-import-dropzone" class="border-2 border-dashed border-purple-300 dark:border-purple-700/50 rounded-2xl p-6 text-center cursor-pointer hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors">
+                        <i data-lucide="upload-cloud" class="w-8 h-8 mx-auto mb-2 text-purple-400"></i>
+                        <p class="text-sm font-bold text-slate-600 dark:text-slate-300">Arraste um arquivo .json de modelo (exportado do LAB) aqui ou clique para enviar</p>
+                        <input type="file" id="lab-import-file-input" accept=".json" class="hidden">
+                    </div>
                 </div>
 
                 <div>
@@ -1426,7 +1461,7 @@
                             <i data-lucide="upload-cloud" class="w-8 h-8 mx-auto mb-2 text-indigo-400"></i>
                             <p class="text-sm font-bold text-slate-600 dark:text-slate-300">Arraste um arquivo .txt aqui ou clique para enviar</p>
                             <p class="text-xs text-slate-400 mt-1">Define margens, fonte, borda de página da capa e estilo de citação do seu modelo</p>
-                            <input type="file" id="norm-file-input" accept=".txt" class="hidden">
+                            <input type="file" id="norm-file-input" accept=".txt,.json" class="hidden">
                         </div>
                         <div id="norm-templates-list" class="mt-4 space-y-2"></div>
                     </div>
@@ -2107,17 +2142,33 @@
         }
 
         function handleNormTemplateFile(file) {
-            if (!file.name.toLowerCase().endsWith('.txt')) {
-                alert('Por favor, envie um arquivo .txt');
+            const ext = file.name.toLowerCase().split('.').pop();
+            if (ext !== 'txt' && ext !== 'json') {
+                alert('Por favor, envie um arquivo .txt ou .json');
                 return;
             }
             const reader = new FileReader();
             reader.onload = (e) => {
-                const tpl = parseNormTemplateTxt(e.target.result, file.name.replace(/\.txt$/i, ''));
-                state.customNormTemplates.push(tpl);
-                localStorage.setItem('monografia_norm_templates', JSON.stringify(state.customNormTemplates));
-                applyNormTemplate(tpl);
-                alert(`Modelo "${tpl.nome}" importado e aplicado!`);
+                if (ext === 'json') {
+                    try {
+                        const tpl = JSON.parse(e.target.result);
+                        if (!tpl.nome || !tpl.margens || !tpl.fonte) throw new Error('Arquivo inválido');
+                        tpl.id = 'custom-' + Date.now();
+                        tpl.builtin = false;
+                        state.customNormTemplates.push(tpl);
+                        localStorage.setItem('monografia_norm_templates', JSON.stringify(state.customNormTemplates));
+                        applyNormTemplate(tpl);
+                        alert(`Modelo "${tpl.nome}" importado e aplicado!`);
+                    } catch (err) {
+                        alert('Arquivo .json inválido. Certifique-se de que é um modelo exportado pelo Monofy.');
+                    }
+                } else {
+                    const tpl = parseNormTemplateTxt(e.target.result, file.name.replace(/\.txt$/i, ''));
+                    state.customNormTemplates.push(tpl);
+                    localStorage.setItem('monografia_norm_templates', JSON.stringify(state.customNormTemplates));
+                    applyNormTemplate(tpl);
+                    alert(`Modelo "${tpl.nome}" importado e aplicado!`);
+                }
             };
             reader.readAsText(file);
         }
@@ -2142,6 +2193,7 @@
                     </div>
                     <div class="flex items-center gap-2 shrink-0">
                         <button onclick='applyNormTemplate(${JSON.stringify(t).replace(/'/g, "&apos;")})' class="px-3 py-2 bg-slate-900 dark:bg-primary-600 text-white rounded-lg text-xs font-bold hover:-translate-y-0.5 transition">Usar</button>
+                        ${!t.builtin ? `<button onclick="exportNormTemplate('${t.id}')" class="p-2 text-slate-400 hover:text-primary-500 rounded-lg" title="Exportar para compartilhar"><i data-lucide="download" class="w-4 h-4"></i></button>` : ''}
                         ${!t.builtin ? `<button onclick="deleteNormTemplate('${t.id}')" class="p-2 text-slate-400 hover:text-red-500 rounded-lg"><i data-lucide="trash-2" class="w-4 h-4"></i></button>` : ''}
                     </div>
                 </div>
@@ -2176,13 +2228,156 @@
                 recuoParagrafo: parseFloat(document.getElementById('lab-recuo').value) || 1.27,
                 capaMoldura: document.getElementById('lab-capa-moldura').checked,
                 capaAlinhamento: document.getElementById('lab-capa-alinhamento').value,
-                estiloCitacao: document.getElementById('lab-citacao').value
+                estiloCitacao: document.getElementById('lab-citacao').value,
+                secoes: buildSecoesFromLabDraft()
             };
             state.customNormTemplates.push(tpl);
             localStorage.setItem('monografia_norm_templates', JSON.stringify(state.customNormTemplates));
             applyNormTemplate(tpl);
             alert(`Modelo "${tpl.nome}" criado e aplicado! Ele já está disponível em Ajustes > Modelo de Norma.`);
             document.getElementById('lab-nome').value = '';
+        }
+
+        function exportNormTemplate(id) {
+            const tpl = getAllNormTemplates().find(t => t.id === id);
+            if (!tpl) return;
+            const blob = new Blob([JSON.stringify(tpl, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `monofy-modelo-${slugifyLabel(tpl.nome)}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function slugifyLabel(label) {
+            return (label || 'secao').toLowerCase()
+                .normalize('NFD').replace(/[̀-ͯ]/g, '')
+                .replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'secao';
+        }
+
+        // ==========================================
+        // LAB: estrutura de seções (quais partes a IA vai redigir e em que ordem)
+        // ==========================================
+        let labSectionsDraft = [];
+
+        function defaultLabSectionsDraft() {
+            return DOC_SECTION_PLAN.map(p => ({
+                label: p.label,
+                tipo: p.id === 'abstract' ? 'abstract' : (p.id === 'referencias' ? 'referencias' : (p.id === 'resumo' ? 'resumo' : 'normal')),
+                instructions: p.instructions || ''
+            }));
+        }
+
+        // Converte o rascunho visual (label + tipo + instruções) no formato real usado
+        // por DOC_SECTION_PLAN. "resumo"/"abstract"/"referencias" mantêm os ids fixos
+        // porque generateDocument() trata esses ids de forma especial (tradução
+        // automática do Abstract e regras de bibliografia das Referências).
+        function buildSecoesFromLabDraft() {
+            return labSectionsDraft.map((s, i) => {
+                let id;
+                if (s.tipo === 'resumo') id = 'resumo';
+                else if (s.tipo === 'abstract') id = 'abstract';
+                else if (s.tipo === 'referencias') id = 'referencias';
+                else id = slugifyLabel(s.label) + '_' + i;
+                return {
+                    id,
+                    label: s.label || 'Seção',
+                    instructions: (s.tipo === 'abstract' || s.tipo === 'referencias') ? null : (s.instructions || '')
+                };
+            });
+        }
+
+        function renderLabSections() {
+            const container = document.getElementById('lab-sections-list');
+            if (!container) return;
+            container.innerHTML = labSectionsDraft.map((s, i) => `
+                <div class="border border-slate-200 dark:border-slate-700 rounded-2xl p-4 space-y-3">
+                    <div class="flex items-center gap-2">
+                        <input type="text" value="${(s.label || '').replace(/"/g, '&quot;')}" onchange="updateLabSection(${i}, 'label', this.value)" placeholder="Título da seção" class="flex-1 p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none font-bold text-sm shadow-sm">
+                        <select onchange="updateLabSection(${i}, 'tipo', this.value)" class="p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none text-xs font-bold shadow-sm">
+                            <option value="normal" ${s.tipo === 'normal' ? 'selected' : ''}>Texto normal</option>
+                            <option value="resumo" ${s.tipo === 'resumo' ? 'selected' : ''}>Resumo (fonte do Abstract)</option>
+                            <option value="abstract" ${s.tipo === 'abstract' ? 'selected' : ''}>Abstract (tradução automática)</option>
+                            <option value="referencias" ${s.tipo === 'referencias' ? 'selected' : ''}>Referências (lista automática)</option>
+                        </select>
+                        <button onclick="moveLabSection(${i}, -1)" class="p-2 text-slate-400 hover:text-primary-500 rounded-lg" title="Mover para cima"><i data-lucide="chevron-up" class="w-4 h-4"></i></button>
+                        <button onclick="moveLabSection(${i}, 1)" class="p-2 text-slate-400 hover:text-primary-500 rounded-lg" title="Mover para baixo"><i data-lucide="chevron-down" class="w-4 h-4"></i></button>
+                        <button onclick="removeLabSection(${i})" class="p-2 text-slate-400 hover:text-red-500 rounded-lg" title="Remover"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                    </div>
+                    ${s.tipo === 'normal' || s.tipo === 'resumo'
+                        ? `<textarea onchange="updateLabSection(${i}, 'instructions', this.value)" placeholder="Instruções para a IA escrever esta seção..." class="w-full p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none text-xs shadow-sm" rows="2">${(s.instructions || '').replace(/</g, '&lt;')}</textarea>`
+                        : `<p class="text-xs text-slate-400 px-1">${s.tipo === 'abstract' ? 'Gerada automaticamente como tradução em inglês da seção de Resumo.' : 'Gerada automaticamente com a lista de referências no estilo de citação escolhido.'}</p>`}
+                </div>
+            `).join('');
+            lucide.createIcons();
+        }
+
+        function updateLabSection(i, field, value) {
+            if (!labSectionsDraft[i]) return;
+            labSectionsDraft[i][field] = value;
+            if (field === 'tipo') renderLabSections();
+        }
+
+        function addLabSection() {
+            labSectionsDraft.push({ label: 'Nova Seção', tipo: 'normal', instructions: '' });
+            renderLabSections();
+        }
+
+        function removeLabSection(i) {
+            labSectionsDraft.splice(i, 1);
+            renderLabSections();
+        }
+
+        function moveLabSection(i, dir) {
+            const j = i + dir;
+            if (j < 0 || j >= labSectionsDraft.length) return;
+            [labSectionsDraft[i], labSectionsDraft[j]] = [labSectionsDraft[j], labSectionsDraft[i]];
+            renderLabSections();
+        }
+
+        // Pré-visualização aproximada (não usa o mesmo motor de paginação do editor real,
+        // só escala margens/fonte/espaçamento numa página em miniatura) pra dar um feedback
+        // visual imediato enquanto a pessoa mexe no formulário do LAB.
+        function updateLabPreview() {
+            const page = document.getElementById('lab-preview-page');
+            if (!page) return;
+            const papel = document.getElementById('lab-papel').value;
+            const size = PAPER_SIZES[papel] || PAPER_SIZES.carta;
+            const pageWcm = parseFloat(size.w);
+            const pageHcm = parseFloat(size.h);
+            const previewWpx = 280;
+            const previewHpx = previewWpx * (pageHcm / pageWcm);
+            const scale = previewWpx / pageWcm;
+
+            const mt = parseFloat(document.getElementById('lab-mt').value) || 0;
+            const mb = parseFloat(document.getElementById('lab-mb').value) || 0;
+            const ml = parseFloat(document.getElementById('lab-ml').value) || 0;
+            const mr = parseFloat(document.getElementById('lab-mr').value) || 0;
+            const fonte = (document.getElementById('lab-fonte').value || 'Times New Roman').trim();
+            const tamanho = parseFloat(document.getElementById('lab-tamanho-fonte').value) || 12;
+            const espacamento = parseFloat(document.getElementById('lab-espacamento').value) || 1.5;
+            const recuo = parseFloat(document.getElementById('lab-recuo').value) || 1.27;
+            const moldura = document.getElementById('lab-capa-moldura').checked;
+            const alinhamento = document.getElementById('lab-capa-alinhamento').value;
+            const citacao = document.getElementById('lab-citacao').value;
+
+            page.style.width = previewWpx + 'px';
+            page.style.height = previewHpx + 'px';
+            document.getElementById('lab-preview-frame').style.display = moldura ? 'block' : 'none';
+
+            const content = document.getElementById('lab-preview-content');
+            content.style.top = (mt * scale) + 'px';
+            content.style.bottom = (mb * scale) + 'px';
+            content.style.left = (ml * scale) + 'px';
+            content.style.right = (mr * scale) + 'px';
+            content.style.fontFamily = `'${fonte}', serif`;
+            content.style.fontSize = Math.max(6, tamanho * (scale / 2.5)) + 'px';
+            content.style.lineHeight = espacamento;
+            content.style.textAlign = alinhamento === 'left' ? 'left' : 'center';
+
+            document.getElementById('lab-preview-paragraph').style.textIndent = (recuo * scale) + 'px';
+            document.getElementById('lab-preview-citation').textContent = citacao === 'ABNT' ? '(SILVA, 2026)' : '(Silva, 2026)';
         }
 
         // ==========================================
@@ -3520,6 +3715,9 @@ O campo "body" deve ser texto simples curto (pode usar quebras de linha com \\n 
                 renderAdminTab();
             } else if (tabId === 'lab') {
                 document.getElementById('tab-lab').classList.remove('hidden-state');
+                if (!labSectionsDraft.length) labSectionsDraft = defaultLabSectionsDraft();
+                renderLabSections();
+                updateLabPreview();
                 renderNormTemplatesList();
             } else if (tabId === 'slides') {
                 document.getElementById('tab-slides').classList.remove('hidden-state');
@@ -3752,6 +3950,28 @@ O campo "body" deve ser texto simples curto (pode usar quebras de linha com \\n 
             if (e.dataTransfer.files[0]) handleNormTemplateFile(e.dataTransfer.files[0]);
         });
 
+        const labImportDropzone = document.getElementById('lab-import-dropzone');
+        const labImportFileInput = document.getElementById('lab-import-file-input');
+        if (labImportDropzone && labImportFileInput) {
+            labImportDropzone.addEventListener('click', () => labImportFileInput.click());
+            labImportFileInput.addEventListener('change', (e) => {
+                if (e.target.files[0]) handleNormTemplateFile(e.target.files[0]);
+                e.target.value = '';
+            });
+            labImportDropzone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                labImportDropzone.classList.add('bg-purple-50', 'dark:bg-purple-900/30');
+            });
+            labImportDropzone.addEventListener('dragleave', () => {
+                labImportDropzone.classList.remove('bg-purple-50', 'dark:bg-purple-900/30');
+            });
+            labImportDropzone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                labImportDropzone.classList.remove('bg-purple-50', 'dark:bg-purple-900/30');
+                if (e.dataTransfer.files[0]) handleNormTemplateFile(e.dataTransfer.files[0]);
+            });
+        }
+
         function setCustomLogo(base64) {
             state.logoBase64 = base64;
             document.getElementById('out-logo').src = base64;
@@ -3868,10 +4088,12 @@ O campo "body" deve ser texto simples curto (pode usar quebras de linha com \\n 
             const titleField = COVER_GUIDED_FIELDS.find(f => f.id === 'in-title');
             const titleNeedsAI = hasChatContent && (!titleEl.value.trim() || titleEl.value.trim() === titleField.default);
 
-            const totalCost = AI_COST_PER_SECTION * DOC_SECTION_PLAN.length + (titleNeedsAI ? AI_COST_TITLE_FROM_CHAT : 0);
+            const activeTpl = getActiveNormTemplate();
+            const sectionPlan = (activeTpl.secoes && activeTpl.secoes.length) ? activeTpl.secoes : DOC_SECTION_PLAN;
+            const totalCost = AI_COST_PER_SECTION * sectionPlan.length + (titleNeedsAI ? AI_COST_TITLE_FROM_CHAT : 0);
             const confirmed = await showConfirmModal(
                 'Gerar trabalho com IA',
-                `A IA vai redigir o documento seção por seção (Resumo, Abstract, Introdução, Marco Teórico, Conclusão e Referências)${titleNeedsAI ? ', e antes disso vai definir o título com base na sua conversa com o Assistente' : ''}. Isso consome até <b>${totalCost} créditos</b> no total — cada parte só é cobrada depois de gerada com sucesso — do seu saldo atual de <b>${state.profile.credits}</b>. Continuar?`
+                `A IA vai redigir o documento seção por seção (${sectionPlan.map(s => s.label).join(', ')})${titleNeedsAI ? ', e antes disso vai definir o título com base na sua conversa com o Assistente' : ''}. Isso consome até <b>${totalCost} créditos</b> no total — cada parte só é cobrada depois de gerada com sucesso — do seu saldo atual de <b>${state.profile.credits}</b>. Continuar?`
             );
             if (!confirmed) return;
 
@@ -3910,7 +4132,6 @@ Responda APENAS com o título, sem aspas, sem explicações, em uma única linha
                 }
             }
 
-            const activeTpl = getActiveNormTemplate();
             const citStyle = state.citationStyle;
             const refRulesByStyle = citStyle === 'ABNT'
                 ? `Genera una lista bibliográfica en NORMAS ABNT (NBR 6023). Formato: SOBRENOME, Nome. Título: subtítulo. Edición. Local: Editora, Año. Las citas en el texto deben ser (SOBRENOME, año).`
@@ -3928,14 +4149,14 @@ Responda APENAS com o título, sem aspas, sem explicações, em uma única linha
 
             let failedSection = null;
 
-            for (let i = 0; i < DOC_SECTION_PLAN.length; i++) {
-                const plan = DOC_SECTION_PLAN[i];
-                textEl.innerText = `Gerando: ${plan.label} (${i + 1}/${DOC_SECTION_PLAN.length})...`;
+            for (let i = 0; i < sectionPlan.length; i++) {
+                const plan = sectionPlan[i];
+                textEl.innerText = `Gerando: ${plan.label} (${i + 1}/${sectionPlan.length})...`;
 
                 const sectionInstructions = plan.id === 'referencias'
                     ? `Redacta la lista de REFERENCIAS BIBLIOGRÁFICAS. ${refRulesByStyle} Envuelve CADA referencia obligatoriamente en <p class="hanging-indent"> para lograr la sangría francesa. El contenido debe comenzar DIRECTAMENTE con la primera referencia — NO incluyas ningún párrafo introductorio, explicativo o de cierre antes o después de la lista, ni texto que no sea una referencia bibliográfica en sí.`
                     : plan.instructions;
-                const otherLabels = DOC_SECTION_PLAN.filter(p => p.id !== plan.id).map(p => p.label).join(', ');
+                const otherLabels = sectionPlan.filter(p => p.id !== plan.id).map(p => p.label).join(', ');
 
                 // O Abstract é sempre a tradução fiel do Resumo já gerado (que vem antes
                 // dele no DOC_SECTION_PLAN), independente do idioma de saída escolhido pelo
