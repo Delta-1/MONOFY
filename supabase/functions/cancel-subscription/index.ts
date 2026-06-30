@@ -1,14 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
-// Pacotes de créditos (preços em BRL, com desconto crescente nos pacotes maiores)
-const CREDIT_PACKS: Record<string, { title: string; price: number; credits: number }> = {
-  pack_10: { title: "Monofy - 10 créditos", price: 10.0, credits: 10 },
-  pack_25: { title: "Monofy - 25 créditos", price: 22.0, credits: 25 },
-  pack_60: { title: "Monofy - 60 créditos", price: 45.0, credits: 60 },
-  pack_150: { title: "Monofy - 150 créditos", price: 95.0, credits: 150 },
-};
-
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -36,53 +28,48 @@ Deno.serve(async (req: Request) => {
     }
     const user = userData.user;
 
-    const { packId, successUrl, cancelUrl } = await req.json();
-    const pack = CREDIT_PACKS[packId];
-    if (!pack) {
-      return new Response(JSON.stringify({ error: "Pacote inválido" }), {
-        status: 400,
+    const supabaseAdmin = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+    );
+
+    const { data: sub } = await supabaseAdmin
+      .from("subscriptions")
+      .select("mp_preapproval_id")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if (!sub?.mp_preapproval_id) {
+      return new Response(JSON.stringify({ error: "Nenhuma assinatura encontrada" }), {
+        status: 404,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
     const mpAccessToken = Deno.env.get("MP_ACCESS_TOKEN")!;
-    const notificationUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/payment-webhook`;
-
-    const mpRes = await fetch("https://api.mercadopago.com/checkout/preferences", {
-      method: "POST",
+    const mpRes = await fetch(`https://api.mercadopago.com/preapproval/${sub.mp_preapproval_id}`, {
+      method: "PUT",
       headers: {
         Authorization: `Bearer ${mpAccessToken}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        items: [
-          {
-            title: pack.title,
-            quantity: 1,
-            unit_price: pack.price,
-            currency_id: "BRL",
-          },
-        ],
-        payer: {
-          email: user.email ?? undefined,
-        },
-        metadata: { user_id: user.id, credits: pack.credits },
-        external_reference: `${user.id}:${pack.credits}`,
-        back_urls: { success: successUrl, failure: cancelUrl, pending: cancelUrl },
-        auto_return: "approved",
-        notification_url: notificationUrl,
-      }),
+      body: JSON.stringify({ status: "cancelled" }),
     });
 
-    const preference = await mpRes.json();
     if (!mpRes.ok) {
-      return new Response(JSON.stringify({ error: preference }), {
+      const errBody = await mpRes.json().catch(() => ({}));
+      return new Response(JSON.stringify({ error: errBody }), {
         status: 502,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    return new Response(JSON.stringify({ url: preference.init_point }), {
+    await supabaseAdmin
+      .from("subscriptions")
+      .update({ status: "cancelled", updated_at: new Date().toISOString() })
+      .eq("user_id", user.id);
+
+    return new Response(JSON.stringify({ success: true }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {
