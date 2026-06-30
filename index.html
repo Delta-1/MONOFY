@@ -1014,6 +1014,11 @@
                     <span class="dock-tooltip">Admin</span>
                 </button>
 
+                <button onclick="switchTab('lab')" class="dock-btn hidden-state relative flex items-center justify-center w-12 h-12 lg:w-14 lg:h-14 rounded-full text-purple-500 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/30 transition-all active:scale-95 bg-transparent" id="dock-tab-lab">
+                    <i data-lucide="flask-conical" class="dock-icon w-5 h-5 lg:w-6 lg:h-6"></i>
+                    <span class="dock-tooltip">LAB</span>
+                </button>
+
                 <div class="w-px h-6 bg-slate-300 dark:bg-slate-600 mx-1"></div>
 
                 <!-- Mobile/Desktop Toggle Direita -->
@@ -1278,6 +1283,108 @@
                     <p class="text-red-50 text-sm">Gerencie os créditos de qualquer usuário.</p>
                 </div>
                 <div id="admin-users-list" class="bg-white/80 dark:bg-slate-850/80 backdrop-blur rounded-3xl shadow-xl border border-white/40 dark:border-slate-700 divide-y divide-slate-100 dark:divide-slate-800"></div>
+            </div>
+        </div>
+
+        <!-- Tab: LAB (admin) - criação visual de modelos de norma personalizados -->
+        <div id="tab-lab" class="hidden-state absolute inset-0 z-40 bg-slate-100/95 dark:bg-slate-900/95 backdrop-blur-2xl overflow-y-auto pt-10 pb-32 px-4 custom-scrollbar">
+            <div class="max-w-3xl mx-auto space-y-8">
+                <div class="bg-purple-600 rounded-[2rem] p-8 md:p-10 text-white shadow-xl">
+                    <h2 class="text-3xl font-extrabold mb-3 flex items-center gap-2"><i data-lucide="flask-conical" class="w-7 h-7"></i> LAB</h2>
+                    <p class="text-purple-50 text-sm">Crie a sua própria formatação (margens, fonte, capa, citação). Por enquanto, só admins têm acesso a esta aba — mas qualquer modelo criado aqui já fica disponível para uso nos seus projetos, em Ajustes &gt; Modelo de Norma.</p>
+                </div>
+
+                <div class="bg-white/80 dark:bg-slate-850/80 backdrop-blur p-8 rounded-3xl shadow-xl border border-white/40 dark:border-slate-700 space-y-6">
+                    <div>
+                        <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Nome do modelo</label>
+                        <input type="text" id="lab-nome" placeholder="Ex: Norma da Minha Faculdade" class="w-full p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none font-medium shadow-sm">
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Papel</label>
+                            <select id="lab-papel" class="w-full p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none font-medium shadow-sm">
+                                <option value="carta">Carta</option>
+                                <option value="a4">A4</option>
+                                <option value="a3">A3</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Estilo de citação</label>
+                            <select id="lab-citacao" class="w-full p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none font-medium shadow-sm">
+                                <option value="APA">APA</option>
+                                <option value="ABNT">ABNT</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Margens (cm)</label>
+                        <div class="grid grid-cols-4 gap-3">
+                            <div>
+                                <label class="block text-xs text-slate-400 mb-1">Superior</label>
+                                <input type="number" step="0.1" id="lab-mt" value="2.54" class="w-full p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none font-medium shadow-sm">
+                            </div>
+                            <div>
+                                <label class="block text-xs text-slate-400 mb-1">Inferior</label>
+                                <input type="number" step="0.1" id="lab-mb" value="2.54" class="w-full p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none font-medium shadow-sm">
+                            </div>
+                            <div>
+                                <label class="block text-xs text-slate-400 mb-1">Esquerda</label>
+                                <input type="number" step="0.1" id="lab-ml" value="3.0" class="w-full p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none font-medium shadow-sm">
+                            </div>
+                            <div>
+                                <label class="block text-xs text-slate-400 mb-1">Direita</label>
+                                <input type="number" step="0.1" id="lab-mr" value="2.54" class="w-full p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none font-medium shadow-sm">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Fonte</label>
+                            <input type="text" id="lab-fonte" value="Times New Roman" class="w-full p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none font-medium shadow-sm">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Tamanho da fonte (pt)</label>
+                            <input type="number" step="0.5" id="lab-tamanho-fonte" value="12" class="w-full p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none font-medium shadow-sm">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Espaçamento entre linhas</label>
+                            <input type="number" step="0.1" id="lab-espacamento" value="1.5" class="w-full p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none font-medium shadow-sm">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Recuo de parágrafo (cm)</label>
+                            <input type="number" step="0.01" id="lab-recuo" value="1.27" class="w-full p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none font-medium shadow-sm">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4 items-end">
+                        <div>
+                            <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Alinhamento da capa</label>
+                            <select id="lab-capa-alinhamento" class="w-full p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none font-medium shadow-sm">
+                                <option value="center">Centralizado</option>
+                                <option value="left">Esquerda</option>
+                            </select>
+                        </div>
+                        <label class="flex items-center gap-2 p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl cursor-pointer">
+                            <input type="checkbox" id="lab-capa-moldura" class="w-5 h-5 accent-purple-600">
+                            <span class="text-sm font-bold text-slate-700 dark:text-slate-300">Capa com moldura</span>
+                        </label>
+                    </div>
+
+                    <button onclick="saveLabTemplate()" class="w-full py-4 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold shadow-lg transition active:scale-95 flex items-center justify-center gap-2">
+                        <i data-lucide="sparkles" class="w-5 h-5"></i> Criar e aplicar modelo
+                    </button>
+                </div>
+
+                <div>
+                    <h3 class="text-lg font-bold text-slate-700 dark:text-slate-300 mb-3">Modelos personalizados criados</h3>
+                    <div id="lab-templates-list" class="space-y-2"></div>
+                </div>
             </div>
         </div>
 
@@ -2024,14 +2131,14 @@
         }
 
         function renderNormTemplatesList() {
-            const list = document.getElementById('norm-templates-list');
-            if (!list) return;
+            const lists = [document.getElementById('norm-templates-list'), document.getElementById('lab-templates-list')].filter(Boolean);
+            if (!lists.length) return;
             const templates = getAllNormTemplates();
-            list.innerHTML = templates.map(t => `
+            const html = templates.map(t => `
                 <div class="flex items-center justify-between gap-3 p-3 rounded-xl border ${t.id === state.activeNormTemplateId ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20' : 'border-slate-200 dark:border-slate-700'}">
                     <div>
                         <p class="font-bold text-sm text-slate-800 dark:text-white">${t.nome} ${t.id === state.activeNormTemplateId ? '<span class="text-primary-600">(ativo)</span>' : ''}</p>
-                        <p class="text-xs text-slate-400">${t.builtin ? 'Modelo embutido' : 'Importado'} · margens ${t.margens.mt}/${t.margens.mr}/${t.margens.mb}/${t.margens.ml}cm · citação ${t.estiloCitacao}</p>
+                        <p class="text-xs text-slate-400">${t.builtin ? 'Modelo embutido' : 'Personalizado'} · margens ${t.margens.mt}/${t.margens.mr}/${t.margens.mb}/${t.margens.ml}cm · citação ${t.estiloCitacao}</p>
                     </div>
                     <div class="flex items-center gap-2 shrink-0">
                         <button onclick='applyNormTemplate(${JSON.stringify(t).replace(/'/g, "&apos;")})' class="px-3 py-2 bg-slate-900 dark:bg-primary-600 text-white rounded-lg text-xs font-bold hover:-translate-y-0.5 transition">Usar</button>
@@ -2039,8 +2146,43 @@
                     </div>
                 </div>
             `).join('');
+            lists.forEach(list => { list.innerHTML = html; });
             lucide.createIcons();
             populateQuickNormSelect();
+        }
+
+        // Cria um modelo de norma a partir do formulário visual da aba LAB (admin),
+        // reaproveitando a mesma engine de "Modelo de Norma" usada pelo upload de .txt.
+        function saveLabTemplate() {
+            const nome = document.getElementById('lab-nome').value.trim();
+            if (!nome) {
+                alert('Dê um nome para o modelo.');
+                return;
+            }
+            const tpl = {
+                id: 'custom-' + Date.now(),
+                nome,
+                builtin: false,
+                papel: document.getElementById('lab-papel').value,
+                margens: {
+                    mt: parseFloat(document.getElementById('lab-mt').value) || 2.54,
+                    mb: parseFloat(document.getElementById('lab-mb').value) || 2.54,
+                    ml: parseFloat(document.getElementById('lab-ml').value) || 3.0,
+                    mr: parseFloat(document.getElementById('lab-mr').value) || 2.54
+                },
+                fonte: `'${(document.getElementById('lab-fonte').value || 'Times New Roman').trim()}', serif`,
+                tamanhoFonte: `${parseFloat(document.getElementById('lab-tamanho-fonte').value) || 12}pt`,
+                espacamento: parseFloat(document.getElementById('lab-espacamento').value) || 1.5,
+                recuoParagrafo: parseFloat(document.getElementById('lab-recuo').value) || 1.27,
+                capaMoldura: document.getElementById('lab-capa-moldura').checked,
+                capaAlinhamento: document.getElementById('lab-capa-alinhamento').value,
+                estiloCitacao: document.getElementById('lab-citacao').value
+            };
+            state.customNormTemplates.push(tpl);
+            localStorage.setItem('monografia_norm_templates', JSON.stringify(state.customNormTemplates));
+            applyNormTemplate(tpl);
+            alert(`Modelo "${tpl.nome}" criado e aplicado! Ele já está disponível em Ajustes > Modelo de Norma.`);
+            document.getElementById('lab-nome').value = '';
         }
 
         // ==========================================
@@ -2327,6 +2469,7 @@
                 }
                 if (data.role === 'admin') {
                     document.getElementById('dock-tab-admin').classList.remove('hidden-state');
+                    document.getElementById('dock-tab-lab').classList.remove('hidden-state');
                 }
                 updateWatermarkButtonUI();
                 syncWatermarkRemovedClass();
@@ -3337,18 +3480,19 @@ O campo "body" deve ser texto simples curto (pode usar quebras de linha com \\n 
                 return;
             }
 
-            const allTabs = ['generator', 'slides', 'profile', 'settings', 'credits', 'myprofile', 'admin'];
+            const allTabs = ['generator', 'slides', 'profile', 'settings', 'credits', 'myprofile', 'admin', 'lab'];
             allTabs.forEach(t => {
                 const btn = document.getElementById(`dock-tab-${t}`);
                 if(btn) {
                     if(t === tabId) {
                         btn.classList.add('bg-primary-600', 'text-white');
-                        btn.classList.remove('bg-transparent', 'text-slate-500', 'dark:text-slate-400', 'text-amber-500', 'dark:text-amber-400', 'text-emerald-500', 'dark:text-emerald-400', 'text-red-500', 'dark:text-red-400', 'text-indigo-500', 'dark:text-indigo-400');
+                        btn.classList.remove('bg-transparent', 'text-slate-500', 'dark:text-slate-400', 'text-amber-500', 'dark:text-amber-400', 'text-emerald-500', 'dark:text-emerald-400', 'text-red-500', 'dark:text-red-400', 'text-indigo-500', 'dark:text-indigo-400', 'text-purple-500', 'dark:text-purple-400');
                     } else {
                         btn.classList.remove('bg-primary-600', 'text-white');
                         if (t === 'credits') { btn.classList.add('bg-transparent', 'text-amber-500', 'dark:text-amber-400'); }
                         else if (t === 'myprofile') { btn.classList.add('bg-transparent', 'text-emerald-500', 'dark:text-emerald-400'); }
                         else if (t === 'admin') { btn.classList.add('bg-transparent', 'text-red-500', 'dark:text-red-400'); }
+                        else if (t === 'lab') { btn.classList.add('bg-transparent', 'text-purple-500', 'dark:text-purple-400'); }
                         else if (t === 'slides') { btn.classList.add('bg-transparent', 'text-indigo-500', 'dark:text-indigo-400'); }
                         else { btn.classList.add('bg-transparent', 'text-slate-500', 'dark:text-slate-400'); }
                     }
@@ -3374,6 +3518,9 @@ O campo "body" deve ser texto simples curto (pode usar quebras de linha com \\n 
             } else if (tabId === 'admin') {
                 document.getElementById('tab-admin').classList.remove('hidden-state');
                 renderAdminTab();
+            } else if (tabId === 'lab') {
+                document.getElementById('tab-lab').classList.remove('hidden-state');
+                renderNormTemplatesList();
             } else if (tabId === 'slides') {
                 document.getElementById('tab-slides').classList.remove('hidden-state');
                 renderSlidesTab();
