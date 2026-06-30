@@ -63,8 +63,8 @@
         // estiver vazio ou igual a isso, consideramos que o usuário não preencheu de verdade.
         const COVER_GUIDED_FIELDS = [
             { id: 'in-university', label: 'Universidade', question: 'Qual é o nome da sua universidade ou instituição?', default: 'UNIVERSIDAD PRIVADA DOMINGO SAVIO' },
-            { id: 'in-faculty', label: 'Faculdade', question: 'Qual é o nome da faculdade?', default: 'FACULTAD DE CIENCIAS EMPRESARIALES' },
-            { id: 'in-career', label: 'Carreira/Curso', question: 'Qual é o nome da carreira ou curso?', default: 'CARRERA DE INGENIERÍA COMERCIAL' },
+            { id: 'in-faculty', label: 'Faculdade', question: 'Qual é o nome da faculdade?', default: 'FACULTAD DE CIENCIAS DE LA SALUD' },
+            { id: 'in-career', label: 'Carreira/Curso', question: 'Qual é o nome da carreira ou curso?', default: 'CARRERA DE MEDICINA' },
             { id: 'in-title', label: 'Título do trabalho', question: 'Qual é o título da sua monografia?', default: 'TÍTULO DA MONOGRAFIA' },
             { id: 'in-subject', label: 'Disciplina', question: 'Qual é a disciplina ou matéria deste trabalho?', default: 'Metodología de la Investigación' },
             { id: 'in-professor', label: 'Docente', question: 'Qual é o nome completo do(a) professor(a) ou orientador(a)?', default: 'Nome do Docente' },
@@ -114,12 +114,24 @@
     <!-- pptxgenjs: gera arquivos .pptx nativos para a aba de Slides -->
     <script src="https://unpkg.com/pptxgenjs@4.0.1/dist/pptxgen.bundle.js"></script>
 
+    <!-- mammoth.js: lê arquivos .docx existentes e converte pra HTML, usado na importação de documentos -->
+    <script src="https://unpkg.com/mammoth@1.8.0/mammoth.browser.min.js"></script>
+
     <style>
         /* Tipografia Académica */
         @import url('https://fonts.googleapis.com/css2?family=Tinos:ital,wght@0,400;0,700;1,400;1,700&display=swap');
 
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; overscroll-behavior-y: none; }
         .hidden-state { display: none !important; }
+
+        /* Tela de abertura (splash) */
+        #splash-screen { transition: opacity 0.5s ease, visibility 0.5s ease; }
+        #splash-screen.splash-hide { opacity: 0; visibility: hidden; pointer-events: none; }
+        .splash-logo-anim { animation: splashLogoIn 0.9s cubic-bezier(.34,1.56,.64,1) both, splashPulse 1.8s ease-in-out 0.9s infinite; }
+        .splash-text-anim { animation: splashTextIn 0.7s ease-out 0.35s both; }
+        @keyframes splashLogoIn { 0% { opacity: 0; transform: scale(0.4) rotate(-8deg); } 100% { opacity: 1; transform: scale(1) rotate(0deg); } }
+        @keyframes splashPulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.06); } }
+        @keyframes splashTextIn { 0% { opacity: 0; transform: translateY(8px); } 100% { opacity: 1; transform: translateY(0); } }
 
         /* Barra de ferramentas de formatação (estilo Photoshop) */
         .word-tool-btn { width: 2.25rem; height: 2.25rem; display: flex; align-items: center; justify-content: center; border-radius: 0.6rem; color: #cbd5e1; flex-shrink: 0; transition: background-color 0.15s, color 0.15s; }
@@ -437,6 +449,13 @@
 </head>
 <body class="bg-[#e2e8f0] dark:bg-[#0f172a] text-slate-800 dark:text-slate-100 h-[100dvh] w-screen overflow-hidden transition-colors duration-300 selection:bg-primary-500 selection:text-white">
 
+    <!-- Tela de abertura: aparece por uma fração de segundo ao carregar o app, com a logo animada,
+         e depois se apaga sozinha (ver hideSplashScreen()). Fica acima até do login. -->
+    <div id="splash-screen" class="fixed inset-0 z-[300] flex flex-col items-center justify-center bg-[#0f172a]">
+        <img src="icon/icon.png" alt="Monofy" class="w-28 h-28 splash-logo-anim">
+        <p class="mt-5 text-white/70 text-sm font-bold tracking-[0.35em] splash-text-anim">MONOFY</p>
+    </div>
+
     <div id="login-screen" class="absolute inset-0 z-[200] flex items-center justify-center p-6 bg-slate-100 dark:bg-slate-900 transition-opacity duration-500">
         <div class="max-w-md w-full bg-white dark:bg-slate-850 rounded-[2rem] shadow-2xl p-10 text-center space-y-6 border border-white/20 dark:border-slate-700/50">
             <div class="bg-primary-50 dark:bg-primary-900/30 w-24 h-24 rounded-[1.5rem] flex items-center justify-center mx-auto mb-2 transform rotate-3">
@@ -574,8 +593,8 @@
                         
                         <div style="margin-top: 0; text-align: center;">
                             <p style="font-size: 16pt; font-weight: bold; text-transform: uppercase; margin: 0; text-indent: 0; line-height: 1.2; text-align: center !important;" id="out-university">UNIVERSIDAD PRIVADA DOMINGO SAVIO</p>
-                            <p style="font-size: 14pt; font-weight: bold; text-transform: uppercase; margin: 0; text-indent: 0; line-height: 1.2; text-align: center !important;" id="out-faculty">FACULTAD DE CIENCIAS EMPRESARIALES</p>
-                            <p style="font-size: 14pt; font-weight: bold; text-transform: uppercase; margin: 0; text-indent: 0; line-height: 1.2; text-align: center !important;" id="out-career">CARRERA DE INGENIERÍA COMERCIAL</p>
+                            <p style="font-size: 14pt; font-weight: bold; text-transform: uppercase; margin: 0; text-indent: 0; line-height: 1.2; text-align: center !important;" id="out-faculty">FACULTAD DE CIENCIAS DE LA SALUD</p>
+                            <p style="font-size: 14pt; font-weight: bold; text-transform: uppercase; margin: 0; text-indent: 0; line-height: 1.2; text-align: center !important;" id="out-career">CARRERA DE MEDICINA</p>
                         </div>
                         
                         <div style="margin-top: 1.5cm; text-align: center;">
@@ -686,6 +705,8 @@
                 <button onclick="quickInsertTool('table')" title="Inserir Tabela" class="word-tool-btn"><i data-lucide="table" class="w-4 h-4"></i></button>
                 <button onclick="quickInsertTool('image')" title="Inserir Imagem" class="word-tool-btn"><i data-lucide="image-plus" class="w-4 h-4"></i></button>
                 <button onclick="quickInsertTool('heading')" title="Inserir Título" class="word-tool-btn"><i data-lucide="heading" class="w-4 h-4"></i></button>
+                <div class="word-tool-sep"></div>
+                <button onclick="quickInsertTool('import')" title="Importar Arquivo (.docx, .pdf, .txt)" class="word-tool-btn"><i data-lucide="file-up" class="w-4 h-4"></i></button>
             </div>
 
             <!-- Aba: Design (formatação/aparência do documento, igual ao Word) -->
@@ -784,8 +805,8 @@
 
                     <input type="text" id="in-university" placeholder="Universidade" class="w-full text-sm p-3 bg-white/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 focus:border-primary-500 rounded-xl outline-none transition-colors" value="UNIVERSIDAD PRIVADA DOMINGO SAVIO">
                     <div class="flex gap-2">
-                        <input type="text" id="in-faculty" placeholder="Faculdade" class="w-full text-sm p-3 bg-white/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 focus:border-primary-500 rounded-xl outline-none transition-colors" value="FACULTAD DE CIENCIAS EMPRESARIALES">
-                        <input type="text" id="in-career" placeholder="Carreira" class="w-full text-sm p-3 bg-white/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 focus:border-primary-500 rounded-xl outline-none transition-colors" value="CARRERA DE INGENIERÍA COMERCIAL">
+                        <input type="text" id="in-faculty" placeholder="Faculdade" class="w-full text-sm p-3 bg-white/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 focus:border-primary-500 rounded-xl outline-none transition-colors" value="FACULTAD DE CIENCIAS DE LA SALUD">
+                        <input type="text" id="in-career" placeholder="Carreira" class="w-full text-sm p-3 bg-white/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 focus:border-primary-500 rounded-xl outline-none transition-colors" value="CARRERA DE MEDICINA">
                     </div>
                     <textarea id="in-title" rows="2" placeholder="Título Principal" class="w-full text-sm p-3 bg-white/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 focus:border-primary-500 rounded-xl outline-none resize-none font-bold text-center transition-colors">TÍTULO DA MONOGRAFIA</textarea>
                     
@@ -1315,6 +1336,9 @@
     <!-- Input de imagem compartilhado, usado pela ferramenta de edição inline -->
     <input type="file" id="inline-image-upload" accept="image/*" class="hidden" />
 
+    <!-- Input de importação de arquivo (.docx/.pdf/.txt), usado pela ferramenta "Importar Arquivo" -->
+    <input type="file" id="inline-file-import" accept=".docx,.pdf,.txt,.md" class="hidden" />
+
     <!-- Modal de confirmação genérico (substitui o confirm() nativo do navegador, feio e
          inconsistente com o resto do design). Usado antes de ações que gastam créditos. -->
     <div id="confirm-modal" class="hidden-state fixed inset-0 z-[230] hide-on-print flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-6">
@@ -1449,7 +1473,19 @@
             renderAssistantSuggestions();
             initPinchZoom();
             initPageTracker();
+            hideSplashScreen();
         });
+
+        // Mantém a tela de abertura visível por um tempo mínimo (pra dar tempo da animação
+        // da logo aparecer de verdade, mesmo em conexões rápidas) e depois apaga com fade.
+        function hideSplashScreen() {
+            const splash = document.getElementById('splash-screen');
+            if (!splash) return;
+            setTimeout(() => {
+                splash.classList.add('splash-hide');
+                setTimeout(() => splash.remove(), 600);
+            }, 900);
+        }
 
         // Lógica de Arrastar com Limite de Teto e Laterais (Evita perder janelas)
         const DOCK_EDGE_THRESHOLD = 60;
@@ -2025,6 +2061,7 @@
             else if (type === 'heading') insertHeadingInline(sectionId, pageKey);
             else if (type === 'pagebreak') insertPageBreakInline(sectionId, pageKey);
             else if (type === 'image') triggerImageInsert(sectionId, pageKey);
+            else if (type === 'import') triggerFileImport(sectionId, pageKey);
         }
 
         let currentZoom = 1;
@@ -4809,6 +4846,52 @@ Responda APENAS com o título, sem aspas, sem explicações, em uma única linha
                 reader.readAsDataURL(file);
             }
             e.target.value = '';
+        });
+
+        // Importação de arquivo (.docx/.pdf/.txt) direto pra dentro da página atual do editor —
+        // diferente do upload de "Documento de Referência" (que só vira contexto pra IA), aqui o
+        // conteúdo entra de verdade no texto, igual a um "Abrir" do Word.
+        let _pendingImportTarget = null;
+        function triggerFileImport(sectionId, pageKey) {
+            _pendingImportTarget = { sectionId, pageKey };
+            document.getElementById('inline-file-import').click();
+        }
+
+        function escapeHtmlForImport(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        document.getElementById('inline-file-import').addEventListener('change', async function(e) {
+            const file = e.target.files[0];
+            e.target.value = '';
+            if (!file || !_pendingImportTarget) return;
+            const { sectionId, pageKey } = _pendingImportTarget;
+            const el = document.getElementById(`apa-content-${pageKey}`);
+            if (!el) return;
+
+            try {
+                let html = '';
+                if (file.name.toLowerCase().endsWith('.docx')) {
+                    const arrayBuffer = await file.arrayBuffer();
+                    const result = await mammoth.convertToHtml({ arrayBuffer });
+                    html = result.value;
+                } else if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
+                    const text = await extractTextFromPDF(file);
+                    html = text.split(/\n+/).filter(p => p.trim()).map(p => `<p>${escapeHtmlForImport(p.trim())}</p>`).join('');
+                } else {
+                    const text = await file.text();
+                    html = text.split(/\n+/).filter(p => p.trim()).map(p => `<p>${escapeHtmlForImport(p.trim())}</p>`).join('');
+                }
+                if (!html) { showError('Não encontrei texto nesse arquivo.'); return; }
+                el.insertAdjacentHTML('beforeend', html);
+                scheduleSyncSection(sectionId, true);
+                checkAndSplitOverflow(sectionId);
+            } catch (err) {
+                console.error('Falha ao importar arquivo', err);
+                showError('Não consegui importar esse arquivo. Verifique se é um .docx, .pdf ou .txt válido.');
+            }
         });
 
 
