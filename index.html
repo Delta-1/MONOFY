@@ -1368,6 +1368,21 @@
         </div>
     </div>
 
+    <!-- CPF do pagador: o Mercado Pago exige esse dado pra liberar Pix e validar
+         pagamento com cartão no Brasil. Pedido uma única vez, antes da primeira compra. -->
+    <div id="cpf-modal" class="hidden-state fixed inset-0 z-[230] hide-on-print flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-6">
+        <div class="bg-white dark:bg-slate-850 w-full max-w-sm rounded-3xl shadow-2xl border border-white/40 dark:border-slate-700/50 p-6 space-y-4">
+            <h3 class="font-extrabold text-lg text-slate-800 dark:text-white flex items-center gap-2"><i data-lucide="id-card" class="w-5 h-5"></i> Confirme seu CPF</h3>
+            <p class="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">O Mercado Pago exige o CPF do pagador pra liberar Pix e validar o pagamento com cartão. Usamos isso só pra processar sua compra.</p>
+            <input id="cpf-input" type="text" inputmode="numeric" maxlength="14" placeholder="000.000.000-00" class="w-full p-3 text-sm border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 rounded-xl outline-none focus:ring-2 focus:ring-purple-400">
+            <p id="cpf-modal-feedback" class="text-xs text-red-500 hidden-state"></p>
+            <div class="flex items-center justify-end gap-2">
+                <button onclick="closeCpfModal()" type="button" class="text-sm font-bold text-slate-500 hover:text-slate-800 dark:hover:text-white px-4 py-2.5 rounded-xl">Cancelar</button>
+                <button onclick="submitCpfModal()" type="button" class="text-sm font-bold bg-primary-600 hover:bg-primary-700 text-white px-5 py-2.5 rounded-xl shadow">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Chat de refino com IA: substitui o antigo prompt()/confirm() nativos do navegador.
          Permite conversar sobre um trecho específico e iterar antes de aplicar a mudança ao texto. -->
     <div id="refine-chat-modal" class="hidden-state fixed inset-0 z-[220] hide-on-print flex items-end lg:items-center justify-center bg-slate-900/60 backdrop-blur-sm p-0 lg:p-6">
@@ -2284,7 +2299,7 @@
         async function loadProfile() {
             const { data, error } = await supabaseClient
                 .from('profiles')
-                .select('credits, email, full_name, avatar_url, role, region')
+                .select('credits, email, full_name, avatar_url, role, region, cpf')
                 .eq('id', state.session.user.id)
                 .single();
             if (!error && data) {
@@ -2533,8 +2548,58 @@
             `).join('');
         }
 
+        // Validação de CPF (dígitos verificadores) — o Mercado Pago recusa o
+        // pagamento (Pix e cartão) sem um CPF válido do pagador.
+        function isValidCPF(cpf) {
+            if (cpf.length !== 11 || /^(\d)\1{10}$/.test(cpf)) return false;
+            let sum = 0;
+            for (let i = 0; i < 9; i++) sum += parseInt(cpf[i], 10) * (10 - i);
+            let rev = (sum * 10) % 11;
+            if (rev === 10 || rev === 11) rev = 0;
+            if (rev !== parseInt(cpf[9], 10)) return false;
+            sum = 0;
+            for (let i = 0; i < 10; i++) sum += parseInt(cpf[i], 10) * (11 - i);
+            rev = (sum * 10) % 11;
+            if (rev === 10 || rev === 11) rev = 0;
+            return rev === parseInt(cpf[10], 10);
+        }
+
+        let _cpfModalCallback = null;
+        function openCpfModal(onConfirm) {
+            _cpfModalCallback = onConfirm;
+            document.getElementById('cpf-modal-feedback').classList.add('hidden-state');
+            document.getElementById('cpf-input').value = state.profile?.cpf || '';
+            document.getElementById('cpf-modal').classList.remove('hidden-state');
+            document.getElementById('cpf-input').focus();
+        }
+        function closeCpfModal() {
+            document.getElementById('cpf-modal').classList.add('hidden-state');
+            _cpfModalCallback = null;
+        }
+        async function submitCpfModal() {
+            const digits = document.getElementById('cpf-input').value.replace(/\D/g, '');
+            const feedback = document.getElementById('cpf-modal-feedback');
+            if (!isValidCPF(digits)) {
+                feedback.innerText = 'CPF inválido. Confira os números digitados.';
+                feedback.classList.remove('hidden-state');
+                return;
+            }
+            const { error } = await supabaseClient.from('profiles').update({ cpf: digits }).eq('id', state.session.user.id);
+            if (error) {
+                feedback.innerText = 'Erro ao salvar o CPF. Tente novamente.';
+                feedback.classList.remove('hidden-state');
+                return;
+            }
+            state.profile.cpf = digits;
+            document.getElementById('cpf-modal').classList.add('hidden-state');
+            const cb = _cpfModalCallback;
+            _cpfModalCallback = null;
+            if (cb) cb();
+        }
+
         async function buyCredits(packId) {
             if (state.isDemo) { alert('Modo demonstração: crie uma conta para comprar créditos.'); return; }
+            if (!state.profile?.cpf) { openCpfModal(() => buyCredits(packId)); return; }
             const errEl = document.getElementById('credits-error');
             errEl.classList.add('hidden-state');
             try {
@@ -2546,6 +2611,8 @@
                     },
                     body: JSON.stringify({
                         packId,
+                        cpf: state.profile.cpf,
+                        name: state.profile.full_name || '',
                         successUrl: window.location.href.split('?')[0] + '?checkout=success',
                         cancelUrl: window.location.href.split('?')[0] + '?checkout=cancel'
                     })
