@@ -435,6 +435,11 @@
             }
             .a4-page p { orphans: 3; widows: 3; }
 
+            /* Toda .a4-page leva page-break-after:always pra separar as páginas, mas isso também
+               se aplica à última — sem esta exceção, o PDF exportado sempre vinha com uma folha
+               em branco extra no final. */
+            #generated-content > .a4-page:last-child { page-break-after: auto; break-after: auto; }
+
             body.printing-slides #print-area { visibility: hidden !important; display: none !important; }
             body.printing-slides #slides-print-area, body.printing-slides #slides-print-area * { visibility: visible !important; }
             body.printing-slides #slides-print-area { display: block !important; position: absolute; left: 0; top: 0; width: 100%; }
@@ -3185,8 +3190,8 @@ O campo "body" deve ser texto simples curto (pode usar quebras de linha com \\n 
             if (!state.slides.length) { alert('Não há slides para exportar.'); return; }
             const theme = SLIDE_THEMES[state.slideTheme];
             const area = document.getElementById('slides-print-area');
-            area.innerHTML = state.slides.map(s => `
-                <div class="slides-print-page" style="width:297mm; height:167mm; position:relative; page-break-after:always; overflow:hidden;">
+            area.innerHTML = state.slides.map((s, idx) => `
+                <div class="slides-print-page" style="width:297mm; height:167mm; position:relative; ${idx < state.slides.length - 1 ? 'page-break-after:always;' : ''} overflow:hidden;">
                     ${renderSlideMarkup(s, theme, false)}
                 </div>
             `).join('');
