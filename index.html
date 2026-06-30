@@ -40,16 +40,20 @@
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         const EDGE_FN_CHECKOUT = `${SUPABASE_URL}/functions/v1/create-payment-preference`;
         const EDGE_FN_AI = `${SUPABASE_URL}/functions/v1/ai-generate`;
+        const EDGE_FN_SUBSCRIBE = `${SUPABASE_URL}/functions/v1/create-subscription`;
+        const EDGE_FN_CANCEL_SUBSCRIPTION = `${SUPABASE_URL}/functions/v1/cancel-subscription`;
         const CREDIT_PACKS_UI = [
             { id: 'pack_10', credits: 10, price: 'R$ 10,00' },
-            { id: 'pack_20', credits: 20, price: 'R$ 20,00' },
-            { id: 'pack_50', credits: 50, price: 'R$ 50,00', highlight: true },
-            { id: 'pack_100', credits: 100, price: 'R$ 90,00' }
+            { id: 'pack_25', credits: 25, price: 'R$ 22,00' },
+            { id: 'pack_60', credits: 60, price: 'R$ 45,00', highlight: true },
+            { id: 'pack_150', credits: 150, price: 'R$ 95,00' }
         ];
         const CREDITS_PER_EXPORT = 10; // remover marca d'água
-        const AI_COST_PER_PAGE = 5;       // usar IA pra refinar 1 página
-        const AI_COST_PER_SECTION = 10;   // gerar 1 seção da monografia com IA (5 seções = 50, igual ao custo anterior do doc inteiro)
-        const AI_COST_SLIDES = 30;        // gerar/atualizar a apresentação inteira com IA a partir da monografia
+        const AI_COST_CHAT = 2;           // conversar com o Assistente IA
+        const AI_COST_REFINE = 3;         // usar IA pra refinar 1 página
+        const AI_COST_TITLE_FROM_CHAT = 4; // IA define o título com base na conversa com o Assistente
+        const AI_COST_PER_SECTION = 6;    // gerar 1 seção da monografia com IA (6 seções = 36 + título 4 = 40, igual ao custo fixo da monografia completa)
+        const AI_COST_SLIDES = 25;        // gerar/atualizar a apresentação inteira com IA a partir da monografia
 
         const SLIDE_THEMES = {
             azul:   { name: 'Azul Acadêmico',     accent: '#16215c', bar: '#0f2a6b', bg: '#eef2f9', text: '#0f172a', light: '#ffffff' },
@@ -435,6 +439,11 @@
             }
             .a4-page p { orphans: 3; widows: 3; }
 
+            /* Toda .a4-page leva page-break-after:always pra separar as páginas, mas isso também
+               se aplica à última — sem esta exceção, o PDF exportado sempre vinha com uma folha
+               em branco extra no final. */
+            #generated-content > .a4-page:last-child { page-break-after: auto; break-after: auto; }
+
             body.printing-slides #print-area { visibility: hidden !important; display: none !important; }
             body.printing-slides #slides-print-area, body.printing-slides #slides-print-area * { visibility: visible !important; }
             body.printing-slides #slides-print-area { display: block !important; position: absolute; left: 0; top: 0; width: 100%; }
@@ -606,21 +615,10 @@
                             <h2 style="font-size: 12pt; font-weight: bold; text-transform: capitalize; margin: 12pt 0 0 0; text-align: center; text-indent: 0; line-height: 1.5;" id="out-title">Título da Monografia</h2>
                         </div>
 
-                        <div style="margin-top: 2cm; margin-left: 15%; text-align: left; width: 85%;">
-                            <table style="width: 100%; border: none; font-size: 12pt; text-indent: 0;">
-                                <tr>
-                                    <td style="font-weight: bold; vertical-align: top; width: 100px; padding-bottom: 8px;">Asignatura:</td>
-                                    <td id="out-subject" style="font-weight: bold; vertical-align: top; padding-bottom: 8px;">Metodología de la Investigación</td>
-                                </tr>
-                                <tr>
-                                    <td style="font-weight: bold; vertical-align: top; padding-bottom: 8px;">Docente:</td>
-                                    <td id="out-professor" style="font-weight: bold; vertical-align: top; padding-bottom: 8px;">Nome do Docente</td>
-                                </tr>
-                                <tr>
-                                    <td style="font-weight: bold; vertical-align: top;">Estudiantes:</td>
-                                    <td id="out-student" style="font-weight: bold; vertical-align: top; white-space: pre-wrap;">Nome do Estudante</td>
-                                </tr>
-                            </table>
+                        <div style="margin-top: 2cm; margin-left: 15%; text-align: left; width: 85%; font-size: 12pt; text-indent: 0;">
+                            <p style="font-weight: bold; margin: 0 0 8px 0; text-indent: 0; text-align: left !important;">Asignatura: <span id="out-subject">Metodología de la Investigación</span></p>
+                            <p style="font-weight: bold; margin: 0 0 8px 0; text-indent: 0; text-align: left !important;">Docente: <span id="out-professor">Nome do Docente</span></p>
+                            <p style="font-weight: bold; margin: 0; text-indent: 0; text-align: left !important; white-space: pre-wrap;">Estudiantes: <span id="out-student">Nome do Estudante</span></p>
                         </div>
 
                         <div style="margin-top: auto; padding-top: 1.5cm; padding-bottom: 0.5cm; text-align: center;">
@@ -1181,6 +1179,20 @@
 
                 <div id="credit-packs-container" class="grid grid-cols-1 md:grid-cols-3 gap-6"></div>
 
+                <div id="subscription-card" class="bg-gradient-to-br from-indigo-600 to-purple-700 rounded-3xl p-6 md:p-8 text-white shadow-xl relative overflow-hidden">
+                    <i data-lucide="sparkles" class="absolute -right-4 -bottom-4 w-40 h-40 text-white opacity-10"></i>
+                    <div class="relative z-10 flex flex-col md:flex-row md:items-center gap-5 justify-between">
+                        <div>
+                            <span class="inline-block bg-white/20 text-xs font-bold px-3 py-1 rounded-full mb-2">Assinatura Mensal</span>
+                            <h3 class="text-2xl font-extrabold">200 créditos todo mês por R$ 100,00</h3>
+                            <p class="text-indigo-100 text-sm mt-1 max-w-md">Renova automaticamente todo mês enquanto o pagamento continuar ativo. Cancele quando quiser, sem multa.</p>
+                        </div>
+                        <div id="subscription-action" class="shrink-0">
+                            <button onclick="subscribeMonthly()" class="bg-white text-indigo-700 font-bold py-3 px-6 rounded-xl hover:bg-indigo-50 transition-all whitespace-nowrap">Assinar agora</button>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="bg-white/80 dark:bg-slate-850/80 backdrop-blur p-6 rounded-3xl shadow border border-white/40 dark:border-slate-700 text-sm text-slate-500 dark:text-slate-400">
                     <h4 class="font-bold text-slate-700 dark:text-slate-200 mb-2 flex items-center gap-2"><i data-lucide="receipt" class="w-4 h-4"></i> Histórico de Transações</h4>
                     <div id="credit-history-list" class="space-y-2"></div>
@@ -1368,21 +1380,6 @@
         </div>
     </div>
 
-    <!-- CPF do pagador: o Mercado Pago exige esse dado pra liberar Pix e validar
-         pagamento com cartão no Brasil. Pedido uma única vez, antes da primeira compra. -->
-    <div id="cpf-modal" class="hidden-state fixed inset-0 z-[230] hide-on-print flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-6">
-        <div class="bg-white dark:bg-slate-850 w-full max-w-sm rounded-3xl shadow-2xl border border-white/40 dark:border-slate-700/50 p-6 space-y-4">
-            <h3 class="font-extrabold text-lg text-slate-800 dark:text-white flex items-center gap-2"><i data-lucide="id-card" class="w-5 h-5"></i> Confirme seu CPF</h3>
-            <p class="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">O Mercado Pago exige o CPF do pagador pra liberar Pix e validar o pagamento com cartão. Usamos isso só pra processar sua compra.</p>
-            <input id="cpf-input" type="text" inputmode="numeric" maxlength="14" placeholder="000.000.000-00" class="w-full p-3 text-sm border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 rounded-xl outline-none focus:ring-2 focus:ring-purple-400">
-            <p id="cpf-modal-feedback" class="text-xs text-red-500 hidden-state"></p>
-            <div class="flex items-center justify-end gap-2">
-                <button onclick="closeCpfModal()" type="button" class="text-sm font-bold text-slate-500 hover:text-slate-800 dark:hover:text-white px-4 py-2.5 rounded-xl">Cancelar</button>
-                <button onclick="submitCpfModal()" type="button" class="text-sm font-bold bg-primary-600 hover:bg-primary-700 text-white px-5 py-2.5 rounded-xl shadow">Confirmar</button>
-            </div>
-        </div>
-    </div>
-
     <!-- Chat de refino com IA: substitui o antigo prompt()/confirm() nativos do navegador.
          Permite conversar sobre um trecho específico e iterar antes de aplicar a mudança ao texto. -->
     <div id="refine-chat-modal" class="hidden-state fixed inset-0 z-[220] hide-on-print flex items-end lg:items-center justify-center bg-slate-900/60 backdrop-blur-sm p-0 lg:p-6">
@@ -1471,7 +1468,7 @@
             updateCoverFrameButtonTooltip();
             setToolbarTab(localStorage.getItem('monografia_toolbar_tab') || 'home');
             applyWatermarkStamps();
-            document.getElementById('assistant-chat-cost').innerText = AI_COST_PER_PAGE;
+            document.getElementById('assistant-chat-cost').innerText = AI_COST_CHAT;
             renderAssistantChat();
 
             // Tornar painéis arrastáveis e redimensionáveis no Desktop
@@ -2515,7 +2512,7 @@
         });
 
         // ==========================================
-        // LOJA DE CRÉDITOS (Stripe Checkout via Edge Function)
+        // LOJA DE CRÉDITOS (Mercado Pago Checkout Pro via Edge Function)
         // ==========================================
         function renderCreditsTab() {
             const container = document.getElementById('credit-packs-container');
@@ -2530,6 +2527,7 @@
             `).join('');
             lucide.createIcons();
             renderCreditHistory();
+            renderSubscriptionCard();
         }
 
         async function renderCreditHistory() {
@@ -2542,64 +2540,14 @@
             if (!data || data.length === 0) { list.innerHTML = '<p class="text-slate-400">Sem transações ainda.</p>'; return; }
             list.innerHTML = data.map(tx => `
                 <div class="flex justify-between items-center py-2 border-b border-slate-100 dark:border-slate-800 last:border-0">
-                    <span>${tx.reason === 'purchase' ? 'Compra de créditos' : "Exportação sem marca d'água"}</span>
+                    <span>${tx.reason === 'purchase' ? 'Compra de créditos' : tx.reason === 'subscription_renewal' ? 'Renovação da assinatura mensal' : "Exportação sem marca d'água"}</span>
                     <span class="font-bold ${tx.amount > 0 ? 'text-green-600' : 'text-red-500'}">${tx.amount > 0 ? '+' : ''}${tx.amount}</span>
                 </div>
             `).join('');
         }
 
-        // Validação de CPF (dígitos verificadores) — o Mercado Pago recusa o
-        // pagamento (Pix e cartão) sem um CPF válido do pagador.
-        function isValidCPF(cpf) {
-            if (cpf.length !== 11 || /^(\d)\1{10}$/.test(cpf)) return false;
-            let sum = 0;
-            for (let i = 0; i < 9; i++) sum += parseInt(cpf[i], 10) * (10 - i);
-            let rev = (sum * 10) % 11;
-            if (rev === 10 || rev === 11) rev = 0;
-            if (rev !== parseInt(cpf[9], 10)) return false;
-            sum = 0;
-            for (let i = 0; i < 10; i++) sum += parseInt(cpf[i], 10) * (11 - i);
-            rev = (sum * 10) % 11;
-            if (rev === 10 || rev === 11) rev = 0;
-            return rev === parseInt(cpf[10], 10);
-        }
-
-        let _cpfModalCallback = null;
-        function openCpfModal(onConfirm) {
-            _cpfModalCallback = onConfirm;
-            document.getElementById('cpf-modal-feedback').classList.add('hidden-state');
-            document.getElementById('cpf-input').value = state.profile?.cpf || '';
-            document.getElementById('cpf-modal').classList.remove('hidden-state');
-            document.getElementById('cpf-input').focus();
-        }
-        function closeCpfModal() {
-            document.getElementById('cpf-modal').classList.add('hidden-state');
-            _cpfModalCallback = null;
-        }
-        async function submitCpfModal() {
-            const digits = document.getElementById('cpf-input').value.replace(/\D/g, '');
-            const feedback = document.getElementById('cpf-modal-feedback');
-            if (!isValidCPF(digits)) {
-                feedback.innerText = 'CPF inválido. Confira os números digitados.';
-                feedback.classList.remove('hidden-state');
-                return;
-            }
-            const { error } = await supabaseClient.from('profiles').update({ cpf: digits }).eq('id', state.session.user.id);
-            if (error) {
-                feedback.innerText = 'Erro ao salvar o CPF. Tente novamente.';
-                feedback.classList.remove('hidden-state');
-                return;
-            }
-            state.profile.cpf = digits;
-            document.getElementById('cpf-modal').classList.add('hidden-state');
-            const cb = _cpfModalCallback;
-            _cpfModalCallback = null;
-            if (cb) cb();
-        }
-
         async function buyCredits(packId) {
             if (state.isDemo) { alert('Modo demonstração: crie uma conta para comprar créditos.'); return; }
-            if (!state.profile?.cpf) { openCpfModal(() => buyCredits(packId)); return; }
             const errEl = document.getElementById('credits-error');
             errEl.classList.add('hidden-state');
             try {
@@ -2611,8 +2559,6 @@
                     },
                     body: JSON.stringify({
                         packId,
-                        cpf: state.profile.cpf,
-                        name: state.profile.full_name || '',
                         successUrl: window.location.href.split('?')[0] + '?checkout=success',
                         cancelUrl: window.location.href.split('?')[0] + '?checkout=cancel'
                     })
@@ -2622,6 +2568,89 @@
                     window.location.href = data.url;
                 } else {
                     errEl.innerText = 'Erro ao iniciar o pagamento: ' + (data.error?.message || JSON.stringify(data.error));
+                    errEl.classList.remove('hidden-state');
+                }
+            } catch (e) {
+                errEl.innerText = 'Erro ao conectar com o servidor de pagamentos.';
+                errEl.classList.remove('hidden-state');
+            }
+        }
+
+        // ==========================================
+        // ASSINATURA MENSAL (Mercado Pago Preapproval via Edge Function)
+        // ==========================================
+        async function renderSubscriptionCard() {
+            const actionEl = document.getElementById('subscription-action');
+            if (state.isDemo) {
+                actionEl.innerHTML = `<button onclick="subscribeMonthly()" class="bg-white text-indigo-700 font-bold py-3 px-6 rounded-xl hover:bg-indigo-50 transition-all whitespace-nowrap">Assinar agora</button>`;
+                return;
+            }
+            const { data: sub } = await supabaseClient
+                .from('subscriptions')
+                .select('status')
+                .eq('user_id', state.session.user.id)
+                .maybeSingle();
+
+            if (sub && sub.status === 'authorized') {
+                actionEl.innerHTML = `
+                    <div class="flex flex-col items-end gap-2">
+                        <span class="inline-flex items-center gap-1 bg-white/20 text-xs font-bold px-3 py-1 rounded-full"><i data-lucide="check-circle" class="w-3 h-3"></i> Assinatura ativa</span>
+                        <button onclick="cancelSubscription()" class="text-indigo-100 text-xs underline hover:text-white">Cancelar assinatura</button>
+                    </div>`;
+            } else if (sub && sub.status === 'pending') {
+                actionEl.innerHTML = `<span class="inline-block bg-white/20 text-xs font-bold px-3 py-1 rounded-full">Pagamento pendente de confirmação</span>`;
+            } else {
+                actionEl.innerHTML = `<button onclick="subscribeMonthly()" class="bg-white text-indigo-700 font-bold py-3 px-6 rounded-xl hover:bg-indigo-50 transition-all whitespace-nowrap">Assinar agora</button>`;
+            }
+            lucide.createIcons();
+        }
+
+        async function subscribeMonthly() {
+            if (state.isDemo) { alert('Modo demonstração: crie uma conta para assinar.'); return; }
+            const errEl = document.getElementById('credits-error');
+            errEl.classList.add('hidden-state');
+            try {
+                const res = await fetch(EDGE_FN_SUBSCRIBE, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${state.session.access_token}`
+                    },
+                    body: JSON.stringify({
+                        successUrl: window.location.href.split('?')[0] + '?checkout=success',
+                        cancelUrl: window.location.href.split('?')[0] + '?checkout=cancel'
+                    })
+                });
+                const data = await res.json();
+                if (data.url) {
+                    window.location.href = data.url;
+                } else {
+                    errEl.innerText = 'Erro ao iniciar a assinatura: ' + (data.error?.message || JSON.stringify(data.error));
+                    errEl.classList.remove('hidden-state');
+                }
+            } catch (e) {
+                errEl.innerText = 'Erro ao conectar com o servidor de pagamentos.';
+                errEl.classList.remove('hidden-state');
+            }
+        }
+
+        async function cancelSubscription() {
+            if (!confirm('Tem certeza que deseja cancelar sua assinatura mensal? Você manterá os créditos já recebidos, mas não receberá mais a renovação automática.')) return;
+            const errEl = document.getElementById('credits-error');
+            errEl.classList.add('hidden-state');
+            try {
+                const res = await fetch(EDGE_FN_CANCEL_SUBSCRIPTION, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${state.session.access_token}`
+                    }
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    await renderSubscriptionCard();
+                } else {
+                    errEl.innerText = 'Erro ao cancelar a assinatura: ' + (data.error?.message || JSON.stringify(data.error));
                     errEl.classList.remove('hidden-state');
                 }
             } catch (e) {
@@ -3263,8 +3292,8 @@ O campo "body" deve ser texto simples curto (pode usar quebras de linha com \\n 
             if (!state.slides.length) { alert('Não há slides para exportar.'); return; }
             const theme = SLIDE_THEMES[state.slideTheme];
             const area = document.getElementById('slides-print-area');
-            area.innerHTML = state.slides.map(s => `
-                <div class="slides-print-page" style="width:297mm; height:167mm; position:relative; page-break-after:always; overflow:hidden;">
+            area.innerHTML = state.slides.map((s, idx) => `
+                <div class="slides-print-page" style="width:297mm; height:167mm; position:relative; ${idx < state.slides.length - 1 ? 'page-break-after:always;' : ''} overflow:hidden;">
                     ${renderSlideMarkup(s, theme, false)}
                 </div>
             `).join('');
@@ -3677,7 +3706,7 @@ O campo "body" deve ser texto simples curto (pode usar quebras de linha com \\n 
             const titleField = COVER_GUIDED_FIELDS.find(f => f.id === 'in-title');
             const titleNeedsAI = hasChatContent && (!titleEl.value.trim() || titleEl.value.trim() === titleField.default);
 
-            const totalCost = AI_COST_PER_SECTION * DOC_SECTION_PLAN.length + (titleNeedsAI ? AI_COST_PER_PAGE : 0);
+            const totalCost = AI_COST_PER_SECTION * DOC_SECTION_PLAN.length + (titleNeedsAI ? AI_COST_TITLE_FROM_CHAT : 0);
             const confirmed = await showConfirmModal(
                 'Gerar trabalho com IA',
                 `A IA vai redigir o documento seção por seção (Resumo, Abstract, Introdução, Marco Teórico, Conclusão e Referências)${titleNeedsAI ? ', e antes disso vai definir o título com base na sua conversa com o Assistente' : ''}. Isso consome até <b>${totalCost} créditos</b> no total — cada parte só é cobrada depois de gerada com sucesso — do seu saldo atual de <b>${state.profile.credits}</b>. Continuar?`
@@ -3706,7 +3735,7 @@ NOTAS ADICIONAIS DO USUÁRIO (se houver):
 ${rawText}
 
 Responda APENAS com o título, sem aspas, sem explicações, em uma única linha.`;
-                    const aiTitle = await callAI(titlePrompt, AI_COST_PER_PAGE, 'ai_extract_title_from_chat');
+                    const aiTitle = await callAI(titlePrompt, AI_COST_TITLE_FROM_CHAT, 'ai_extract_title_from_chat');
                     const cleanTitle = aiTitle.replace(/^["“”'\s]+|["“”'\s]+$/g, '');
                     if (cleanTitle) {
                         titleEl.value = cleanTitle;
@@ -4581,7 +4610,7 @@ Responda APENAS com o título, sem aspas, sem explicações, em uma única linha
                                 <button onclick="triggerImageInsert('${section.id}', '${pageKey}')" title="Inserir Imagem" class="p-2.5 bg-slate-900 dark:bg-primary-600 text-white rounded-lg shadow-xl hover:-translate-y-0.5"><i data-lucide="image-plus" class="w-3.5 h-3.5"></i></button>
                                 <button onclick="insertHeadingInline('${section.id}', '${pageKey}')" title="Inserir Título/Subtítulo" class="p-2.5 bg-indigo-600 text-white rounded-lg shadow-xl hover:-translate-y-0.5"><i data-lucide="heading" class="w-3.5 h-3.5"></i></button>
                                 <button onclick="insertPageAfter('${section.id}')" title="Inserir Nova Página Depois Desta" class="p-2.5 bg-emerald-600 text-white rounded-lg shadow-xl hover:-translate-y-0.5"><i data-lucide="file-plus-2" class="w-3.5 h-3.5"></i></button>
-                                <button onclick="refineInline('${section.id}', '${pageKey}')" title="Refinar com IA (5 créditos)" class="p-2.5 bg-purple-600 text-white rounded-lg shadow-xl hover:-translate-y-0.5"><i data-lucide="sparkles" class="w-3.5 h-3.5"></i></button>
+                                <button onclick="refineInline('${section.id}', '${pageKey}')" title="Refinar com IA (3 créditos)" class="p-2.5 bg-purple-600 text-white rounded-lg shadow-xl hover:-translate-y-0.5"><i data-lucide="sparkles" class="w-3.5 h-3.5"></i></button>
                             </div>
                             ${idx === 0 ? `<h1 contenteditable="true" data-section-title="${section.id}" oninput="scheduleSyncSection('${section.id}')" style="text-indent: 0; outline: none;">${section.title}</h1>` : ''}
                             <div class="apa-content${(section.id.startsWith('sec-resumo-') || section.id.startsWith('sec-abstract-')) ? ' resumo-block' : ''}" id="apa-content-${pageKey}" data-page-index="${idx}" contenteditable="true" data-section-id="${section.id}" oninput="scheduleSyncSection('${section.id}')" onblur="checkAndSplitOverflow('${section.id}')" style="outline: none; min-height: 2em;">${chunk}</div>
@@ -4667,7 +4696,7 @@ Responda APENAS com o título, sem aspas, sem explicações, em uma única linha
 
         function openRefineChat(sectionId, pageKey, el) {
             refineChat = { sectionId, pageKey, baseHTML: el.innerHTML, draftHTML: el.innerHTML, messages: [], busy: false };
-            document.getElementById('refine-chat-cost').innerText = AI_COST_PER_PAGE;
+            document.getElementById('refine-chat-cost').innerText = AI_COST_REFINE;
             document.getElementById('refine-chat-input').value = '';
             renderRefineChatMessages();
             document.getElementById('refine-chat-modal').classList.remove('hidden-state');
@@ -4734,7 +4763,7 @@ Responda APENAS com o título, sem aspas, sem explicações, em uma única linha
             REGLAS: Usa <p> para separar párrafos. Devuelve ÚNICAMENTE el código HTML crudo sin markdown.`;
 
             try {
-                let improved = await callAI(`${systemPrompt}\n\nTEXTO:\n${currentDraftText}`, AI_COST_PER_PAGE, 'ai_refine_page');
+                let improved = await callAI(`${systemPrompt}\n\nTEXTO:\n${currentDraftText}`, AI_COST_REFINE, 'ai_refine_page');
                 improved = improved.replace(/```html/gi, '').replace(/```/g, '').trim();
                 refineChat.draftHTML = improved;
                 refineChat.messages.push({ role: 'ai', htmlResult: improved, applied: false });
@@ -4888,7 +4917,7 @@ Responda APENAS com o título, sem aspas, sem explicações, em uma única linha
             ${history}`;
 
             try {
-                const reply = await callAI(prompt, AI_COST_PER_PAGE, 'ai_chat_assistant');
+                const reply = await callAI(prompt, AI_COST_CHAT, 'ai_chat_assistant');
                 state.assistantChatMessages.push({ role: 'ai', text: reply.trim() });
                 if (state.coverGuidedStage === 'theme') state.coverGuidedStage = 'done';
             } catch (err) {
@@ -5362,19 +5391,14 @@ Responda APENAS com o título, sem aspas, sem explicações, em uma única linha
             blocks.push(new docx.Paragraph({ alignment: docx.AlignmentType.CENTER, spacing: { before: cmToTwip(1.5), after: 0 }, children: [new docx.TextRun({ text: 'MONOGRAFÍA', bold: true, size: titleSize })] }));
             blocks.push(new docx.Paragraph({ alignment: docx.AlignmentType.CENTER, spacing: tight, children: [new docx.TextRun({ text: val('out-title'), bold: true, size: ptToHalfPt(12) })] }));
 
-            const infoRow = (label, value) => new docx.TableRow({ children: [
-                new docx.TableCell({ width: { size: 25, type: docx.WidthType.PERCENTAGE }, borders: noBorders(), children: [new docx.Paragraph({ spacing: tight, children: [new docx.TextRun({ text: label, bold: true, size: ptToHalfPt(12) })] })] }),
-                new docx.TableCell({ borders: noBorders(), children: [new docx.Paragraph({ spacing: tight, children: [new docx.TextRun({ text: value, bold: true, size: ptToHalfPt(12) })] })] })
-            ]});
-            blocks.push(new docx.Table({
-                width: { size: 80, type: docx.WidthType.PERCENTAGE },
-                alignment: docx.AlignmentType.CENTER,
-                rows: [
-                    infoRow('Asignatura:', val('out-subject')),
-                    infoRow('Docente:', val('out-professor')),
-                    infoRow('Estudiantes:', val('out-student'))
-                ]
-            }));
+            const infoLine = (label, value) => new docx.Paragraph({
+                indent: { left: cmToTwip(2.5) },
+                spacing: { after: 160 },
+                children: [new docx.TextRun({ text: `${label} ${value}`, bold: true, size: ptToHalfPt(12) })]
+            });
+            blocks.push(infoLine('Asignatura:', val('out-subject')));
+            blocks.push(infoLine('Docente:', val('out-professor')));
+            blocks.push(infoLine('Estudiantes:', val('out-student')));
 
             // Espaço antes do rodapé: o mesmo que o flexbox (margin-top: auto) cria na pré-visualização real.
             blocks.push(new docx.Paragraph({ spacing: { before: measureCoverFooterGapTwips() }, children: [] }));
@@ -5382,11 +5406,6 @@ Responda APENAS com o título, sem aspas, sem explicações, em uma única linha
             blocks.push(new docx.Paragraph({ alignment: docx.AlignmentType.CENTER, children: [new docx.TextRun({ text: val('out-year'), bold: true, size: ptToHalfPt(12) })] }));
 
             return blocks;
-        }
-
-        function noBorders() {
-            const none = { style: docx.BorderStyle.NONE, size: 0, color: 'FFFFFF' };
-            return { top: none, bottom: none, left: none, right: none };
         }
 
         // Monta o índice geral e, se houver tabelas/figuras no documento, também o "Índice de

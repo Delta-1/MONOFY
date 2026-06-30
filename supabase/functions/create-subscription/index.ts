@@ -1,13 +1,8 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
-// Pacotes de créditos (preços em BRL, com desconto crescente nos pacotes maiores)
-const CREDIT_PACKS: Record<string, { title: string; price: number; credits: number }> = {
-  pack_10: { title: "Monofy - 10 créditos", price: 10.0, credits: 10 },
-  pack_25: { title: "Monofy - 25 créditos", price: 22.0, credits: 25 },
-  pack_60: { title: "Monofy - 60 créditos", price: 45.0, credits: 60 },
-  pack_150: { title: "Monofy - 150 créditos", price: 95.0, credits: 150 },
-};
+const SUBSCRIPTION_PRICE = 100.0;
+const SUBSCRIPTION_CREDITS = 200;
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -36,53 +31,54 @@ Deno.serve(async (req: Request) => {
     }
     const user = userData.user;
 
-    const { packId, successUrl, cancelUrl } = await req.json();
-    const pack = CREDIT_PACKS[packId];
-    if (!pack) {
-      return new Response(JSON.stringify({ error: "Pacote inválido" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    const { successUrl, cancelUrl } = await req.json();
 
     const mpAccessToken = Deno.env.get("MP_ACCESS_TOKEN")!;
-    const notificationUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/payment-webhook`;
+    const notificationUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/subscription-webhook`;
 
-    const mpRes = await fetch("https://api.mercadopago.com/checkout/preferences", {
+    const mpRes = await fetch("https://api.mercadopago.com/preapproval", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${mpAccessToken}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        items: [
-          {
-            title: pack.title,
-            quantity: 1,
-            unit_price: pack.price,
-            currency_id: "BRL",
-          },
-        ],
-        payer: {
-          email: user.email ?? undefined,
+        reason: "Monofy - Assinatura Mensal (200 créditos/mês)",
+        external_reference: user.id,
+        payer_email: user.email ?? undefined,
+        back_url: successUrl,
+        auto_recurring: {
+          frequency: 1,
+          frequency_type: "months",
+          transaction_amount: SUBSCRIPTION_PRICE,
+          currency_id: "BRL",
         },
-        metadata: { user_id: user.id, credits: pack.credits },
-        external_reference: `${user.id}:${pack.credits}`,
-        back_urls: { success: successUrl, failure: cancelUrl, pending: cancelUrl },
-        auto_return: "approved",
         notification_url: notificationUrl,
       }),
     });
 
-    const preference = await mpRes.json();
+    const preapproval = await mpRes.json();
     if (!mpRes.ok) {
-      return new Response(JSON.stringify({ error: preference }), {
+      return new Response(JSON.stringify({ error: preapproval }), {
         status: 502,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    return new Response(JSON.stringify({ url: preference.init_point }), {
+    const supabaseAdmin = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+    );
+
+    await supabaseAdmin.from("subscriptions").upsert({
+      user_id: user.id,
+      mp_preapproval_id: preapproval.id,
+      status: "pending",
+      credits_per_cycle: SUBSCRIPTION_CREDITS,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: "user_id" });
+
+    return new Response(JSON.stringify({ url: preapproval.init_point }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {
