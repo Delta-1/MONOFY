@@ -63,7 +63,7 @@
         // estiver vazio ou igual a isso, consideramos que o usuário não preencheu de verdade.
         const COVER_GUIDED_FIELDS = [
             { id: 'in-university', label: 'Universidade', question: 'Qual é o nome da sua universidade ou instituição?', default: 'UNIVERSIDAD PRIVADA DOMINGO SAVIO' },
-            { id: 'in-faculty', label: 'Faculdade', question: 'Qual é o nome da faculdade?', default: 'FACULTAD DE CIENCIAS DE LA SALUD' },
+            { id: 'in-faculty', label: 'Faculdade', question: 'Qual é o nome da faculdade?', default: 'FACULTAD DE CIENCIA DE LA SALUD' },
             { id: 'in-career', label: 'Carreira/Curso', question: 'Qual é o nome da carreira ou curso?', default: 'CARRERA DE MEDICINA' },
             { id: 'in-title', label: 'Título do trabalho', question: 'Qual é o título da sua monografia?', default: 'TÍTULO DA MONOGRAFIA' },
             { id: 'in-subject', label: 'Disciplina', question: 'Qual é a disciplina ou matéria deste trabalho?', default: 'Metodología de la Investigación' },
@@ -593,7 +593,7 @@
                         
                         <div style="margin-top: 0; text-align: center;">
                             <p style="font-size: 16pt; font-weight: bold; text-transform: uppercase; margin: 0; text-indent: 0; line-height: 1.2; text-align: center !important;" id="out-university">UNIVERSIDAD PRIVADA DOMINGO SAVIO</p>
-                            <p style="font-size: 14pt; font-weight: bold; text-transform: uppercase; margin: 0; text-indent: 0; line-height: 1.2; text-align: center !important;" id="out-faculty">FACULTAD DE CIENCIAS DE LA SALUD</p>
+                            <p style="font-size: 14pt; font-weight: bold; text-transform: uppercase; margin: 0; text-indent: 0; line-height: 1.2; text-align: center !important;" id="out-faculty">FACULTAD DE CIENCIA DE LA SALUD</p>
                             <p style="font-size: 14pt; font-weight: bold; text-transform: uppercase; margin: 0; text-indent: 0; line-height: 1.2; text-align: center !important;" id="out-career">CARRERA DE MEDICINA</p>
                         </div>
                         
@@ -610,22 +610,22 @@
                             <table style="width: 100%; border: none; font-size: 12pt; text-indent: 0;">
                                 <tr>
                                     <td style="font-weight: bold; vertical-align: top; width: 100px; padding-bottom: 8px;">Asignatura:</td>
-                                    <td id="out-subject" style="vertical-align: top; padding-bottom: 8px;">Metodología de la Investigación</td>
+                                    <td id="out-subject" style="font-weight: bold; vertical-align: top; padding-bottom: 8px;">Metodología de la Investigación</td>
                                 </tr>
                                 <tr>
                                     <td style="font-weight: bold; vertical-align: top; padding-bottom: 8px;">Docente:</td>
-                                    <td id="out-professor" style="vertical-align: top; padding-bottom: 8px;">Nome do Docente</td>
+                                    <td id="out-professor" style="font-weight: bold; vertical-align: top; padding-bottom: 8px;">Nome do Docente</td>
                                 </tr>
                                 <tr>
                                     <td style="font-weight: bold; vertical-align: top;">Estudiantes:</td>
-                                    <td id="out-student" style="vertical-align: top; white-space: pre-wrap;">Nome do Estudante</td>
+                                    <td id="out-student" style="font-weight: bold; vertical-align: top; white-space: pre-wrap;">Nome do Estudante</td>
                                 </tr>
                             </table>
                         </div>
 
                         <div style="margin-top: auto; padding-top: 1.5cm; padding-bottom: 0.5cm; text-align: center;">
-                            <p style="font-size: 12pt; margin: 0; text-indent: 0; text-align: center !important;" id="out-location">Cobija-Pando-Bolivia</p>
-                            <p style="font-size: 12pt; margin: 0; text-indent: 0; text-align: center !important;" id="out-year">2026</p>
+                            <p style="font-size: 12pt; font-weight: bold; margin: 0; text-indent: 0; text-align: center !important;" id="out-location">Cobija-Pando-Bolivia</p>
+                            <p style="font-size: 12pt; font-weight: bold; margin: 0; text-indent: 0; text-align: center !important;" id="out-year">2026</p>
                         </div>
 
                     </div>
@@ -805,7 +805,7 @@
 
                     <input type="text" id="in-university" placeholder="Universidade" class="w-full text-sm p-3 bg-white/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 focus:border-primary-500 rounded-xl outline-none transition-colors" value="UNIVERSIDAD PRIVADA DOMINGO SAVIO">
                     <div class="flex gap-2">
-                        <input type="text" id="in-faculty" placeholder="Faculdade" class="w-full text-sm p-3 bg-white/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 focus:border-primary-500 rounded-xl outline-none transition-colors" value="FACULTAD DE CIENCIAS DE LA SALUD">
+                        <input type="text" id="in-faculty" placeholder="Faculdade" class="w-full text-sm p-3 bg-white/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 focus:border-primary-500 rounded-xl outline-none transition-colors" value="FACULTAD DE CIENCIA DE LA SALUD">
                         <input type="text" id="in-career" placeholder="Carreira" class="w-full text-sm p-3 bg-white/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 focus:border-primary-500 rounded-xl outline-none transition-colors" value="CARRERA DE MEDICINA">
                     </div>
                     <textarea id="in-title" rows="2" placeholder="Título Principal" class="w-full text-sm p-3 bg-white/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 focus:border-primary-500 rounded-xl outline-none resize-none font-bold text-center transition-colors">TÍTULO DA MONOGRAFIA</textarea>
@@ -3772,9 +3772,21 @@ Responda APENAS com o título, sem aspas, sem explicações, em uma única linha
         // --- 5. RENDERIZAÇÃO A4 E ÍNDICE ---
         function getTranslatedWord(key) {
             const lang = state.docLanguage.toLowerCase();
-            const dict = { 'toc': { 'português': 'Sumário', 'english': 'Table of Contents' } };
-            const foundLang = Object.keys(dict[key]).find(l => lang.includes(l));
-            return foundLang ? dict[key][foundLang] : 'Tabla de Contenido'; 
+            const dict = {
+                'toc': { 'português': 'Sumário', 'english': 'Table of Contents', 'español': 'Tabla de Contenido' },
+                'tabela': { 'português': 'Tabela', 'english': 'Table', 'español': 'Tabla' },
+                'figura': { 'português': 'Figura', 'english': 'Figure', 'español': 'Figura' },
+                'coluna': { 'português': 'Coluna', 'english': 'Column', 'español': 'Columna' },
+                'nota': { 'português': 'Nota.', 'english': 'Note.', 'español': 'Nota.' },
+                'fonte': { 'português': 'Fonte: elaboração própria.', 'english': 'Source: own elaboration.', 'español': 'Fuente: elaboración propia.' },
+                'dados': { 'português': 'Dados', 'english': 'Data', 'español': 'Datos' },
+                'ilustracao': { 'português': 'Ilustração', 'english': 'Illustration', 'español': 'Ilustración' },
+                'indiceTabelas': { 'português': 'Índice de tabela', 'english': 'List of Tables', 'español': 'Índice de tabla' },
+                'indiceFiguras': { 'português': 'Índice de figura', 'english': 'List of Figures', 'español': 'Índice de figura' }
+            };
+            const entry = dict[key];
+            const foundLang = Object.keys(entry).find(l => lang.includes(l));
+            return foundLang ? entry[foundLang] : entry['español'];
         }
 
         function generateTOC() {
@@ -3874,24 +3886,25 @@ Responda APENAS com o título, sem aspas, sem explicações, em uma única linha
             const rows = parseInt(prompt('Quantas linhas (incluindo cabeçalho)?', '3'), 10) || 3;
             const cols = parseInt(prompt('Quantas colunas?', '3'), 10) || 3;
             const tableNum = (document.querySelectorAll('#print-area table.apa-table').length || 0) + 1;
-            const caption = prompt('Título da tabela (ex: Resultados da pesquisa):', `Dados ${tableNum}`) || `Dados ${tableNum}`;
+            const defaultCaption = `${getTranslatedWord('dados')} ${tableNum}`;
+            const caption = prompt('Título da tabela (ex: Resultados da pesquisa):', defaultCaption) || defaultCaption;
 
             let rowsHtml = '';
             for (let r = 0; r < rows; r++) {
                 let cellsHtml = '';
                 for (let c = 0; c < cols; c++) {
                     cellsHtml += r === 0
-                        ? `<th style="border-bottom: 1px solid #000; padding: 6px 10px; text-align: left; font-weight: bold; font-size: 10pt;">Coluna ${c + 1}</th>`
+                        ? `<th style="border-bottom: 1px solid #000; padding: 6px 10px; text-align: left; font-weight: bold; font-size: 10pt;">${getTranslatedWord('coluna')} ${c + 1}</th>`
                         : `<td style="padding: 6px 10px; text-align: left; font-size: 10pt;"></td>`;
                 }
                 rowsHtml += `<tr>${cellsHtml}</tr>`;
             }
 
-            const tableHtml = `<div style="margin: 18pt 0; text-indent: 0;">
-<p style="text-indent: 0; font-weight: bold; font-size: 10pt; margin-bottom: 4pt;">Tabla ${tableNum}</p>
+            const tableHtml = `<div class="apa-table-block" style="margin: 18pt 0; text-indent: 0;">
+<p style="text-indent: 0; font-weight: bold; font-size: 10pt; margin-bottom: 4pt;">${getTranslatedWord('tabela')} ${tableNum}</p>
 <p style="text-indent: 0; font-style: italic; font-size: 10pt; margin-bottom: 8pt;">${caption}</p>
 <table class="apa-table" style="width: 100%; border-collapse: collapse; border-top: 2px solid #000; border-bottom: 2px solid #000; font-size: 10pt;">${rowsHtml}</table>
-<p style="text-indent: 0; font-size: 10pt; margin-top: 6pt;"><i>Nota.</i> Fonte: elaboração própria.</p>
+<p style="text-indent: 0; font-size: 10pt; margin-top: 6pt;"><i>${getTranslatedWord('nota')}</i> ${getTranslatedWord('fonte')}</p>
 </div>`;
 
             const el = document.getElementById(`apa-content-${pageKey}`);
@@ -4831,16 +4844,26 @@ Responda APENAS com o título, sem aspas, sem explicações, em uma única linha
             document.getElementById('inline-image-upload').click();
         }
 
+        // Figura no padrão do manual UPDS (Capítulo V): número em negrito acima, título em
+        // itálico abaixo do número, imagem, e por fim a nota — mesmo padrão já usado nas tabelas.
         document.getElementById('inline-image-upload').addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (file && _pendingImageTarget) {
                 const { sectionId, pageKey } = _pendingImageTarget;
+                const figNum = (document.querySelectorAll('#print-area .apa-figure').length || 0) + 1;
+                const defaultCaption = `${getTranslatedWord('ilustracao')} ${figNum}`;
+                const caption = prompt('Título da figura (ex: Distribuição dos resultados):', defaultCaption) || defaultCaption;
                 const reader = new FileReader();
                 reader.onload = function(evt) {
                     const base64Img = evt.target.result;
-                    const imgTag = `<div style="text-align: center; margin-top: 12pt; margin-bottom: 12pt;"><img src="${base64Img}" alt="Ilustração" style="max-width: 100%; height: auto; display: inline-block; margin: 0 auto;" /></div>`;
+                    const figHtml = `<div class="apa-figure" style="margin-top: 18pt; margin-bottom: 18pt; text-indent: 0;">
+<p style="text-indent: 0; font-weight: bold; font-size: 10pt; margin-bottom: 4pt;">${getTranslatedWord('figura')} ${figNum}</p>
+<p style="text-indent: 0; font-style: italic; font-size: 10pt; margin-bottom: 8pt;">${caption}</p>
+<div style="text-align: center;"><img src="${base64Img}" alt="${caption}" style="max-width: 100%; height: auto; display: inline-block; margin: 0 auto;" /></div>
+<p style="text-indent: 0; font-size: 10pt; margin-top: 6pt;"><i>${getTranslatedWord('nota')}</i> ${getTranslatedWord('fonte')}</p>
+</div>`;
                     const el = document.getElementById(`apa-content-${pageKey}`);
-                    if (el) el.insertAdjacentHTML('beforeend', imgTag);
+                    if (el) el.insertAdjacentHTML('beforeend', figHtml);
                     scheduleSyncSection(sectionId, true); checkAndSplitOverflow(sectionId);
                 };
                 reader.readAsDataURL(file);
@@ -5274,7 +5297,7 @@ Responda APENAS com o título, sem aspas, sem explicações, em uma única linha
 
             const infoRow = (label, value) => new docx.TableRow({ children: [
                 new docx.TableCell({ width: { size: 25, type: docx.WidthType.PERCENTAGE }, borders: noBorders(), children: [new docx.Paragraph({ spacing: tight, children: [new docx.TextRun({ text: label, bold: true, size: ptToHalfPt(12) })] })] }),
-                new docx.TableCell({ borders: noBorders(), children: [new docx.Paragraph({ spacing: tight, children: [new docx.TextRun({ text: value, size: ptToHalfPt(12) })] })] })
+                new docx.TableCell({ borders: noBorders(), children: [new docx.Paragraph({ spacing: tight, children: [new docx.TextRun({ text: value, bold: true, size: ptToHalfPt(12) })] })] })
             ]});
             blocks.push(new docx.Table({
                 width: { size: 80, type: docx.WidthType.PERCENTAGE },
@@ -5288,8 +5311,8 @@ Responda APENAS com o título, sem aspas, sem explicações, em uma única linha
 
             // Espaço antes do rodapé: o mesmo que o flexbox (margin-top: auto) cria na pré-visualização real.
             blocks.push(new docx.Paragraph({ spacing: { before: measureCoverFooterGapTwips() }, children: [] }));
-            blocks.push(new docx.Paragraph({ alignment: docx.AlignmentType.CENTER, spacing: tight, children: [new docx.TextRun({ text: val('out-location'), size: ptToHalfPt(12) })] }));
-            blocks.push(new docx.Paragraph({ alignment: docx.AlignmentType.CENTER, children: [new docx.TextRun({ text: val('out-year'), size: ptToHalfPt(12) })] }));
+            blocks.push(new docx.Paragraph({ alignment: docx.AlignmentType.CENTER, spacing: tight, children: [new docx.TextRun({ text: val('out-location'), bold: true, size: ptToHalfPt(12) })] }));
+            blocks.push(new docx.Paragraph({ alignment: docx.AlignmentType.CENTER, children: [new docx.TextRun({ text: val('out-year'), bold: true, size: ptToHalfPt(12) })] }));
 
             return blocks;
         }
@@ -5299,6 +5322,9 @@ Responda APENAS com o título, sem aspas, sem explicações, em uma única linha
             return { top: none, bottom: none, left: none, right: none };
         }
 
+        // Monta o índice geral e, se houver tabelas/figuras no documento, também o "Índice de
+        // tabla" e "Índice de figura" (páginas separadas, exigidas pelo manual UPDS quando
+        // existem — Capítulo III, item 2 "Sumario").
         function buildTOCBlocks(usableWidthTwips) {
             const blocks = [];
             blocks.push(new docx.Paragraph({ alignment: docx.AlignmentType.CENTER, spacing: { after: 480 }, children: [new docx.TextRun({ text: getTranslatedWord('toc'), bold: true, size: ptToHalfPt(12) })] }));
@@ -5311,6 +5337,9 @@ Responda APENAS com o título, sem aspas, sem explicações, em uma única linha
                 children: [new docx.TextRun({ text: `${text}\t${page}`, size: ptToHalfPt(12) })]
             });
 
+            const tableEntries = [];
+            const figureEntries = [];
+
             state.generatedSections.forEach(sec => {
                 blocks.push(tocLine(sec.title, currentPage));
 
@@ -5319,10 +5348,33 @@ Responda APENAS com o título, sem aspas, sem explicações, em uma única linha
                 temp.querySelectorAll('h2, h3').forEach(heading => {
                     blocks.push(tocLine(heading.innerText, currentPage, heading.tagName === 'H3' ? cmToTwip(2.5) : cmToTwip(1.27)));
                 });
+                temp.querySelectorAll('.apa-table-block').forEach(block => {
+                    const ps = block.querySelectorAll('p');
+                    if (ps.length >= 2) tableEntries.push({ text: `${ps[0].innerText} ${ps[1].innerText}`, page: currentPage });
+                });
+                temp.querySelectorAll('.apa-figure').forEach(block => {
+                    const ps = block.querySelectorAll('p');
+                    if (ps.length >= 2) figureEntries.push({ text: `${ps[0].innerText} ${ps[1].innerText}`, page: currentPage });
+                });
 
                 const words = sec.content.replace(/<[^>]*>?/gm, '').split(/\s+/).length;
                 currentPage += Math.max(1, Math.ceil(words / 280));
             });
+
+            const buildIndexPage = (titleKey, entries) => {
+                if (entries.length === 0) return [];
+                const pageBlocks = [new docx.Paragraph({
+                    pageBreakBefore: true,
+                    alignment: docx.AlignmentType.CENTER,
+                    spacing: { after: 480 },
+                    children: [new docx.TextRun({ text: getTranslatedWord(titleKey), bold: true, size: ptToHalfPt(12) })]
+                })];
+                entries.forEach(entry => pageBlocks.push(tocLine(entry.text, entry.page)));
+                return pageBlocks;
+            };
+
+            blocks.push(...buildIndexPage('indiceTabelas', tableEntries));
+            blocks.push(...buildIndexPage('indiceFiguras', figureEntries));
 
             return blocks;
         }
