@@ -606,21 +606,10 @@
                             <h2 style="font-size: 12pt; font-weight: bold; text-transform: capitalize; margin: 12pt 0 0 0; text-align: center; text-indent: 0; line-height: 1.5;" id="out-title">Título da Monografia</h2>
                         </div>
 
-                        <div style="margin-top: 2cm; margin-left: 15%; text-align: left; width: 85%;">
-                            <table style="width: 100%; border: none; font-size: 12pt; text-indent: 0;">
-                                <tr>
-                                    <td style="font-weight: bold; vertical-align: top; width: 100px; padding-bottom: 8px;">Asignatura:</td>
-                                    <td id="out-subject" style="font-weight: bold; vertical-align: top; padding-bottom: 8px;">Metodología de la Investigación</td>
-                                </tr>
-                                <tr>
-                                    <td style="font-weight: bold; vertical-align: top; padding-bottom: 8px;">Docente:</td>
-                                    <td id="out-professor" style="font-weight: bold; vertical-align: top; padding-bottom: 8px;">Nome do Docente</td>
-                                </tr>
-                                <tr>
-                                    <td style="font-weight: bold; vertical-align: top;">Estudiantes:</td>
-                                    <td id="out-student" style="font-weight: bold; vertical-align: top; white-space: pre-wrap;">Nome do Estudante</td>
-                                </tr>
-                            </table>
+                        <div style="margin-top: 2cm; margin-left: 15%; text-align: left; width: 85%; font-size: 12pt; text-indent: 0;">
+                            <p style="font-weight: bold; margin: 0 0 8px 0; text-indent: 0; text-align: left !important;">Asignatura: <span id="out-subject">Metodología de la Investigación</span></p>
+                            <p style="font-weight: bold; margin: 0 0 8px 0; text-indent: 0; text-align: left !important;">Docente: <span id="out-professor">Nome do Docente</span></p>
+                            <p style="font-weight: bold; margin: 0; text-indent: 0; text-align: left !important; white-space: pre-wrap;">Estudiantes: <span id="out-student">Nome do Estudante</span></p>
                         </div>
 
                         <div style="margin-top: auto; padding-top: 1.5cm; padding-bottom: 0.5cm; text-align: center;">
@@ -1364,21 +1353,6 @@
             <div class="flex items-center justify-end gap-2">
                 <button onclick="closeFindReplace()" type="button" class="text-sm font-bold text-slate-500 hover:text-slate-800 dark:hover:text-white px-4 py-2.5 rounded-xl">Fechar</button>
                 <button onclick="runFindReplace()" type="button" class="text-sm font-bold bg-primary-600 hover:bg-primary-700 text-white px-5 py-2.5 rounded-xl shadow">Substituir Tudo</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- CPF do pagador: o Mercado Pago exige esse dado pra liberar Pix e validar
-         pagamento com cartão no Brasil. Pedido uma única vez, antes da primeira compra. -->
-    <div id="cpf-modal" class="hidden-state fixed inset-0 z-[230] hide-on-print flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-6">
-        <div class="bg-white dark:bg-slate-850 w-full max-w-sm rounded-3xl shadow-2xl border border-white/40 dark:border-slate-700/50 p-6 space-y-4">
-            <h3 class="font-extrabold text-lg text-slate-800 dark:text-white flex items-center gap-2"><i data-lucide="id-card" class="w-5 h-5"></i> Confirme seu CPF</h3>
-            <p class="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">O Mercado Pago exige o CPF do pagador pra liberar Pix e validar o pagamento com cartão. Usamos isso só pra processar sua compra.</p>
-            <input id="cpf-input" type="text" inputmode="numeric" maxlength="14" placeholder="000.000.000-00" class="w-full p-3 text-sm border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 rounded-xl outline-none focus:ring-2 focus:ring-purple-400">
-            <p id="cpf-modal-feedback" class="text-xs text-red-500 hidden-state"></p>
-            <div class="flex items-center justify-end gap-2">
-                <button onclick="closeCpfModal()" type="button" class="text-sm font-bold text-slate-500 hover:text-slate-800 dark:hover:text-white px-4 py-2.5 rounded-xl">Cancelar</button>
-                <button onclick="submitCpfModal()" type="button" class="text-sm font-bold bg-primary-600 hover:bg-primary-700 text-white px-5 py-2.5 rounded-xl shadow">Confirmar</button>
             </div>
         </div>
     </div>
@@ -2548,58 +2522,8 @@
             `).join('');
         }
 
-        // Validação de CPF (dígitos verificadores) — o Mercado Pago recusa o
-        // pagamento (Pix e cartão) sem um CPF válido do pagador.
-        function isValidCPF(cpf) {
-            if (cpf.length !== 11 || /^(\d)\1{10}$/.test(cpf)) return false;
-            let sum = 0;
-            for (let i = 0; i < 9; i++) sum += parseInt(cpf[i], 10) * (10 - i);
-            let rev = (sum * 10) % 11;
-            if (rev === 10 || rev === 11) rev = 0;
-            if (rev !== parseInt(cpf[9], 10)) return false;
-            sum = 0;
-            for (let i = 0; i < 10; i++) sum += parseInt(cpf[i], 10) * (11 - i);
-            rev = (sum * 10) % 11;
-            if (rev === 10 || rev === 11) rev = 0;
-            return rev === parseInt(cpf[10], 10);
-        }
-
-        let _cpfModalCallback = null;
-        function openCpfModal(onConfirm) {
-            _cpfModalCallback = onConfirm;
-            document.getElementById('cpf-modal-feedback').classList.add('hidden-state');
-            document.getElementById('cpf-input').value = state.profile?.cpf || '';
-            document.getElementById('cpf-modal').classList.remove('hidden-state');
-            document.getElementById('cpf-input').focus();
-        }
-        function closeCpfModal() {
-            document.getElementById('cpf-modal').classList.add('hidden-state');
-            _cpfModalCallback = null;
-        }
-        async function submitCpfModal() {
-            const digits = document.getElementById('cpf-input').value.replace(/\D/g, '');
-            const feedback = document.getElementById('cpf-modal-feedback');
-            if (!isValidCPF(digits)) {
-                feedback.innerText = 'CPF inválido. Confira os números digitados.';
-                feedback.classList.remove('hidden-state');
-                return;
-            }
-            const { error } = await supabaseClient.from('profiles').update({ cpf: digits }).eq('id', state.session.user.id);
-            if (error) {
-                feedback.innerText = 'Erro ao salvar o CPF. Tente novamente.';
-                feedback.classList.remove('hidden-state');
-                return;
-            }
-            state.profile.cpf = digits;
-            document.getElementById('cpf-modal').classList.add('hidden-state');
-            const cb = _cpfModalCallback;
-            _cpfModalCallback = null;
-            if (cb) cb();
-        }
-
         async function buyCredits(packId) {
             if (state.isDemo) { alert('Modo demonstração: crie uma conta para comprar créditos.'); return; }
-            if (!state.profile?.cpf) { openCpfModal(() => buyCredits(packId)); return; }
             const errEl = document.getElementById('credits-error');
             errEl.classList.add('hidden-state');
             try {
@@ -2611,8 +2535,6 @@
                     },
                     body: JSON.stringify({
                         packId,
-                        cpf: state.profile.cpf,
-                        name: state.profile.full_name || '',
                         successUrl: window.location.href.split('?')[0] + '?checkout=success',
                         cancelUrl: window.location.href.split('?')[0] + '?checkout=cancel'
                     })
@@ -5362,19 +5284,14 @@ Responda APENAS com o título, sem aspas, sem explicações, em uma única linha
             blocks.push(new docx.Paragraph({ alignment: docx.AlignmentType.CENTER, spacing: { before: cmToTwip(1.5), after: 0 }, children: [new docx.TextRun({ text: 'MONOGRAFÍA', bold: true, size: titleSize })] }));
             blocks.push(new docx.Paragraph({ alignment: docx.AlignmentType.CENTER, spacing: tight, children: [new docx.TextRun({ text: val('out-title'), bold: true, size: ptToHalfPt(12) })] }));
 
-            const infoRow = (label, value) => new docx.TableRow({ children: [
-                new docx.TableCell({ width: { size: 25, type: docx.WidthType.PERCENTAGE }, borders: noBorders(), children: [new docx.Paragraph({ spacing: tight, children: [new docx.TextRun({ text: label, bold: true, size: ptToHalfPt(12) })] })] }),
-                new docx.TableCell({ borders: noBorders(), children: [new docx.Paragraph({ spacing: tight, children: [new docx.TextRun({ text: value, bold: true, size: ptToHalfPt(12) })] })] })
-            ]});
-            blocks.push(new docx.Table({
-                width: { size: 80, type: docx.WidthType.PERCENTAGE },
-                alignment: docx.AlignmentType.CENTER,
-                rows: [
-                    infoRow('Asignatura:', val('out-subject')),
-                    infoRow('Docente:', val('out-professor')),
-                    infoRow('Estudiantes:', val('out-student'))
-                ]
-            }));
+            const infoLine = (label, value) => new docx.Paragraph({
+                indent: { left: cmToTwip(2.5) },
+                spacing: { after: 160 },
+                children: [new docx.TextRun({ text: `${label} ${value}`, bold: true, size: ptToHalfPt(12) })]
+            });
+            blocks.push(infoLine('Asignatura:', val('out-subject')));
+            blocks.push(infoLine('Docente:', val('out-professor')));
+            blocks.push(infoLine('Estudiantes:', val('out-student')));
 
             // Espaço antes do rodapé: o mesmo que o flexbox (margin-top: auto) cria na pré-visualização real.
             blocks.push(new docx.Paragraph({ spacing: { before: measureCoverFooterGapTwips() }, children: [] }));
@@ -5382,11 +5299,6 @@ Responda APENAS com o título, sem aspas, sem explicações, em uma única linha
             blocks.push(new docx.Paragraph({ alignment: docx.AlignmentType.CENTER, children: [new docx.TextRun({ text: val('out-year'), bold: true, size: ptToHalfPt(12) })] }));
 
             return blocks;
-        }
-
-        function noBorders() {
-            const none = { style: docx.BorderStyle.NONE, size: 0, color: 'FFFFFF' };
-            return { top: none, bottom: none, left: none, right: none };
         }
 
         // Monta o índice geral e, se houver tabelas/figuras no documento, também o "Índice de

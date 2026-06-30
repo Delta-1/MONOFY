@@ -36,7 +36,7 @@ Deno.serve(async (req: Request) => {
     }
     const user = userData.user;
 
-    const { packId, successUrl, cancelUrl, cpf, name } = await req.json();
+    const { packId, successUrl, cancelUrl } = await req.json();
     const pack = CREDIT_PACKS[packId];
     if (!pack) {
       return new Response(JSON.stringify({ error: "Pacote inválido" }), {
@@ -44,18 +44,6 @@ Deno.serve(async (req: Request) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-
-    // O Mercado Pago exige o CPF do pagador pra liberar Pix e validar
-    // pagamento com cartão no Brasil — sem isso o checkout recusa com
-    // "ocorreu um erro para validar os dados".
-    const cpfDigits = String(cpf ?? "").replace(/\D/g, "");
-    if (cpfDigits.length !== 11) {
-      return new Response(JSON.stringify({ error: "CPF inválido" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-    const [firstName, ...rest] = String(name ?? "").trim().split(/\s+/).filter(Boolean);
 
     const mpAccessToken = Deno.env.get("MP_ACCESS_TOKEN")!;
     const notificationUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/payment-webhook`;
@@ -77,9 +65,6 @@ Deno.serve(async (req: Request) => {
         ],
         payer: {
           email: user.email ?? undefined,
-          name: firstName || undefined,
-          surname: rest.length ? rest.join(" ") : undefined,
-          identification: { type: "CPF", number: cpfDigits },
         },
         metadata: { user_id: user.id, credits: pack.credits },
         external_reference: `${user.id}:${pack.credits}`,
