@@ -453,6 +453,11 @@
 
         @keyframes assistantFadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
         .animate-fade-in { animation: assistantFadeIn 0.25s ease-out; }
+
+        @keyframes typingDotBounce { 0%, 60%, 100% { transform: translateY(0); opacity: 0.4; } 30% { transform: translateY(-4px); opacity: 1; } }
+        .typing-dot { width: 6px; height: 6px; border-radius: 9999px; background: currentColor; display: inline-block; animation: typingDotBounce 1.1s ease-in-out infinite; }
+        .typing-dot:nth-child(2) { animation-delay: 0.15s; }
+        .typing-dot:nth-child(3) { animation-delay: 0.3s; }
     </style>
     <style id="dynamic-page-size"></style>
 </head>
@@ -1037,9 +1042,19 @@
                     <i data-lucide="archive" class="absolute -right-4 -bottom-4 w-48 h-48 text-white opacity-10"></i>
                 </div>
 
-                <button onclick="startNewBlankProject()" class="w-full flex items-center justify-center gap-2 px-6 py-4 bg-white dark:bg-slate-800 border-2 border-dashed border-primary-300 dark:border-primary-700/50 text-primary-600 dark:text-primary-400 rounded-2xl hover:bg-primary-50 dark:hover:bg-primary-900/30 transition-all font-bold shadow-sm">
-                    <i data-lucide="file-plus" class="w-5 h-5"></i> Novo Projeto em Branco
-                </button>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <button onclick="startNewBlankProject()" class="w-full flex items-center justify-center gap-2 px-6 py-4 bg-white dark:bg-slate-800 border-2 border-dashed border-primary-300 dark:border-primary-700/50 text-primary-600 dark:text-primary-400 rounded-2xl hover:bg-primary-50 dark:hover:bg-primary-900/30 transition-all font-bold shadow-sm">
+                        <i data-lucide="file-plus" class="w-5 h-5"></i> Novo Projeto em Branco
+                    </button>
+
+                    <label class="cursor-pointer w-full flex items-center justify-center gap-2 px-6 py-4 bg-white dark:bg-slate-800 border-2 border-dashed border-emerald-300 dark:border-emerald-700/50 text-emerald-600 dark:text-emerald-400 rounded-2xl hover:bg-emerald-50 dark:hover:bg-emerald-900/30 transition-all font-bold shadow-sm">
+                        <i data-lucide="upload" id="import-work-icon" class="w-5 h-5"></i>
+                        <i data-lucide="loader-2" id="import-work-loading" class="w-5 h-5 animate-spin hidden-state"></i>
+                        <span id="import-work-label">Importar Meu Trabalho</span>
+                        <input type="file" id="import-work-upload" accept=".docx,.pdf,.txt,.md" class="hidden" />
+                    </label>
+                </div>
+                <p class="text-xs text-slate-400 -mt-2">Já tem um trabalho ou modelo pronto (.docx, .pdf, .txt ou .md)? Importe e continue editando em cima dele, com a nossa formatação.</p>
 
                 <div id="history-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
                 
@@ -3771,7 +3786,7 @@ Responda APENAS com o título, sem aspas, sem explicações, em uma única linha
                 textEl.innerText = `Gerando: ${plan.label} (${i + 1}/${DOC_SECTION_PLAN.length})...`;
 
                 const sectionInstructions = plan.id === 'referencias'
-                    ? `Redacta la lista de REFERENCIAS BIBLIOGRÁFICAS. ${refRulesByStyle} Envuelve CADA referencia obligatoriamente en <p class="hanging-indent"> para lograr la sangría francesa.`
+                    ? `Redacta la lista de REFERENCIAS BIBLIOGRÁFICAS. ${refRulesByStyle} Envuelve CADA referencia obligatoriamente en <p class="hanging-indent"> para lograr la sangría francesa. El contenido debe comenzar DIRECTAMENTE con la primera referencia — NO incluyas ningún párrafo introductorio, explicativo o de cierre antes o después de la lista, ni texto que no sea una referencia bibliográfica en sí.`
                     : plan.instructions;
                 const otherLabels = DOC_SECTION_PLAN.filter(p => p.id !== plan.id).map(p => p.label).join(', ');
 
@@ -3800,6 +3815,8 @@ Responda APENAS com o título, sem aspas, sem explicações, em uma única linha
 
                     Estás redactando una monografía académica formal sección por sección. Esta llamada es SOLO para la sección "${plan.label}". Las demás secciones (${otherLabels}) ya serán redactadas en otras llamadas — NO las repitas ni las anticipes aquí.
 
+                    PROHIBIDO: no te dirijas al lector ni a "los estudiantes", no saludes, no agregues comentarios, advertencias, notas explicativas, introducciones ni cierres sobre la tarea en sí (ej.: "Prezados estudantes...", "A continuación...", "Espero que esto ayude"). El campo "content" debe contener ÚNICAMENTE el contenido académico de la sección, listo para entregar, sin ningún meta-comentario.
+
                     ${sectionInstructions}
 
                     JERARQUÍA DE TÍTULOS DENTRO DEL CONTENIDO: usa <h2> para subtítulos y <h3> para sub-subtítulos si es necesario. Usa <p> para párrafos.
@@ -3825,11 +3842,14 @@ Responda APENAS com o título, sem aspas, sem explicações, em uma única linha
                         jsonText = jsonText.substring(firstBrace, lastBrace + 1);
                     }
                     const parsed = JSON.parse(jsonText);
+                    const sectionContent = plan.id === 'referencias'
+                        ? sanitizeReferencesContent(parsed.content || '')
+                        : (parsed.content || '');
 
                     state.generatedSections.push({
                         id: `sec-${plan.id}-${Date.now()}`,
                         title: parsed.title || plan.label,
-                        content: parsed.content || ''
+                        content: sectionContent
                     });
 
                     renderSections();
@@ -3916,6 +3936,21 @@ Responda APENAS com o título, sem aspas, sem explicações, em uma única linha
 
             tocHtml += `</ul></div>`;
             return tocHtml;
+        }
+
+        // Rede de segurança contra a IA: a seção de Referências só deve conter entradas
+        // bibliográficas (cada uma em <p class="hanging-indent">, conforme instruído no
+        // prompt). Se a IA mesmo assim escapar um parágrafo de comentário (ex.: "Prezados
+        // estudantes..."), ele cai fora deste filtro e é removido antes de renderizar.
+        function sanitizeReferencesContent(html) {
+            const wrapper = document.createElement('div');
+            wrapper.innerHTML = html;
+            Array.from(wrapper.children).forEach(node => {
+                if (node.tagName === 'P' && !node.classList.contains('hanging-indent')) {
+                    node.remove();
+                }
+            });
+            return wrapper.innerHTML;
         }
 
         // Divide o conteúdo de uma seção em múltiplas .a4-page reais sempre que há
@@ -4571,8 +4606,163 @@ Responda APENAS com o título, sem aspas, sem explicações, em uma única linha
             document.getElementById('btn-export-txt').disabled = true;
             updateWatermarkButtonUI();
             syncWatermarkRemovedClass();
+            resetAssistantChat();
             switchTab('generator');
         }
+
+        // ==========================================
+        // IMPORTAR TRABALHO/MODELO JÁ EXISTENTE
+        // ==========================================
+        // Permite à pessoa subir um trabalho que já tem (ou um modelo) em .docx/.pdf/.txt/.md
+        // e continuar editando-o dentro da nossa formatação, em vez de depender só da redação
+        // por IA. O site tenta reconhecer os títulos de seção comuns de uma monografia
+        // (Resumo, Introdução, Marco Teórico, Conclusão, Referências etc.) para já separar o
+        // conteúdo em páginas/seções editáveis no visualizador; quando não reconhece nada,
+        // ainda assim joga o documento inteiro como uma seção única, pra nunca devolver vazio.
+        const IMPORT_SECTION_KEYWORDS = [
+            { id: 'resumo', patterns: [/^resumo$/, /^resumen$/, /^summary$/] },
+            { id: 'abstract', patterns: [/^abstract$/] },
+            { id: 'introducao', patterns: [/^introducao$/, /^introduccion$/, /^introduction$/] },
+            { id: 'marco_teorico', patterns: [/^marco teorico$/, /^referencial teorico$/, /^fundamentacao teorica$/, /^revisao( de| da)? literatura$/, /^revision( de)? literatura$/, /^literature review$/, /^theoretical framework$/, /^desenvolvimento$/, /^desarrollo$/, /^metodologia$/, /^metodologia da pesquisa$/, /^methodology$/] },
+            { id: 'conclusao', patterns: [/^conclusao$/, /^conclusion$/, /^consideracoes finais$/, /^consideraciones finales$/] },
+            { id: 'referencias', patterns: [/^referencias( bibliograficas)?$/, /^references$/, /^bibliografia$/, /^bibliography$/] }
+        ];
+
+        function normalizeHeadingText(text) {
+            return text
+                .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+                .trim()
+                .replace(/^(\d+(\.\d+)*\.?|[IVXLCM]+\.?)\s+/, '')
+                .replace(/[:.]+$/, '')
+                .toLowerCase()
+                .trim();
+        }
+
+        function detectImportedSectionKeyword(normalizedText) {
+            return IMPORT_SECTION_KEYWORDS.find(k => k.patterns.some(p => p.test(normalizedText))) || null;
+        }
+
+        function isImportedHeadingNode(node, text) {
+            if (!text || text.length > 90) return false;
+            if (/^(H1|H2|H3|H4)$/.test(node.tagName)) return true;
+            const wordCount = text.split(/\s+/).filter(Boolean).length;
+            if (wordCount > 8) return false;
+            if (/^[A-ZÀ-Ý0-9º°.,:\s-]+$/.test(text) && /[A-ZÀ-Ý]/.test(text)) return true;
+            if (/^(\d+(\.\d+)*\.?|[IVXLCM]+\.)\s+\S/.test(text)) return true;
+            if (detectImportedSectionKeyword(normalizeHeadingText(text))) return true;
+            return false;
+        }
+
+        // Quebra o HTML importado em blocos de seção, usando títulos detectados como
+        // separadores. Texto antes do primeiro título reconhecido só vira seção se for
+        // substancial — senão é provavelmente lixo de capa (nome da universidade etc.) e é
+        // descartado.
+        function splitImportedHtmlIntoSections(html) {
+            const wrapper = document.createElement('div');
+            wrapper.innerHTML = html;
+            const nodes = Array.from(wrapper.children);
+
+            const sections = [];
+            let current = null;
+
+            const pushCurrent = () => {
+                if (!current || !current.parts.length) { current = null; return; }
+                const combinedText = current.parts.join(' ').replace(/<[^>]+>/g, ' ').trim();
+                if (current.isLeadingPreamble && combinedText.length < 200) { current = null; return; }
+                sections.push({
+                    id: `${current.idBase}-${Date.now()}-${sections.length}`,
+                    title: current.title,
+                    content: current.parts.join('')
+                });
+                current = null;
+            };
+
+            nodes.forEach(node => {
+                const text = (node.textContent || '').trim();
+                if (!text) return;
+                if (isImportedHeadingNode(node, text)) {
+                    const matched = detectImportedSectionKeyword(normalizeHeadingText(text));
+                    pushCurrent();
+                    current = { idBase: matched ? `sec-${matched.id}` : 'sec-importado', title: text, parts: [] };
+                    return;
+                }
+                if (!current) {
+                    current = { idBase: 'sec-importado', title: 'Conteúdo Importado', parts: [], isLeadingPreamble: true };
+                }
+                current.parts.push(node.outerHTML);
+            });
+            pushCurrent();
+
+            if (sections.length === 0) {
+                sections.push({ id: `sec-importado-${Date.now()}`, title: 'Documento Importado', content: html });
+            }
+            return sections;
+        }
+
+        async function parseImportedFileToHtml(file) {
+            if (file.name.toLowerCase().endsWith('.docx')) {
+                const arrayBuffer = await file.arrayBuffer();
+                const result = await mammoth.convertToHtml({ arrayBuffer });
+                return result.value;
+            } else if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
+                const text = await extractTextFromPDF(file);
+                return text.split(/\n+/).filter(p => p.trim()).map(p => `<p>${escapeHtmlForImport(p.trim())}</p>`).join('');
+            } else {
+                const text = await file.text();
+                return text.split(/\n+/).filter(p => p.trim()).map(p => `<p>${escapeHtmlForImport(p.trim())}</p>`).join('');
+            }
+        }
+
+        document.getElementById('import-work-upload').addEventListener('change', async function(e) {
+            const file = e.target.files[0];
+            e.target.value = '';
+            if (!file) return;
+
+            if (state.generatedSections.length > 0 && !confirm('Importar este trabalho vai substituir o documento atualmente aberto no visualizador (o que já estiver salvo no histórico continua lá). Continuar?')) return;
+
+            const icon = document.getElementById('import-work-icon');
+            const loading = document.getElementById('import-work-loading');
+            const label = document.getElementById('import-work-label');
+            icon.classList.add('hidden-state');
+            loading.classList.remove('hidden-state');
+            label.innerText = 'Importando...';
+
+            try {
+                const html = await parseImportedFileToHtml(file);
+                if (!html || !html.replace(/<[^>]+>/g, '').trim()) {
+                    showError('Não encontrei texto nesse arquivo. Verifique se é um .docx, .pdf, .txt ou .md válido.');
+                    return;
+                }
+
+                state.generatedSections = splitImportedHtmlIntoSections(html);
+                state.references = [];
+                state.currentDocWatermarkRemoved = false;
+
+                renderSections();
+                setTimeout(checkAllSectionsOverflow, 100);
+
+                document.getElementById('btn-export-word').disabled = false;
+                document.getElementById('btn-export-pdf').disabled = false;
+                document.getElementById('btn-export-txt').disabled = false;
+
+                const title = document.getElementById('in-title').value || file.name.replace(/\.[^.]+$/, '');
+                saveDocumentToHistory(title, state.generatedSections, state.references);
+                updateWatermarkButtonUI();
+                syncWatermarkRemovedClass();
+                resetAssistantChat();
+
+                switchTab('generator');
+                if (window.innerWidth < 1024) { togglePanelVisibility('panel-left'); }
+            } catch (err) {
+                console.error('Falha ao importar trabalho existente', err);
+                showError('Não consegui importar esse arquivo. Verifique se é um .docx, .pdf, .txt ou .md válido.');
+            } finally {
+                icon.classList.remove('hidden-state');
+                loading.classList.add('hidden-state');
+                label.innerText = 'Importar Meu Trabalho';
+                lucide.createIcons();
+            }
+        });
 
         function saveCurrentWork() {
             state.generatedSections.forEach(s => syncSectionFromDOM(s.id));
@@ -4708,7 +4898,7 @@ Responda APENAS com o título, sem aspas, sem explicações, em uma única linha
             refineChat = null;
         }
 
-        function renderRefineChatMessages() {
+        function renderRefineChatMessages(showTyping) {
             const box = document.getElementById('refine-chat-messages');
             if (!refineChat.messages.length) {
                 box.innerHTML = `<p class="text-sm text-slate-400 text-center italic px-4">Diga o que você quer mudar neste trecho (ex: "deixe mais formal", "resuma em um parágrafo"). Pode pedir vários ajustes antes de aplicar ao texto.</p>`;
@@ -4730,7 +4920,7 @@ Responda APENAS com o título, sem aspas, sem explicações, em uma única linha
                         ${applied ? '✓ Aplicado ao texto' : 'Aplicar ao texto'}
                     </button>
                 </div>`;
-            }).join('');
+            }).join('') + (showTyping ? `<div class="max-w-[85%] bg-slate-100 dark:bg-slate-800 rounded-2xl rounded-bl-sm px-4 py-3 text-slate-400 dark:text-slate-500 flex items-center gap-1"><span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span></div>` : '');
             box.scrollTop = box.scrollHeight;
             lucide.createIcons();
         }
@@ -4750,16 +4940,16 @@ Responda APENAS com o título, sem aspas, sem explicações, em uma única linha
 
             refineChat.messages.push({ role: 'user', text: instruction });
             input.value = '';
-            renderRefineChatMessages();
-
             refineChat.busy = true;
             document.getElementById('refine-chat-send').disabled = true;
+            renderRefineChatMessages(true);
 
             const currentDraftText = refineChat.draftHTML.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
             const systemPrompt = `Actúa como un profesor universitario experto en Normas ${state.citationStyle}.
             IDIOMA DE SALIDA: ${state.docLanguage}.
             INSTRUÇÃO DO USUÁRIO: ${instruction}
             IMPORTANTE: Use o texto atual como BASE. Melhore-o conforme a instrução, não remova as ideias que o usuário já escreveu sem necessidade.
+            PROHIBIDO: no te dirijas al lector, no saludes, no agregues comentarios ni notas sobre la tarea — devuelve únicamente el contenido académico mejorado.
             REGLAS: Usa <p> para separar párrafos. Devuelve ÚNICAMENTE el código HTML crudo sin markdown.`;
 
             try {
@@ -4767,6 +4957,7 @@ Responda APENAS com o título, sem aspas, sem explicações, em uma única linha
                 improved = improved.replace(/```html/gi, '').replace(/```/g, '').trim();
                 refineChat.draftHTML = improved;
                 refineChat.messages.push({ role: 'ai', htmlResult: improved, applied: false });
+                playAiReplyChime();
             } catch (err) {
                 console.error(err);
                 refineChat.messages.push({ role: 'error', text: err.message || 'Erro na IA ao tentar melhorar o texto.' });
@@ -4795,6 +4986,38 @@ Responda APENAS com o título, sem aspas, sem explicações, em uma única linha
             renderRefineChatMessages();
         }
 
+        // Som curto e suave (dois tons sintetizados via Web Audio, sem depender de arquivo
+        // externo) tocado quando a IA termina de responder em qualquer um dos chats.
+        function playAiReplyChime() {
+            try {
+                const ctx = window._chimeAudioCtx || (window._chimeAudioCtx = new (window.AudioContext || window.webkitAudioContext)());
+                const now = ctx.currentTime;
+                [880, 1318.51].forEach((freq, i) => {
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.value = freq;
+                    const start = now + i * 0.09;
+                    gain.gain.setValueAtTime(0, start);
+                    gain.gain.linearRampToValueAtTime(0.1, start + 0.015);
+                    gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.35);
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    osc.start(start);
+                    osc.stop(start + 0.4);
+                });
+            } catch (e) { /* navegador bloqueou áudio (ex: antes de qualquer interação) — ignora */ }
+        }
+
+        // Reinicia o chat do Assistente (conversa de planejamento) sempre que a pessoa começa,
+        // importa ou abre outro documento — cada projeto começa com uma conversa limpa.
+        function resetAssistantChat() {
+            state.assistantChatMessages = [];
+            state.coverGuidedStage = 'idle';
+            state.coverGuidedPending = [];
+            renderAssistantChat();
+        }
+
         // --- Chat do Assistente: conversa livre sobre o que o usuário quer ANTES de gerar o
         // documento. O histórico é enviado como contexto extra para cada seção em generateDocument().
         // Além disso, se a capa não estiver preenchida, o Assistente guia o usuário campo a campo
@@ -4813,7 +5036,7 @@ Responda APENAS com o título, sem aspas, sem explicações, em uma única linha
             return !titleMissing || rawText.length > 0;
         }
 
-        function renderAssistantChat() {
+        function renderAssistantChat(showTyping) {
             const box = document.getElementById('assistant-chat-messages');
             if (!state.assistantChatMessages.length) {
                 const missing = getMissingCoverFields();
@@ -4843,7 +5066,7 @@ Responda APENAS com o título, sem aspas, sem explicações, em uma única linha
                     return `<div class="max-w-[88%] flex items-center gap-2 text-red-600 dark:text-red-400 text-sm bg-red-50 dark:bg-red-900/20 rounded-2xl px-4 py-2.5"><i data-lucide="alert-triangle" class="w-4 h-4 shrink-0"></i>${escapeHtml(m.text)}</div>`;
                 }
                 return `<div class="max-w-[88%] bg-slate-100 dark:bg-slate-800 rounded-2xl rounded-bl-sm px-4 py-2.5 text-sm text-slate-700 dark:text-slate-200">${escapeHtml(m.text)}</div>`;
-            }).join('');
+            }).join('') + (showTyping ? `<div class="max-w-[88%] bg-slate-100 dark:bg-slate-800 rounded-2xl rounded-bl-sm px-4 py-3 text-slate-400 dark:text-slate-500 flex items-center gap-1"><span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span></div>` : '');
             box.scrollTop = box.scrollHeight;
             lucide.createIcons();
         }
@@ -4897,10 +5120,9 @@ Responda APENAS com o título, sem aspas, sem explicações, em uma única linha
 
             state.assistantChatMessages.push({ role: 'user', text });
             input.value = '';
-            renderAssistantChat();
-
             assistantChatBusy = true;
             document.getElementById('assistant-chat-send').disabled = true;
+            renderAssistantChat(true);
 
             const history = state.assistantChatMessages
                 .filter(m => m.role !== 'error')
@@ -4920,6 +5142,7 @@ Responda APENAS com o título, sem aspas, sem explicações, em uma única linha
                 const reply = await callAI(prompt, AI_COST_CHAT, 'ai_chat_assistant');
                 state.assistantChatMessages.push({ role: 'ai', text: reply.trim() });
                 if (state.coverGuidedStage === 'theme') state.coverGuidedStage = 'done';
+                playAiReplyChime();
             } catch (err) {
                 console.error(err);
                 state.assistantChatMessages.push({ role: 'error', text: err.message || 'Erro na IA ao responder.' });
@@ -5108,6 +5331,7 @@ Responda APENAS com o título, sem aspas, sem explicações, em uma única linha
             const doc = state.history.find(d => d.id === id);
             if(!doc) return;
             applyDocumentState(doc);
+            resetAssistantChat();
             switchTab('generator');
         }
 
