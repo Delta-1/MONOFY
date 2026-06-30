@@ -43,7 +43,7 @@ Deno.serve(async (req: Request) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        reason: "Monofy - Assinatura Mensal (200 créditos/mês)",
+        reason: "Monofy - Assinatura Mensal",
         external_reference: user.id,
         payer_email: user.email ?? undefined,
         back_url: successUrl,
