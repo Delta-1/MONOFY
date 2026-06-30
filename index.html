@@ -2369,10 +2369,10 @@
                 paragraphs: [
                     'Última atualização: 29 de junho de 2026.',
                     'Esta Política de Privacidade descreve como o Monofy ("nós", "nosso aplicativo") coleta, usa e protege os dados pessoais de quem utiliza a plataforma.',
-                    '1. Dados que coletamos: nome, e-mail e foto de perfil (fornecidos diretamente por você ou via login com Google); conteúdo dos documentos e apresentações que você cria no Monofy; informações técnicas básicas como fuso horário, usadas apenas para fins estatísticos no painel administrativo; dados de pagamento processados por provedores terceiros (Stripe e/ou Mercado Pago) — não armazenamos números de cartão de crédito em nossos servidores.',
+                    '1. Dados que coletamos: nome, e-mail e foto de perfil (fornecidos diretamente por você ou via login com Google); conteúdo dos documentos e apresentações que você cria no Monofy; informações técnicas básicas como fuso horário, usadas apenas para fins estatísticos no painel administrativo; dados de pagamento processados por provedor terceiro (Mercado Pago) — não armazenamos números de cartão de crédito em nossos servidores.',
                     '2. Login com Google e Google Drive: se você optar por entrar com sua conta Google, utilizamos apenas as informações básicas de perfil (nome, e-mail, foto) para criar sua conta no Monofy. Caso você autorize o salvamento automático no Google Drive, usamos exclusivamente o escopo "drive.file", que dá acesso apenas aos arquivos criados pelo próprio Monofy na sua conta do Drive — nunca a outros arquivos ou pastas suas.',
                     '3. Como usamos seus dados: para fornecer e manter as funcionalidades do Monofy (geração e edição de monografias e apresentações, exportação para Word/PowerPoint/PDF, salvamento automático); para autenticação e segurança da sua conta; para suporte ao usuário via WhatsApp, quando você optar por entrar em contato; para processar pagamentos de licenças e créditos.',
-                    '4. Compartilhamento de dados: não vendemos seus dados pessoais. Compartilhamos informações apenas com prestadores de serviço essenciais ao funcionamento do app (ex.: Supabase para hospedagem e banco de dados, Google para autenticação/Drive, Stripe/Mercado Pago para pagamentos), que tratam os dados sob suas próprias políticas de privacidade e segurança.',
+                    '4. Compartilhamento de dados: não vendemos seus dados pessoais. Compartilhamos informações apenas com prestadores de serviço essenciais ao funcionamento do app (ex.: Supabase para hospedagem e banco de dados, Google para autenticação/Drive, Mercado Pago para pagamentos), que tratam os dados sob suas próprias políticas de privacidade e segurança.',
                     '5. Armazenamento e segurança: os dados são armazenados em servidores do Supabase com controles de acesso e criptografia em trânsito. Tomamos medidas razoáveis para proteger seus dados, mas nenhum sistema é 100% livre de riscos.',
                     '6. Seus direitos: você pode, a qualquer momento, solicitar a atualização ou exclusão da sua conta e dos seus dados pessoais entrando em contato pelo suporte via WhatsApp disponível na tela de Perfil.',
                     '7. Alterações nesta política: podemos atualizar esta Política de Privacidade periodicamente. Mudanças relevantes serão comunicadas dentro do próprio aplicativo.',
@@ -2387,7 +2387,7 @@
                     'Ao utilizar o Monofy, você concorda com os termos descritos abaixo. Leia com atenção antes de continuar usando o aplicativo.',
                     '1. Objeto: o Monofy é uma ferramenta de criação, edição e exportação de monografias acadêmicas e apresentações de slides, oferecida em formato de aplicativo web.',
                     '2. Conta de usuário: você é responsável por manter a confidencialidade das suas credenciais de acesso (login/senha ou login com Google) e por todas as atividades realizadas na sua conta.',
-                    '3. Uso de créditos e licenças: determinadas funcionalidades do Monofy podem exigir créditos ou uma licença paga, adquiridos através dos canais de pagamento indicados no aplicativo (Stripe e/ou Mercado Pago) ou diretamente via suporte por WhatsApp. Os créditos e licenças adquiridos não são reembolsáveis, salvo disposição legal em contrário.',
+                    '3. Uso de créditos e licenças: determinadas funcionalidades do Monofy podem exigir créditos ou uma licença paga, adquiridos através dos canais de pagamento indicados no aplicativo (Mercado Pago) ou diretamente via suporte por WhatsApp. Os créditos e licenças adquiridos não são reembolsáveis, salvo disposição legal em contrário.',
                     '4. Conteúdo gerado: você é o único responsável pelo conteúdo que cria, edita ou exporta usando o Monofy, incluindo a precisão, originalidade e conformidade com normas acadêmicas (ex.: regras de plágio da sua instituição). O Monofy é uma ferramenta de apoio à escrita e formatação, e não garante aprovação acadêmica do conteúdo gerado.',
                     '5. Uso aceitável: você concorda em não utilizar o Monofy para fins ilegais, para violar direitos de terceiros, ou para tentar comprometer a segurança da plataforma.',
                     '6. Disponibilidade do serviço: nos esforçamos para manter o Monofy disponível e funcional, mas não garantimos operação ininterrupta. Manutenções, atualizações ou problemas técnicos podem causar indisponibilidade temporária.',
@@ -2563,7 +2563,7 @@
             }
         }
 
-        // Volta do Stripe Checkout
+        // Volta do Checkout Pro (Mercado Pago)
         if (new URLSearchParams(window.location.search).get('checkout') === 'success') {
             setTimeout(async () => {
                 if (state.session) { await loadProfile(); }
