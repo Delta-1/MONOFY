@@ -186,8 +186,9 @@
         #word-toolbar.docked-top > .resize-handle.resize-se, #word-toolbar.docked-top > .resize-handle.resize-sw, #word-toolbar.docked-top > .resize-handle.resize-ne, #word-toolbar.docked-top > .resize-handle.resize-nw,
         #word-toolbar.docked-top > .resize-handle.resize-n { display: none !important; }
 
-        /* Em cima: separador de ação vira linha vertical para não forçar quebra de linha */
-        #word-toolbar.docked-top .toolbar-action-sep { width: 1px !important; height: 1.5rem !important; margin: 0 0.25rem !important; }
+        /* Em cima: ícones ficam em linha horizontal; separador vira linha vertical */
+        #word-toolbar.docked-top #word-toolbar-icons { flex-direction: row !important; flex-wrap: wrap !important; justify-content: center !important; border-bottom: none !important; border-right: 1px solid rgba(255,255,255,0.1) !important; padding-bottom: 0.25rem !important; align-self: stretch !important; }
+        #word-toolbar.docked-top .toolbar-action-sep { width: 1px !important; height: 1.5rem !important; margin: 0 0.1rem !important; }
 
         /* Controles flutuantes: posição ajustada via JS (syncFloatingControlsPosition) */
 
@@ -384,7 +385,7 @@
             #word-toolbar:not(.mobile-toolbar-open) .toolbar-tab-panel { display: none !important; }
             #word-toolbar-header { cursor: default !important; flex-shrink: 0 !important; }
             #word-toolbar .resize-handle { display: none !important; }
-            #word-toolbar > div:nth-child(2) { flex-shrink: 0 !important; }
+            #word-toolbar-icons { flex-shrink: 0 !important; }
             /* Painel de aba: flyout compacto (200px) ao lado da coluna, não tela cheia */
             #word-toolbar .toolbar-tab-panel {
                 position: fixed !important;
@@ -748,14 +749,14 @@
                 <button onclick="toggleMobileToolbar()" class="lg:hidden absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-slate-400 hover:text-white rounded-full hover:bg-white/10"><i data-lucide="x" class="w-4 h-4"></i></button>
             </div>
             <!-- Abas no estilo Word: cada aba mostra só o grupo de funções correspondente -->
-            <div class="flex flex-wrap items-center justify-center gap-0.5 px-1.5 pt-1 pb-1.5 border-b border-white/10 flex-shrink-0">
+            <div id="word-toolbar-icons" class="flex flex-col items-center gap-0.5 px-1.5 pt-1 pb-1.5 border-b border-white/10 flex-shrink-0">
                 <button onclick="setToolbarTab('home')" data-tab="home" class="toolbar-tab-btn word-tool-btn" title="Página Inicial"><i data-lucide="house" class="w-4 h-4"></i></button>
                 <button onclick="setToolbarTab('insert')" data-tab="insert" class="toolbar-tab-btn word-tool-btn" title="Inserir"><i data-lucide="plus-square" class="w-4 h-4"></i></button>
                 <button onclick="setToolbarTab('design')" data-tab="design" class="toolbar-tab-btn word-tool-btn" title="Design"><i data-lucide="palette" class="w-4 h-4"></i></button>
                 <button onclick="setToolbarTab('layout')" data-tab="layout" class="toolbar-tab-btn word-tool-btn" title="Layout"><i data-lucide="layout-grid" class="w-4 h-4"></i></button>
                 <button onclick="setToolbarTab('references')" data-tab="references" class="toolbar-tab-btn word-tool-btn" title="Referências"><i data-lucide="book-open" class="w-4 h-4"></i></button>
                 <!-- Salvar, Assistente e Lupa ficam sempre visíveis na tira de ícones -->
-                <div class="word-tool-sep toolbar-action-sep w-full"></div>
+                <div class="word-tool-sep toolbar-action-sep"></div>
                 <button onclick="saveCurrentWork()" title="Salvar Trabalho" class="word-tool-btn text-emerald-400"><i data-lucide="save" class="w-4 h-4"></i></button>
                 <button id="btn-assistant-mode-toolbar" onclick="toggleAssistantMode()" type="button" title="Ativar Modo Assistente" class="btn-assistant-mode-toggle word-tool-btn text-indigo-400"><i data-lucide="sparkles" class="w-4 h-4"></i></button>
                 <button id="btn-magnifier-toggle" onclick="toggleMagnifier()" type="button" title="Lupa de Escrita (só no computador)" class="hidden lg:flex word-tool-btn text-sky-400"><i data-lucide="search" class="w-4 h-4"></i></button>
