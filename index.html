@@ -39,7 +39,19 @@
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlmcXpvdWtyamF0Y2dteXNodHB6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE5NTgyMjMsImV4cCI6MjA5NzUzNDIyM30.GBbEwI-1AnrJ6kllFrXkjTc1Bf76bGz8d8TGnaiYoAw';
         let supabaseClient;
         try {
-            supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            // detectSessionInUrl: false → a troca do ?code= por sessão é feita
+            // manualmente (ver handleOAuthCallback), com erro visível na tela. Com o
+            // padrão (true) a troca era automática e silenciosa: se falhasse, o app
+            // voltava pro login sem avisar. flowType pkce é o fluxo usado no botão do
+            // Google (signInWithOAuth). persistSession/autoRefreshToken mantêm o login.
+            supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+                auth: {
+                    flowType: 'pkce',
+                    detectSessionInUrl: false,
+                    persistSession: true,
+                    autoRefreshToken: true
+                }
+            });
         } catch(e) {
             // Supabase CDN não carregou — mostra aviso assim que o DOM estiver pronto
             document.addEventListener('DOMContentLoaded', () => {
@@ -562,9 +574,9 @@
     <div id="login-screen" class="absolute inset-0 z-[200] flex items-center justify-center p-6 bg-slate-100 dark:bg-slate-900 transition-opacity duration-500">
         <!-- Overlay de carregamento para retorno do OAuth (Google PKCE redirect com ?code=) -->
         <div id="oauth-loading-overlay" class="hidden-state absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 bg-slate-100 dark:bg-slate-900">
-            <div class="w-12 h-12 border-4 border-primary-500 border-t-transparent rounded-full animate-spin"></div>
-            <p class="text-slate-600 dark:text-slate-300 font-semibold text-sm">Finalizando login com Google…</p>
-            <p id="oauth-timeout-msg" class="hidden-state text-red-500 text-xs text-center px-6 max-w-xs">Não foi possível concluir o login. <button onclick="_oauthPending=false; history.replaceState(null,'',location.pathname); document.getElementById('oauth-loading-overlay').classList.add('hidden-state')" class="underline font-medium">Tentar novamente</button></p>
+            <div id="oauth-spinner" class="w-12 h-12 border-4 border-primary-500 border-t-transparent rounded-full animate-spin"></div>
+            <p id="oauth-loading-text" class="text-slate-600 dark:text-slate-300 font-semibold text-sm">Finalizando login com Google…</p>
+            <p id="oauth-timeout-msg" class="hidden-state text-red-500 text-xs text-center px-6 max-w-xs"><span id="oauth-error-text">Não foi possível concluir o login.</span> <button onclick="_oauthPending=false; history.replaceState(null,'',location.pathname); document.getElementById('oauth-loading-overlay').classList.add('hidden-state')" class="underline font-medium">Tentar novamente</button></p>
         </div>
         <button id="pwa-install-btn-login" onclick="installPWA()" class="hidden-state absolute top-4 right-4 text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white bg-white/90 dark:bg-slate-800/90 backdrop-blur px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 shadow transition">Instalar App</button>
         <div class="max-w-md w-full bg-white dark:bg-slate-850 rounded-[2rem] shadow-2xl p-10 text-center space-y-6 border border-white/20 dark:border-slate-700/50">
@@ -3623,24 +3635,58 @@ ${original}`;
             }, 400);
         }
 
-        // OAuth PKCE callback: quando o Google redireciona de volta, a URL tem ?code=.
-        // O Supabase troca esse código por uma sessão de forma assíncrona, mas antes de
-        // concluir pode disparar INITIAL_SESSION com null — o que mostraria a tela de
-        // login por engano. Detectamos o callback e bloqueamos esse comportamento.
-        const _isOAuthCallback = new URLSearchParams(window.location.search).has('code');
-        let _oauthPending = _isOAuthCallback;
+        // OAuth PKCE callback: quando o Google redireciona de volta, a URL traz ?code=
+        // (sucesso) ou ?error= (usuário cancelou / falha no Google). Como o
+        // detectSessionInUrl automático está DESLIGADO (ver createClient), a troca do
+        // código por sessão é feita aqui, de forma explícita, para que qualquer erro
+        // seja mostrado na tela em vez de engolido — a causa de o app voltar pro login
+        // sem logar.
+        const _oauthParams = new URLSearchParams(window.location.search);
+        const _hasCode = _oauthParams.has('code');
+        const _hasError = _oauthParams.has('error');
+        let _oauthPending = _hasCode;
         let _oauthTimeout = null;
 
-        if (_isOAuthCallback) {
-            // O DOM acima deste script já foi parseado (login-screen está na linha ~550),
+        function _showOAuthError(msg) {
+            _oauthPending = false;
+            if (_oauthTimeout) { clearTimeout(_oauthTimeout); _oauthTimeout = null; }
+            document.getElementById('oauth-spinner')?.classList.add('hidden-state');
+            const loadingText = document.getElementById('oauth-loading-text');
+            if (loadingText) loadingText.classList.add('hidden-state');
+            const errText = document.getElementById('oauth-error-text');
+            if (errText && msg) errText.textContent = msg;
+            document.getElementById('oauth-timeout-msg')?.classList.remove('hidden-state');
+            document.getElementById('oauth-loading-overlay')?.classList.remove('hidden-state');
+        }
+
+        if (_hasError) {
+            // O Google/Supabase devolveu um erro na própria URL (ex.: acesso negado).
+            const desc = _oauthParams.get('error_description') || _oauthParams.get('error') || '';
+            history.replaceState(null, '', window.location.pathname);
+            _showOAuthError(desc ? `Login com Google falhou: ${decodeURIComponent(desc.replace(/\+/g, ' '))}` : 'Login com Google cancelado.');
+        } else if (_hasCode && supabaseClient) {
+            // O DOM acima deste script já foi parseado (login-screen está na linha ~574),
             // então podemos mostrar o overlay sem esperar DOMContentLoaded.
-            const overlay = document.getElementById('oauth-loading-overlay');
-            if (overlay) overlay.classList.remove('hidden-state');
-            // Timeout de segurança: se em 15 s nenhuma sessão chegar, exibe mensagem de erro
+            document.getElementById('oauth-loading-overlay')?.classList.remove('hidden-state');
+            // Timeout de segurança: se em 20 s a troca não terminar, mostra erro.
             _oauthTimeout = setTimeout(() => {
-                _oauthPending = false;
-                document.getElementById('oauth-timeout-msg')?.classList.remove('hidden-state');
-            }, 15000);
+                _showOAuthError('O login está demorando mais que o normal. Verifique a conexão e tente novamente.');
+            }, 20000);
+            // Troca explícita do código por sessão. Em caso de sucesso, o Supabase
+            // dispara SIGNED_IN no onAuthStateChange abaixo, que abre o app. Em caso de
+            // falha, mostramos o motivo real (ex.: verificador PKCE ausente).
+            const _authCode = _oauthParams.get('code');
+            supabaseClient.auth.exchangeCodeForSession(_authCode).then(({ error }) => {
+                // Limpa o ?code= da URL de qualquer forma (o código só pode ser usado uma vez).
+                history.replaceState(null, '', window.location.pathname);
+                if (error) {
+                    _showOAuthError(`Não foi possível concluir o login: ${error.message}`);
+                }
+                // Sucesso: o onAuthStateChange (SIGNED_IN) cuida de abrir o app.
+            }).catch((e) => {
+                history.replaceState(null, '', window.location.pathname);
+                _showOAuthError(`Não foi possível concluir o login: ${e?.message || e}`);
+            });
         }
 
         supabaseClient?.auth.onAuthStateChange((event, session) => {
