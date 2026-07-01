@@ -341,15 +341,19 @@
                 position: fixed !important;
                 left: 0 !important; top: 0 !important;
                 bottom: 3.5rem !important; right: auto !important;
-                width: 52px !important; height: auto !important; max-height: none !important;
+                width: 52px !important;
+                /* Explicit height so content cannot escape the container */
+                height: calc(100dvh - 3.5rem) !important; max-height: none !important;
                 border-radius: 0 1rem 1rem 0 !important;
-                overflow-y: auto !important; overflow-x: hidden !important;
+                overflow: hidden !important; /* toolbar itself does NOT scroll */
                 z-index: 35 !important;
             }
             /* Header do drag: esconde alça de arrastar no celular */
             #word-toolbar-header .lg\:hidden { display: none !important; }
-            #word-toolbar-header { cursor: default !important; }
+            #word-toolbar-header { cursor: default !important; flex-shrink: 0; }
             #word-toolbar .resize-handle { display: none !important; }
+            /* Tab buttons row: never shrink */
+            #word-toolbar > div:nth-child(2) { flex-shrink: 0; }
             /* Painéis das abas: flyout fixo ao lado da barra */
             #word-toolbar .toolbar-tab-panel {
                 position: fixed !important;
@@ -363,8 +367,17 @@
                 display: flex !important;
                 flex-wrap: wrap !important;
                 align-content: flex-start !important;
+                flex: none !important; /* out of flow: flex:1 shouldn't apply */
             }
             #word-toolbar .toolbar-tab-panel.hidden { display: none !important; }
+            /* Save row: always pinned to the bottom of the sidebar */
+            #word-toolbar-bottom {
+                position: sticky !important;
+                bottom: 0 !important;
+                background: #0f172a !important;
+                flex-shrink: 0 !important;
+                z-index: 1;
+            }
             /* Canvas principal: recua para não ficar atrás da sidebar */
             #main-canvas { padding-left: 52px; }
         }
@@ -807,7 +820,7 @@
             </div>
 
             <!-- Salvar fica fixo fora das abas (igual ao atalho Ctrl+S do Word, independe da aba ativa) -->
-            <div class="flex items-center justify-center gap-1 py-2 px-1.5 border-t border-white/10">
+            <div id="word-toolbar-bottom" class="flex items-center justify-center gap-1 py-2 px-1.5 border-t border-white/10">
                 <button onclick="saveCurrentWork()" title="Salvar Trabalho" class="word-tool-btn text-emerald-400"><i data-lucide="save" class="w-4 h-4"></i></button>
                 <!-- Modo Assistente mora aqui na barra de ferramentas (antes havia também um botão flutuante solto no canto da tela, removido por ser confuso/sem contexto) -->
                 <button id="btn-assistant-mode-toolbar" onclick="toggleAssistantMode()" type="button" title="Ativar Modo Assistente: a IA sugere continuações e tópicos de pesquisa enquanto você escreve." class="btn-assistant-mode-toggle word-tool-btn text-indigo-400"><i data-lucide="sparkles" class="w-4 h-4"></i></button>
