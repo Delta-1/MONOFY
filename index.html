@@ -37,7 +37,19 @@
     <script>
         const SUPABASE_URL = 'https://yfqzoukrjatcgmyshtpz.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlmcXpvdWtyamF0Y2dteXNodHB6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE5NTgyMjMsImV4cCI6MjA5NzUzNDIyM30.GBbEwI-1AnrJ6kllFrXkjTc1Bf76bGz8d8TGnaiYoAw';
-        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        let supabaseClient;
+        try {
+            supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        } catch(e) {
+            // Supabase CDN não carregou — mostra aviso assim que o DOM estiver pronto
+            document.addEventListener('DOMContentLoaded', () => {
+                const err = document.getElementById('auth-error');
+                if (err) {
+                    err.textContent = 'Erro de conexão: recarregue a página (F5). Se persistir, desative o bloqueador de anúncios.';
+                    err.classList.remove('hidden-state');
+                }
+            });
+        }
         const EDGE_FN_CHECKOUT = `${SUPABASE_URL}/functions/v1/create-payment-preference`;
         const EDGE_FN_AI = `${SUPABASE_URL}/functions/v1/ai-generate`;
         const EDGE_FN_SUBSCRIBE = `${SUPABASE_URL}/functions/v1/create-subscription`;
