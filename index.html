@@ -141,7 +141,8 @@
         .word-tool-btn { width: 2.25rem; height: 2.25rem; display: flex; align-items: center; justify-content: center; border-radius: 0.6rem; color: #cbd5e1; flex-shrink: 0; transition: background-color 0.15s, color 0.15s; }
         .word-tool-btn:hover { background-color: rgba(255,255,255,0.1); color: #fff; }
         .toolbar-tab-btn.active-tab { background-color: #2563eb; color: #fff; }
-        .toolbar-tab-panel { flex: 1 1 0; min-height: 0; }
+        #word-toolbar { overflow: hidden; }
+        #word-toolbar-bottom { flex-shrink: 0; }
         .paper-size-btn.ps-active { background-color: #1d4ed8 !important; border-color: #3b82f6 !important; color: #fff !important; }
         #font-family-select option { font-size: 13px; }
         .word-tool-sep { width: 1.75rem; height: 1px; background: rgba(255,255,255,0.12); margin: 0.25rem 0; flex-shrink: 0; }
@@ -336,8 +337,8 @@
             .mobile-visible { transform: translateY(0); opacity: 1; pointer-events: auto; }
 
             /* Barra de ferramentas: coluna fixa na esquerda.
-               flex-direction:column é obrigatório para sobrescrever o docked-top que usa row. */
-            #mobile-toolbar-tab { display: none !important; }
+               flex-direction:column é obrigatório para sobrescrever o docked-top que usa row.
+               Por padrão fica fora de tela (translateX negativo) e desliza ao abrir. */
             #word-toolbar {
                 display: flex !important;
                 flex-direction: column !important;
@@ -349,8 +350,11 @@
                 border-radius: 0 1rem 1rem 0 !important;
                 overflow: hidden !important;
                 z-index: 35 !important;
+                transform: translateX(-52px) !important;
+                transition: transform 0.2s ease !important;
             }
-            #word-toolbar-header .lg\:hidden { display: none !important; }
+            #word-toolbar.mobile-toolbar-open { transform: translateX(0) !important; }
+            #word-toolbar:not(.mobile-toolbar-open) .toolbar-tab-panel { display: none !important; }
             #word-toolbar-header { cursor: default !important; flex-shrink: 0 !important; }
             #word-toolbar .resize-handle { display: none !important; }
             #word-toolbar > div:nth-child(2) { flex-shrink: 0 !important; }
@@ -381,7 +385,7 @@
                 width: 52px !important;
                 box-sizing: border-box !important;
             }
-            #main-canvas { padding-left: 52px !important; }
+            /* Toolbar desliza por cima do canvas; sem padding-left permanente */
         }
 
         /* Marca d'água MONOFY por página (some apenas se 1 crédito for consumido na exportação) */
@@ -4378,7 +4382,13 @@ O campo "body" deve ser texto simples curto (pode usar quebras de linha com \\n 
         function toggleMobilePanels(side) { togglePanelVisibility(`panel-${side}`); }
 
         function toggleMobileToolbar() {
-            document.getElementById('word-toolbar').classList.toggle('mobile-toolbar-open');
+            const tb = document.getElementById('word-toolbar');
+            const tab = document.getElementById('mobile-toolbar-tab');
+            const open = tb.classList.toggle('mobile-toolbar-open');
+            if (tab) {
+                if (open) tab.style.setProperty('display', 'none', 'important');
+                else tab.style.removeProperty('display');
+            }
         }
 
         // Abas da barra de ferramentas, no estilo das abas do Word (Página Inicial, Inserir, Design, Layout, Referências)
