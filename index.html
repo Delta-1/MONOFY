@@ -143,9 +143,7 @@
         .toolbar-tab-btn.active-tab { background-color: #2563eb; color: #fff; }
         .toolbar-tab-panel { flex: 1 1 0; min-height: 0; }
         .paper-size-btn.ps-active { background-color: #1d4ed8 !important; border-color: #3b82f6 !important; color: #fff !important; }
-        .font-pick-btn { width: 100%; text-align: left; padding: 5px 8px; border-radius: 8px; font-size: 13px; color: #cbd5e1; background: transparent; border: 1px solid transparent; transition: background 0.12s, border-color 0.12s; cursor: pointer; }
-        .font-pick-btn:hover { background: rgba(255,255,255,0.08); }
-        .font-pick-btn.fp-active { background: rgba(59,130,246,0.18) !important; border-color: #3b82f6 !important; color: #93c5fd !important; }
+        #font-family-select option { font-size: 13px; }
         .word-tool-sep { width: 1.75rem; height: 1px; background: rgba(255,255,255,0.12); margin: 0.25rem 0; flex-shrink: 0; }
 
         /* Encaixe (dock) da barra de ferramentas nas paredes esquerda/direita/topo da tela */
@@ -373,16 +371,14 @@
                 flex: none !important; /* out of flow: flex:1 shouldn't apply */
             }
             #word-toolbar .toolbar-tab-panel.hidden { display: none !important; }
-            /* Save row: fixed to viewport, always visible at bottom of sidebar above dock */
+            /* Save row: margin-top:auto empurra para o fundo da coluna flex sem sair do fluxo */
             #word-toolbar-bottom {
-                position: fixed !important;
-                bottom: 3.5rem !important;
-                left: 0 !important;
-                width: 52px !important;
+                margin-top: auto !important;
+                flex-shrink: 0 !important;
                 background: #0f172a !important;
-                border-top: 1px solid rgba(255,255,255,0.1) !important;
                 border-radius: 0 0 1rem 0 !important;
-                z-index: 36 !important;
+                width: 52px !important;
+                box-sizing: border-box !important;
             }
             /* Canvas principal: recua para não ficar atrás da sidebar */
             #main-canvas { padding-left: 52px; }
@@ -786,19 +782,19 @@
                 <select id="quick-norm-select" onchange="quickApplyNormTemplate()" title="Norma atual (troca rápida)" class="w-full text-[10px] p-1 bg-slate-800 text-slate-200 border border-slate-700 rounded-md outline-none mt-1"></select>
                 <div class="word-tool-sep"></div>
                 <!-- Seletor de fonte do documento -->
-                <p class="w-full text-center text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-0.5 mt-0.5">Fonte do Documento</p>
-                <div class="w-full flex flex-col gap-0.5">
-                    <button onclick="quickApplyFont('Tinos, Times New Roman, serif')" data-font="Tinos, Times New Roman, serif" class="font-pick-btn" style="font-family:'Tinos',serif">Tinos (Times)</button>
-                    <button onclick="quickApplyFont('Times New Roman, Times, serif')" data-font="Times New Roman, Times, serif" class="font-pick-btn" style="font-family:'Times New Roman',serif">Times New Roman</button>
-                    <button onclick="quickApplyFont('Arial, Helvetica, sans-serif')" data-font="Arial, Helvetica, sans-serif" class="font-pick-btn" style="font-family:'Arial',sans-serif">Arial</button>
-                    <button onclick="quickApplyFont('Calibri, Segoe UI, sans-serif')" data-font="Calibri, Segoe UI, sans-serif" class="font-pick-btn" style="font-family:'Calibri',sans-serif">Calibri</button>
-                    <button onclick="quickApplyFont('Georgia, serif')" data-font="Georgia, serif" class="font-pick-btn" style="font-family:'Georgia',serif">Georgia</button>
-                    <button onclick="quickApplyFont('EB Garamond, Garamond, serif')" data-font="EB Garamond, Garamond, serif" class="font-pick-btn" style="font-family:'EB Garamond',serif">Garamond</button>
-                    <button onclick="quickApplyFont('Palatino Linotype, Palatino, serif')" data-font="Palatino Linotype, Palatino, serif" class="font-pick-btn" style="font-family:'Palatino Linotype',serif">Palatino</button>
-                    <button onclick="quickApplyFont('Merriweather, serif')" data-font="Merriweather, serif" class="font-pick-btn" style="font-family:'Merriweather',serif">Merriweather</button>
-                    <button onclick="quickApplyFont('Lora, serif')" data-font="Lora, serif" class="font-pick-btn" style="font-family:'Lora',serif">Lora</button>
-                    <button onclick="quickApplyFont('Crimson Text, serif')" data-font="Crimson Text, serif" class="font-pick-btn" style="font-family:'Crimson Text',serif">Crimson Text</button>
-                </div>
+                <p class="w-full text-center text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-0.5 mt-0.5">Fonte</p>
+                <select id="font-family-select" onchange="quickApplyFont(this.value)" title="Fonte do documento" class="w-full text-[11px] p-1 bg-slate-800 text-slate-200 border border-slate-700 rounded-lg outline-none cursor-pointer">
+                    <option value="Tinos, Times New Roman, serif" style="font-family:'Tinos',serif">Tinos (Times)</option>
+                    <option value="Times New Roman, Times, serif" style="font-family:'Times New Roman',serif">Times New Roman</option>
+                    <option value="Arial, Helvetica, sans-serif" style="font-family:'Arial',sans-serif">Arial</option>
+                    <option value="Calibri, Segoe UI, sans-serif" style="font-family:'Calibri',sans-serif">Calibri</option>
+                    <option value="Georgia, serif" style="font-family:'Georgia',serif">Georgia</option>
+                    <option value="EB Garamond, Garamond, serif" style="font-family:'EB Garamond',serif">Garamond</option>
+                    <option value="Palatino Linotype, Palatino, serif" style="font-family:'Palatino Linotype',serif">Palatino</option>
+                    <option value="Merriweather, serif" style="font-family:'Merriweather',serif">Merriweather</option>
+                    <option value="Lora, serif" style="font-family:'Lora',serif">Lora</option>
+                    <option value="Crimson Text, serif" style="font-family:'Crimson Text',serif">Crimson Text</option>
+                </select>
                 <div class="word-tool-sep"></div>
                 <button onclick="toggleCoverFramePanel()" id="btn-cover-frame" title="Borda de Página (Capa)" class="word-tool-btn"><i data-lucide="square-dashed" class="w-4 h-4"></i></button>
             </div>
@@ -3013,9 +3009,10 @@ ${original}`;
         }
 
         function syncFontBtns(family) {
-            document.querySelectorAll('.font-pick-btn[data-font]').forEach(btn => {
-                btn.classList.toggle('fp-active', btn.dataset.font === family);
-            });
+            const sel = document.getElementById('font-family-select');
+            if (!sel) return;
+            sel.value = family;
+            sel.style.fontFamily = family.split(',')[0].replace(/['"]/g, '');
         }
 
         // Rastreia em qual página (apa-content) o cursor está, pra saber onde as ferramentas
