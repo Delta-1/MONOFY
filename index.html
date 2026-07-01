@@ -141,11 +141,23 @@
         .word-tool-btn { width: 2.25rem; height: 2.25rem; display: flex; align-items: center; justify-content: center; border-radius: 0.6rem; color: #cbd5e1; flex-shrink: 0; transition: background-color 0.15s, color 0.15s; }
         .word-tool-btn:hover { background-color: rgba(255,255,255,0.1); color: #fff; }
         .toolbar-tab-btn.active-tab { background-color: #2563eb; color: #fff; }
-        #word-toolbar { overflow: hidden; }
         #word-toolbar-bottom { flex-shrink: 0; }
         .paper-size-btn.ps-active { background-color: #1d4ed8 !important; border-color: #3b82f6 !important; color: #fff !important; }
         #font-family-select option { font-size: 13px; }
         .word-tool-sep { width: 1.75rem; height: 1px; background: rgba(255,255,255,0.12); margin: 0.25rem 0; flex-shrink: 0; }
+
+        /* Desktop: quando uma aba está ativa, a barra expande lateralmente (estilo Word) sem scrollbar */
+        @media (min-width: 1024px) {
+            #word-toolbar:has(.toolbar-tab-panel:not(.hidden)) {
+                width: 260px !important;
+                max-height: none !important;
+                overflow: visible !important;
+            }
+            #word-toolbar .toolbar-tab-panel {
+                max-height: none !important;
+                overflow-y: visible !important;
+            }
+        }
 
         /* Encaixe (dock) da barra de ferramentas nas paredes esquerda/direita/topo da tela */
         /* height: auto + max-height (em vez de height fixo) faz a barra encolher pro tamanho real
