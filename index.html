@@ -146,16 +146,17 @@
         #font-family-select option { font-size: 13px; }
         .word-tool-sep { width: 1.75rem; height: 1px; background: rgba(255,255,255,0.12); margin: 0.25rem 0; flex-shrink: 0; }
 
-        /* Desktop: quando uma aba está ativa, a barra expande lateralmente (estilo Word) sem scrollbar */
+        /* Desktop: barra estreita (comprida), cresce na vertical até quase a tela inteira.
+           O painel ocupa o espaço disponível e rola internamente se necessário.
+           Linha de salvar/lupa sempre visível no fundo (flex-shrink:0 global). */
         @media (min-width: 1024px) {
-            #word-toolbar:has(.toolbar-tab-panel:not(.hidden)) {
-                width: 260px !important;
-                max-height: none !important;
-                overflow: visible !important;
+            #word-toolbar {
+                max-height: calc(100vh - 3rem) !important;
+                overflow: hidden !important;
             }
             #word-toolbar .toolbar-tab-panel {
-                max-height: none !important;
-                overflow-y: visible !important;
+                flex: 1 1 0 !important;
+                min-height: 0 !important;
             }
         }
 
@@ -175,6 +176,9 @@
         #word-toolbar.docked-right > .resize-handle.resize-se, #word-toolbar.docked-right > .resize-handle.resize-sw, #word-toolbar.docked-right > .resize-handle.resize-ne, #word-toolbar.docked-right > .resize-handle.resize-nw,
         #word-toolbar.docked-top > .resize-handle.resize-se, #word-toolbar.docked-top > .resize-handle.resize-sw, #word-toolbar.docked-top > .resize-handle.resize-ne, #word-toolbar.docked-top > .resize-handle.resize-nw,
         #word-toolbar.docked-top > .resize-handle.resize-n { display: none !important; }
+
+        /* Controles flutuantes (página/margens/zoom) descem quando a barra está encaixada no topo */
+        body.toolbar-docked-top #floating-controls { top: calc(40vh + 0.75rem) !important; }
 
         /* Scrollbar Melhorada e Visível */
         ::-webkit-scrollbar { width: 8px; height: 8px; }
@@ -629,7 +633,7 @@
         <div id="main-canvas" class="absolute inset-0 pt-8 pb-40 flex flex-col items-center custom-scrollbar">
             
             <!-- Grupo de Controlos Flutuantes (Margens e Zoom) -->
-            <div class="fixed top-6 right-6 lg:top-6 lg:right-10 z-[40] hide-on-print flex flex-col items-end gap-3">
+            <div id="floating-controls" class="fixed top-6 right-6 lg:top-6 lg:right-10 z-[40] hide-on-print flex flex-col items-end gap-3" style="transition: top 0.2s ease;">
                 
                 <!-- Indicador de Página Atual -->
                 <div id="page-tracker" class="bg-slate-900/80 dark:bg-slate-800/80 backdrop-blur-md text-white px-4 py-2 rounded-2xl shadow-xl flex items-center gap-2 text-xs font-bold border border-white/10">
@@ -1847,11 +1851,13 @@
             el.classList.add('docked-' + edge);
             el.dataset.dock = edge;
             ['top', 'left', 'right', 'bottom', 'width', 'height', 'maxHeight'].forEach(p => el.style[p] = '');
+            document.body.classList.toggle('toolbar-docked-top', edge === 'top');
         }
 
         function undockToolbarToRect(el, rect) {
             el.classList.remove('docked-left', 'docked-right', 'docked-top');
             el.dataset.dock = 'none';
+            document.body.classList.remove('toolbar-docked-top');
             el.style.top = rect.top + 'px';
             el.style.left = rect.left + 'px';
             el.style.right = 'auto';
@@ -1921,7 +1927,6 @@
                 if (dockable) {
                     if (newTop <= DOCK_EDGE_THRESHOLD) dockZone = 'top';
                     else if (newLeft <= DOCK_EDGE_THRESHOLD) dockZone = 'left';
-                    else if (newLeft + el.offsetWidth >= window.innerWidth - DOCK_EDGE_THRESHOLD) dockZone = 'right';
                     else dockZone = null;
                     showDockHint(dockZone);
                 }
@@ -3130,16 +3135,17 @@ ${original}`;
             let initialDistance = null;
             let initialZoom = 1;
             let pinchMidX = 0, pinchMidY = 0;
+            let pendingRaf = null;
 
             canvas.addEventListener('touchstart', (e) => {
                 if (e.touches.length === 2) {
+                    e.preventDefault(); // evita scroll conflitante ao iniciar pinch
                     const rect = canvas.getBoundingClientRect();
                     initialDistance = Math.hypot(
-                        e.touches[0].pageX - e.touches[1].pageX,
-                        e.touches[0].pageY - e.touches[1].pageY
+                        e.touches[0].clientX - e.touches[1].clientX,
+                        e.touches[0].clientY - e.touches[1].clientY
                     );
                     initialZoom = currentZoom;
-                    // Ponto médio do beliscão, relativo ao canvas — é onde o zoom precisa "ficar parado"
                     pinchMidX = (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left;
                     pinchMidY = (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top;
                 }
@@ -3148,30 +3154,32 @@ ${original}`;
             canvas.addEventListener('touchmove', (e) => {
                 if (e.touches.length === 2 && initialDistance) {
                     e.preventDefault();
-                    const currentDistance = Math.hypot(
-                        e.touches[0].pageX - e.touches[1].pageX,
-                        e.touches[0].pageY - e.touches[1].pageY
+                    const dist = Math.hypot(
+                        e.touches[0].clientX - e.touches[1].clientX,
+                        e.touches[0].clientY - e.touches[1].clientY
                     );
-                    const scale = currentDistance / initialDistance;
-                    const oldZoom = currentZoom;
-
-                    // O ponto sob os dedos, em coordenadas do conteúdo (antes do novo zoom)
-                    const contentX = canvas.scrollLeft + pinchMidX;
-                    const contentY = canvas.scrollTop + pinchMidY;
-
-                    setZoom(initialZoom * scale);
-                    const ratio = currentZoom / oldZoom;
-
-                    // Reajusta o scroll pra manter o mesmo ponto do conteúdo sob os dedos
-                    canvas.scrollLeft = contentX * ratio - pinchMidX;
-                    canvas.scrollTop = contentY * ratio - pinchMidY;
+                    const scale = dist / initialDistance;
+                    const snapZoom = initialZoom * scale;
+                    const snapMidX = pinchMidX;
+                    const snapMidY = pinchMidY;
+                    // Batcha a atualização no próximo frame para suavidade
+                    if (pendingRaf) cancelAnimationFrame(pendingRaf);
+                    pendingRaf = requestAnimationFrame(() => {
+                        const oldZoom = currentZoom;
+                        const contentX = canvas.scrollLeft + snapMidX;
+                        const contentY = canvas.scrollTop + snapMidY;
+                        setZoom(snapZoom);
+                        const ratio = currentZoom / oldZoom;
+                        canvas.scrollLeft = contentX * ratio - snapMidX;
+                        canvas.scrollTop  = contentY * ratio - snapMidY;
+                        pendingRaf = null;
+                    });
                 }
             }, { passive: false });
 
-            canvas.addEventListener('touchend', (e) => {
-                if (e.touches.length < 2) {
-                    initialDistance = null;
-                }
+            canvas.addEventListener('touchend', () => {
+                if (pendingRaf) { cancelAnimationFrame(pendingRaf); pendingRaf = null; }
+                initialDistance = null;
             });
         }
 
