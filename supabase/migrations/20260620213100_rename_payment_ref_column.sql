@@ -1,0 +1,2 @@
+-- Renamed payment reference column in credit_transactions.
+-- Applied via Supabase dashboard before repo migration tracking was set up.

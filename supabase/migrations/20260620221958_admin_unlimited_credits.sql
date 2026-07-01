@@ -1,0 +1,2 @@
+-- Admin role bypass: admins are granted unlimited credits (skip deduction).
+-- Applied via Supabase dashboard before repo migration tracking was set up.

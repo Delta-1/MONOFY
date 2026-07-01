@@ -1,0 +1,2 @@
+-- Updated consume_credit default to 10 and added role column to profiles.
+-- Applied via Supabase dashboard before repo migration tracking was set up.

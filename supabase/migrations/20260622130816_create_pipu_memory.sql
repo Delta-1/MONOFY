@@ -1,0 +1,2 @@
+-- Created pipu_memory table for AI assistant conversation memory.
+-- Applied via Supabase dashboard before repo migration tracking was set up.
