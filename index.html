@@ -564,7 +564,7 @@
         <div id="oauth-loading-overlay" class="hidden-state absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 bg-slate-100 dark:bg-slate-900">
             <div class="w-12 h-12 border-4 border-primary-500 border-t-transparent rounded-full animate-spin"></div>
             <p class="text-slate-600 dark:text-slate-300 font-semibold text-sm">Finalizando login com Google…</p>
-            <p id="oauth-timeout-msg" class="hidden-state text-red-500 text-xs text-center px-6 max-w-xs">Não foi possível concluir o login. <button onclick="document.getElementById('oauth-loading-overlay').classList.add('hidden-state')" class="underline font-medium">Tentar novamente</button></p>
+            <p id="oauth-timeout-msg" class="hidden-state text-red-500 text-xs text-center px-6 max-w-xs">Não foi possível concluir o login. <button onclick="_oauthPending=false; history.replaceState(null,'',location.pathname); document.getElementById('oauth-loading-overlay').classList.add('hidden-state')" class="underline font-medium">Tentar novamente</button></p>
         </div>
         <button id="pwa-install-btn-login" onclick="installPWA()" class="hidden-state absolute top-4 right-4 text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white bg-white/90 dark:bg-slate-800/90 backdrop-blur px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 shadow transition">Instalar App</button>
         <div class="max-w-md w-full bg-white dark:bg-slate-850 rounded-[2rem] shadow-2xl p-10 text-center space-y-6 border border-white/20 dark:border-slate-700/50">
@@ -3630,7 +3630,6 @@ ${original}`;
         const _isOAuthCallback = new URLSearchParams(window.location.search).has('code');
         let _oauthPending = _isOAuthCallback;
         let _oauthTimeout = null;
-        let _everAuthenticated = false;
 
         if (_isOAuthCallback) {
             // O DOM acima deste script já foi parseado (login-screen está na linha ~550),
@@ -3644,20 +3643,19 @@ ${original}`;
             }, 15000);
         }
 
-        supabaseClient.auth.onAuthStateChange((event, session) => {
+        supabaseClient?.auth.onAuthStateChange((event, session) => {
             if (session) {
                 _oauthPending = false;
                 if (_oauthTimeout) { clearTimeout(_oauthTimeout); _oauthTimeout = null; }
                 document.getElementById('oauth-loading-overlay')?.classList.add('hidden-state');
-                if (!_everAuthenticated) {
-                    _everAuthenticated = true;
+                if (!state.session || state.session.user?.id !== session.user?.id) {
+                    // Primeira autenticação ou troca de conta
                     onAuthenticated(session);
                 } else {
-                    state.session = session; // TOKEN_REFRESHED / re-auth: só atualiza o token
+                    state.session = session; // TOKEN_REFRESHED: só atualiza o token
                 }
             } else {
-                _everAuthenticated = false;
-                if (_oauthPending) return; // troca de código em andamento — aguardar SIGNED_IN
+                if (_oauthPending) return; // troca de código OAuth em andamento — aguardar SIGNED_IN
                 state.session = null;
                 document.getElementById('app-screen').classList.add('opacity-0', 'pointer-events-none');
                 // Só anima a entrada da tela de login se ela estava escondida (o usuário
