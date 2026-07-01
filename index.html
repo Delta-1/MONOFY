@@ -123,7 +123,7 @@
 
     <style>
         /* Tipografia Académica */
-        @import url('https://fonts.googleapis.com/css2?family=Tinos:ital,wght@0,400;0,700;1,400;1,700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Tinos:ital,wght@0,400;0,700;1,400;1,700&family=Merriweather:ital,wght@0,300;0,400;0,700;1,400&family=Lora:ital,wght@0,400;0,600;0,700;1,400&family=EB+Garamond:ital,wght@0,400;0,700;1,400&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap');
 
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; overscroll-behavior-y: none; }
         .hidden-state { display: none !important; }
@@ -143,6 +143,9 @@
         .toolbar-tab-btn.active-tab { background-color: #2563eb; color: #fff; }
         .toolbar-tab-panel { flex: 1 1 0; min-height: 0; }
         .paper-size-btn.ps-active { background-color: #1d4ed8 !important; border-color: #3b82f6 !important; color: #fff !important; }
+        .font-pick-btn { width: 100%; text-align: left; padding: 5px 8px; border-radius: 8px; font-size: 13px; color: #cbd5e1; background: transparent; border: 1px solid transparent; transition: background 0.12s, border-color 0.12s; cursor: pointer; }
+        .font-pick-btn:hover { background: rgba(255,255,255,0.08); }
+        .font-pick-btn.fp-active { background: rgba(59,130,246,0.18) !important; border-color: #3b82f6 !important; color: #93c5fd !important; }
         .word-tool-sep { width: 1.75rem; height: 1px; background: rgba(255,255,255,0.12); margin: 0.25rem 0; flex-shrink: 0; }
 
         /* Encaixe (dock) da barra de ferramentas nas paredes esquerda/direita/topo da tela */
@@ -781,6 +784,21 @@
                     <i data-lucide="layout-template" class="w-3.5 h-3.5"></i> Trocar Norma / Modelo
                 </button>
                 <select id="quick-norm-select" onchange="quickApplyNormTemplate()" title="Norma atual (troca rápida)" class="w-full text-[10px] p-1 bg-slate-800 text-slate-200 border border-slate-700 rounded-md outline-none mt-1"></select>
+                <div class="word-tool-sep"></div>
+                <!-- Seletor de fonte do documento -->
+                <p class="w-full text-center text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-0.5 mt-0.5">Fonte do Documento</p>
+                <div class="w-full flex flex-col gap-0.5">
+                    <button onclick="quickApplyFont('Tinos, Times New Roman, serif')" data-font="Tinos, Times New Roman, serif" class="font-pick-btn" style="font-family:'Tinos',serif">Tinos (Times)</button>
+                    <button onclick="quickApplyFont('Times New Roman, Times, serif')" data-font="Times New Roman, Times, serif" class="font-pick-btn" style="font-family:'Times New Roman',serif">Times New Roman</button>
+                    <button onclick="quickApplyFont('Arial, Helvetica, sans-serif')" data-font="Arial, Helvetica, sans-serif" class="font-pick-btn" style="font-family:'Arial',sans-serif">Arial</button>
+                    <button onclick="quickApplyFont('Calibri, Segoe UI, sans-serif')" data-font="Calibri, Segoe UI, sans-serif" class="font-pick-btn" style="font-family:'Calibri',sans-serif">Calibri</button>
+                    <button onclick="quickApplyFont('Georgia, serif')" data-font="Georgia, serif" class="font-pick-btn" style="font-family:'Georgia',serif">Georgia</button>
+                    <button onclick="quickApplyFont('EB Garamond, Garamond, serif')" data-font="EB Garamond, Garamond, serif" class="font-pick-btn" style="font-family:'EB Garamond',serif">Garamond</button>
+                    <button onclick="quickApplyFont('Palatino Linotype, Palatino, serif')" data-font="Palatino Linotype, Palatino, serif" class="font-pick-btn" style="font-family:'Palatino Linotype',serif">Palatino</button>
+                    <button onclick="quickApplyFont('Merriweather, serif')" data-font="Merriweather, serif" class="font-pick-btn" style="font-family:'Merriweather',serif">Merriweather</button>
+                    <button onclick="quickApplyFont('Lora, serif')" data-font="Lora, serif" class="font-pick-btn" style="font-family:'Lora',serif">Lora</button>
+                    <button onclick="quickApplyFont('Crimson Text, serif')" data-font="Crimson Text, serif" class="font-pick-btn" style="font-family:'Crimson Text',serif">Crimson Text</button>
+                </div>
                 <div class="word-tool-sep"></div>
                 <button onclick="toggleCoverFramePanel()" id="btn-cover-frame" title="Borda de Página (Capa)" class="word-tool-btn"><i data-lucide="square-dashed" class="w-4 h-4"></i></button>
             </div>
@@ -1762,6 +1780,9 @@
                 applyDocumentState(state.history[0]);
             }
             applyNormTemplate(getActiveNormTemplate());
+            // Restore user-chosen font override (applied after template so it wins)
+            const savedFont = localStorage.getItem('monografia_doc_font');
+            if (savedFont) { document.documentElement.style.setProperty('--doc-font-family', savedFont); syncFontBtns(savedFont); }
             applyCoverFrameToCSS();
             updateCoverFrameButtonTooltip();
             setToolbarTab(localStorage.getItem('monografia_toolbar_tab') || 'home');
@@ -2276,6 +2297,7 @@
             });
 
             document.documentElement.style.setProperty('--doc-font-family', tpl.fonte);
+            syncFontBtns(tpl.fonte);
             document.documentElement.style.setProperty('--doc-font-size', tpl.tamanhoFonte);
             document.documentElement.style.setProperty('--doc-line-height', tpl.espacamento);
             document.documentElement.style.setProperty('--doc-paragraph-indent', `${tpl.recuoParagrafo}cm`);
@@ -2982,6 +3004,18 @@ ${original}`;
             });
             const sel = document.getElementById('quick-paper-size-select');
             if (sel) sel.value = size;
+        }
+
+        function quickApplyFont(family) {
+            document.documentElement.style.setProperty('--doc-font-family', family);
+            localStorage.setItem('monografia_doc_font', family);
+            syncFontBtns(family);
+        }
+
+        function syncFontBtns(family) {
+            document.querySelectorAll('.font-pick-btn[data-font]').forEach(btn => {
+                btn.classList.toggle('fp-active', btn.dataset.font === family);
+            });
         }
 
         // Rastreia em qual página (apa-content) o cursor está, pra saber onde as ferramentas
