@@ -370,13 +370,16 @@
                 flex: none !important; /* out of flow: flex:1 shouldn't apply */
             }
             #word-toolbar .toolbar-tab-panel.hidden { display: none !important; }
-            /* Save row: always pinned to the bottom of the sidebar */
+            /* Save row: fixed to viewport, always visible at bottom of sidebar above dock */
             #word-toolbar-bottom {
-                position: sticky !important;
-                bottom: 0 !important;
+                position: fixed !important;
+                bottom: 3.5rem !important;
+                left: 0 !important;
+                width: 52px !important;
                 background: #0f172a !important;
-                flex-shrink: 0 !important;
-                z-index: 1;
+                border-top: 1px solid rgba(255,255,255,0.1) !important;
+                border-radius: 0 0 1rem 0 !important;
+                z-index: 36 !important;
             }
             /* Canvas principal: recua para não ficar atrás da sidebar */
             #main-canvas { padding-left: 52px; }
