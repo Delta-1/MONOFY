@@ -3321,8 +3321,19 @@ ${original}`;
         async function signInWithEmail() {
             const email = document.getElementById('auth-email').value.trim();
             const password = document.getElementById('auth-password').value;
+            if (!email || !password) { showAuthError('Preencha o email e a senha.'); return; }
+            const btn = document.querySelector('#email-auth-form button[onclick="signInWithEmail()"]');
+            if (btn) { btn.disabled = true; btn.textContent = 'Entrando…'; }
             const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
-            if (error) showAuthError(error.message);
+            if (btn) { btn.disabled = false; btn.textContent = 'Entrar'; }
+            if (error) {
+                const msgs = {
+                    'Invalid login credentials': 'Email ou senha incorretos.',
+                    'Email not confirmed': 'Confirme seu email antes de entrar (cheque a caixa de entrada).',
+                    'User not found': 'Nenhuma conta com este email.'
+                };
+                showAuthError(msgs[error.message] || error.message);
+            }
         }
 
         async function signUpWithEmail() {
@@ -3575,7 +3586,9 @@ ${original}`;
 
         async function onAuthenticated(session) {
             state.session = session;
-            await loadProfile();
+            // loadProfile pode falhar (perfil ainda não criado, RLS, rede) — o try-catch
+            // garante que um erro aqui nunca vai bloquear a abertura do app.
+            try { await loadProfile(); } catch(e) { console.warn('loadProfile error:', e); }
             // provider_token só vem quando o login foi com o Google (não existe em
             // login por email/senha) — é ele que liberta o autosave no Drive.
             if (session.provider_token) {
@@ -3587,19 +3600,29 @@ ${original}`;
                 document.getElementById('login-screen').classList.add('hidden-state');
                 document.getElementById('app-screen').classList.remove('opacity-0', 'pointer-events-none');
                 updateCoverPage();
-                // maybeStartTour(); // tutorial desativado por hora (ainda disponível manualmente em Ajustes)
             }, 400);
         }
 
+        let _authHandlerRunning = false;
         supabaseClient.auth.onAuthStateChange((_event, session) => {
             if (session) {
-                onAuthenticated(session);
+                if (_authHandlerRunning) return; // evita chamadas duplicadas (ex: TOKEN_REFRESHED)
+                _authHandlerRunning = true;
+                onAuthenticated(session).finally(() => { _authHandlerRunning = false; });
             } else {
+                _authHandlerRunning = false;
                 state.session = null;
                 document.getElementById('app-screen').classList.add('opacity-0', 'pointer-events-none');
-                document.getElementById('login-screen').classList.remove('hidden-state');
-                document.getElementById('login-screen').classList.add('opacity-0');
-                setTimeout(() => document.getElementById('login-screen').classList.remove('opacity-0'), 10);
+                // Só anima a entrada da tela de login se ela estava escondida (o usuário
+                // estava no app). Se já estava visível (carga inicial sem sessão), não pisca.
+                const loginEl = document.getElementById('login-screen');
+                if (loginEl.classList.contains('hidden-state')) {
+                    loginEl.classList.remove('hidden-state');
+                    loginEl.classList.add('opacity-0');
+                    requestAnimationFrame(() => requestAnimationFrame(() => loginEl.classList.remove('opacity-0')));
+                } else {
+                    loginEl.classList.remove('opacity-0', 'pointer-events-none');
+                }
             }
         });
 
