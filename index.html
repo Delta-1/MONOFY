@@ -3351,14 +3351,16 @@ ${original}`;
             // quando a sessão chega de volta.
             const redirectTo = window.location.origin + window.location.pathname;
             // Escopo extra do Drive (só os arquivos criados pelo próprio Monofy, não o Drive
-            // inteiro) pra poder salvar o documento automaticamente lá. access_type=offline +
-            // prompt=consent é o jeito de pedir esse escopo "de verdade" ao Google.
+            // inteiro) pra poder salvar o documento automaticamente lá.
+            // select_account → mostra o seletor de conta do Google (permite trocar de conta).
+            // consent       → garante que o refresh_token chega mesmo que o usuário já tenha
+            //                 autorizado antes (necessário para access_type=offline).
             const { error } = await supabaseClient.auth.signInWithOAuth({
                 provider: 'google',
                 options: {
                     redirectTo,
                     scopes: 'https://www.googleapis.com/auth/drive.file',
-                    queryParams: { access_type: 'offline', prompt: 'consent' }
+                    queryParams: { access_type: 'offline', prompt: 'select_account consent' }
                 }
             });
             if (error) showAuthError(error.message);
