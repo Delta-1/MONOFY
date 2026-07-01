@@ -4198,6 +4198,79 @@ ${original}`;
             return (d.innerText || d.textContent || '').replace(/\s+/g, ' ').trim();
         }
 
+        // Extrai hierarquia de títulos de texto puro (notas do usuário ou material carregado).
+        // Detecta: markdown (#/##/###), numeração (1., 1.1., 1.1.1.), romanos (I. II.), CAPS curto.
+        function extractHeadingsFromText(text) {
+            if (!text) return [];
+            const headings = [];
+            const seen = new Set();
+            for (const raw of text.split('\n')) {
+                const line = raw.trim();
+                if (!line || line.length < 2) continue;
+                let level = 0, title = '';
+
+                const mdMatch = line.match(/^(#{1,4})\s+(.+)/);
+                if (mdMatch) { level = mdMatch[1].length; title = mdMatch[2].trim(); }
+
+                if (!level) {
+                    const numMatch = line.match(/^(\d+(?:\.\d+)*)\.\s+(.+)/);
+                    if (numMatch) {
+                        const dots = (numMatch[1].match(/\./g) || []).length + 1;
+                        level = Math.min(dots, 4); title = numMatch[2].trim();
+                    }
+                }
+
+                if (!level) {
+                    const romanMatch = line.match(/^([IVX]{1,6})\.\s+(.+)/i);
+                    if (romanMatch && romanMatch[1].length <= 4) { level = 1; title = romanMatch[2].trim(); }
+                }
+
+                if (!level && line.length <= 70 && line === line.toUpperCase() && /[A-ZÁÉÍÓÚÀÃÕ]{3}/.test(line) && !/[.!?]{3,}/.test(line)) {
+                    level = 1; title = line;
+                }
+
+                if (level && title && !seen.has(title.toLowerCase())) {
+                    seen.add(title.toLowerCase());
+                    headings.push({ level, title });
+                }
+            }
+            return headings;
+        }
+
+        // Monta o bloco de contexto estrutural que vai no prompt de cada seção.
+        // Inclui: outline detectado no material do usuário + headings das seções já geradas.
+        function buildOutlineContext(planId, generatedSections, rawText, uploadedText) {
+            const noteHeadings   = extractHeadingsFromText(rawText).slice(0, 40);
+            const uploadHeadings = extractHeadingsFromText(uploadedText).slice(0, 40);
+            const allDetected    = [...noteHeadings, ...uploadHeadings]
+                .filter((h, i, arr) => arr.findIndex(x => x.title.toLowerCase() === h.title.toLowerCase()) === i);
+
+            const lines = [];
+
+            if (generatedSections.length > 0) {
+                lines.push('SEÇÕES JÁ GERADAS NO DOCUMENTO:');
+                for (const sec of generatedSections) {
+                    const tmp = document.createElement('div');
+                    tmp.innerHTML = sec.content || '';
+                    const subHeadings = [...tmp.querySelectorAll('h2,h3,h4')]
+                        .map(h => `${'  '.repeat(parseInt(h.tagName[1]) - 2)}↳ ${h.innerText.trim()}`)
+                        .join('\n');
+                    lines.push(`• ${sec.title}${subHeadings ? '\n' + subHeadings : ''}`);
+                }
+            }
+
+            if (allDetected.length > 0) {
+                lines.push('');
+                lines.push('ESTRUTURA DE TÍTULOS DETECTADA NO MATERIAL DO USUÁRIO (use estes títulos como subtítulos desta seção quando relevantes; adapte ao idioma de saída):');
+                for (const h of allDetected) {
+                    lines.push('  '.repeat(h.level - 1) + `• ${h.title}`);
+                }
+                lines.push('Instrução: se algum título acima pertence à seção atual, use-o como <h2> ou <h3> no content, na ordem em que aparecem. Não invente títulos se o material já os fornece.');
+            }
+
+            return lines.length ? '\n\n' + lines.join('\n') : '';
+        }
+
         async function generateSlidesWithAI() {
             if (state.isDemo) { alert('Modo demonstração: geração com IA desativada. Crie uma conta para usar de verdade.'); return; }
             if (!state.profile) { alert('Aguarde o carregamento do seu perfil.'); return; }
@@ -4888,6 +4961,9 @@ Responda APENAS com o título, sem aspas, sem explicações, em uma única linha
                     ? `Redacta la lista de REFERENCIAS BIBLIOGRÁFICAS. ${refRulesByStyle} Envuelve CADA referencia obligatoriamente en <p class="hanging-indent"> para lograr la sangría francesa. El contenido debe comenzar DIRECTAMENTE con la primera referencia — NO incluyas ningún párrafo introductorio, explicativo o de cierre antes o después de la lista, ni texto que no sea una referencia bibliográfica en sí.`
                     : plan.instructions;
                 const otherLabels = sectionPlan.filter(p => p.id !== plan.id).map(p => p.label).join(', ');
+                const outlineContext = plan.id === 'referencias' || plan.id === 'abstract'
+                    ? ''
+                    : buildOutlineContext(plan.id, state.generatedSections, rawText, state.uploadedContextText || '');
 
                 // O Abstract é sempre a tradução fiel do Resumo já gerado (que vem antes
                 // dele no DOC_SECTION_PLAN), independente do idioma de saída escolhido pelo
@@ -4918,7 +4994,7 @@ Responda APENAS com o título, sem aspas, sem explicações, em uma única linha
 
                     ${sectionInstructions}
 
-                    JERARQUÍA DE TÍTULOS DENTRO DEL CONTENIDO: usa <h2> para subtítulos y <h3> para sub-subtítulos si es necesario. Usa <p> para párrafos.
+                    JERARQUÍA DE TÍTULOS DENTRO DEL CONTENIDO: usa <h2> para subtítulos directos e <h3> para sub-subtítulos. Usa <p> para parágrafos. Quando o material do usuário já fornece títulos/subtítulos para esta seção, use-os exatamente (traduzidos ao idioma de saída) — não invente títulos genéricos se o material já define a estrutura.${outlineContext}
 
                     MATERIAL DE REFERENCIA DEL USUARIO (Extrae argumentos de aquí si los hay):
                     ${state.uploadedContextText}
