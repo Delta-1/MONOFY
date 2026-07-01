@@ -146,28 +146,27 @@
         #font-family-select option { font-size: 13px; }
         .word-tool-sep { width: 1.75rem; height: 1px; background: rgba(255,255,255,0.12); margin: 0.25rem 0; flex-shrink: 0; }
 
-        /* Desktop: tira de ícones fica estreita e comprida; ao clicar numa aba o painel
-           VOLA para a direita da tira (flyout) — sem redimensionar nada. */
+        /* Desktop: tira de ícones estreita e comprida; painel expande inline (abaixo dos ícones). */
         @media (min-width: 1024px) {
             #word-toolbar {
-                overflow: visible !important;
-                max-height: none !important;
+                max-height: calc(100vh - 1rem) !important;
+                overflow: hidden !important;
             }
             #word-toolbar .toolbar-tab-panel {
-                position: absolute !important;
-                left: 100% !important;
-                top: 0 !important;
-                width: 200px !important;
-                max-height: calc(100vh - 3rem) !important;
+                position: static !important;
+                left: auto !important;
+                top: auto !important;
+                width: auto !important;
+                flex: 1 1 auto !important;
+                min-height: 0 !important;
+                max-height: none !important;
                 overflow-y: auto !important;
-                background: #0f172a !important;
-                border: 1px solid rgba(255,255,255,0.08) !important;
-                border-left: none !important;
-                border-radius: 0 1rem 1rem 0 !important;
-                padding: 8px !important;
-                box-shadow: 4px 0 20px rgba(0,0,0,0.5) !important;
-                flex: none !important;
-                z-index: 1 !important;
+                background: transparent !important;
+                border: none !important;
+                border-radius: 0 !important;
+                padding: 0.5rem 0.375rem !important;
+                box-shadow: none !important;
+                z-index: auto !important;
             }
         }
 
@@ -188,8 +187,7 @@
         #word-toolbar.docked-top > .resize-handle.resize-se, #word-toolbar.docked-top > .resize-handle.resize-sw, #word-toolbar.docked-top > .resize-handle.resize-ne, #word-toolbar.docked-top > .resize-handle.resize-nw,
         #word-toolbar.docked-top > .resize-handle.resize-n { display: none !important; }
 
-        /* Controles flutuantes (página/margens/zoom) descem quando a barra está encaixada no topo */
-        body.toolbar-docked-top #floating-controls { top: calc(40vh + 0.75rem) !important; }
+        /* Controles flutuantes: posição ajustada via JS (syncFloatingControlsPosition) */
 
         /* Scrollbar Melhorada e Visível */
         ::-webkit-scrollbar { width: 8px; height: 8px; }
@@ -1856,6 +1854,22 @@
         // Lógica de Arrastar com Limite de Teto e Laterais (Evita perder janelas)
         const DOCK_EDGE_THRESHOLD = 60;
 
+        function syncFloatingControlsPosition() {
+            const fc = document.getElementById('floating-controls');
+            if (!fc) return;
+            const tb = document.getElementById('word-toolbar');
+            if (!tb) { fc.style.top = ''; return; }
+            const isDocked = tb.classList.contains('docked-top');
+            if (isDocked) {
+                requestAnimationFrame(() => {
+                    const h = tb.getBoundingClientRect().height;
+                    fc.style.top = (h + 10) + 'px';
+                });
+            } else {
+                fc.style.top = '';
+            }
+        }
+
         function dockToolbar(edge) {
             const el = document.getElementById('word-toolbar');
             el.classList.remove('docked-left', 'docked-right', 'docked-top');
@@ -1863,6 +1877,7 @@
             el.dataset.dock = edge;
             ['top', 'left', 'right', 'bottom', 'width', 'height', 'maxHeight'].forEach(p => el.style[p] = '');
             document.body.classList.toggle('toolbar-docked-top', edge === 'top');
+            requestAnimationFrame(syncFloatingControlsPosition);
         }
 
         function undockToolbarToRect(el, rect) {
@@ -1875,6 +1890,7 @@
             el.style.bottom = 'auto';
             el.style.width = rect.width + 'px';
             el.style.height = rect.height + 'px';
+            syncFloatingControlsPosition();
         }
 
         function showDockHint(zone) {
@@ -4489,6 +4505,7 @@ O campo "body" deve ser texto simples curto (pode usar quebras de linha com \\n 
             document.querySelectorAll('.toolbar-tab-panel').forEach(p => p.classList.toggle('hidden', p.dataset.tabPanel !== tab));
             document.querySelectorAll('.toolbar-tab-btn').forEach(b => b.classList.toggle('active-tab', b.dataset.tab === tab));
             localStorage.setItem('monografia_toolbar_tab', tab);
+            requestAnimationFrame(syncFloatingControlsPosition);
         }
 
         // ==========================================
