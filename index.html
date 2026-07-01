@@ -3348,13 +3348,28 @@ ${original}`;
             lucide.createIcons();
         }
 
+        // Traduz erros de rede (a requisição nem chegou ao servidor) numa mensagem
+        // acionável. "Load failed" (WebKit/Safari) e "Failed to fetch" (Chrome) são
+        // falhas de conexão — normalmente VPN, Relay Privado do iPhone, DNS privado,
+        // bloqueador de anúncios ou rede instável barrando a requisição de fundo.
+        function friendlyAuthError(msg) {
+            const m = String(msg || '').toLowerCase();
+            if (m.includes('load failed') || m.includes('failed to fetch') || m.includes('networkerror') || m.includes('network error') || m.includes('fetch')) {
+                return 'Falha de conexão com o servidor. Tente: 1) trocar Wi-Fi ↔ dados móveis; 2) desligar VPN, Relay Privado (iPhone) ou bloqueador de anúncios; 3) tentar de novo. Dica: o login com Google costuma funcionar mesmo quando isso acontece.';
+            }
+            return msg || 'Erro inesperado. Tente novamente.';
+        }
+
         async function signInWithEmail() {
             const email = document.getElementById('auth-email').value.trim();
             const password = document.getElementById('auth-password').value;
             if (!email || !password) { showAuthError('Preencha o email e a senha.'); return; }
             const btn = document.querySelector('#email-auth-form button[onclick="signInWithEmail()"]');
             if (btn) { btn.disabled = true; btn.textContent = 'Entrando…'; }
-            const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+            let error;
+            try {
+                ({ error } = await supabaseClient.auth.signInWithPassword({ email, password }));
+            } catch (e) { error = e; }
             if (btn) { btn.disabled = false; btn.textContent = 'Entrar'; }
             if (error) {
                 const msgs = {
@@ -3362,16 +3377,23 @@ ${original}`;
                     'Email not confirmed': 'Confirme seu email antes de entrar (cheque a caixa de entrada).',
                     'User not found': 'Nenhuma conta com este email.'
                 };
-                showAuthError(msgs[error.message] || error.message);
+                showAuthError(msgs[error.message] || friendlyAuthError(error.message));
             }
         }
 
         async function signUpWithEmail() {
             const email = document.getElementById('auth-email').value.trim();
             const password = document.getElementById('auth-password').value;
+            if (!email) { showAuthError('Preencha o email e a senha.'); return; }
             if (password.length < 6) { showAuthError('A senha precisa ter no mínimo 6 caracteres.'); return; }
-            const { error } = await supabaseClient.auth.signUp({ email, password });
-            if (error) showAuthError(error.message);
+            const btn = document.querySelector('#email-auth-form button[onclick="signUpWithEmail()"]');
+            if (btn) { btn.disabled = true; btn.textContent = 'Criando…'; }
+            let error;
+            try {
+                ({ error } = await supabaseClient.auth.signUp({ email, password }));
+            } catch (e) { error = e; }
+            if (btn) { btn.disabled = false; btn.textContent = 'Criar Conta'; }
+            if (error) showAuthError(friendlyAuthError(error.message));
             else showAuthSuccess('Conta criada! Verifique o seu email para confirmar (ou faça login se a confirmação estiver desativada).');
         }
 
