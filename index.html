@@ -146,17 +146,28 @@
         #font-family-select option { font-size: 13px; }
         .word-tool-sep { width: 1.75rem; height: 1px; background: rgba(255,255,255,0.12); margin: 0.25rem 0; flex-shrink: 0; }
 
-        /* Desktop: barra estreita (comprida), cresce na vertical até quase a tela inteira.
-           O painel ocupa o espaço disponível e rola internamente se necessário.
-           Linha de salvar/lupa sempre visível no fundo (flex-shrink:0 global). */
+        /* Desktop: tira de ícones fica estreita e comprida; ao clicar numa aba o painel
+           VOLA para a direita da tira (flyout) — sem redimensionar nada. */
         @media (min-width: 1024px) {
             #word-toolbar {
-                max-height: calc(100vh - 3rem) !important;
-                overflow: hidden !important;
+                overflow: visible !important;
+                max-height: none !important;
             }
             #word-toolbar .toolbar-tab-panel {
-                flex: 1 1 0 !important;
-                min-height: 0 !important;
+                position: absolute !important;
+                left: 100% !important;
+                top: 0 !important;
+                width: 200px !important;
+                max-height: calc(100vh - 3rem) !important;
+                overflow-y: auto !important;
+                background: #0f172a !important;
+                border: 1px solid rgba(255,255,255,0.08) !important;
+                border-left: none !important;
+                border-radius: 0 1rem 1rem 0 !important;
+                padding: 8px !important;
+                box-shadow: 4px 0 20px rgba(0,0,0,0.5) !important;
+                flex: none !important;
+                z-index: 1 !important;
             }
         }
 
