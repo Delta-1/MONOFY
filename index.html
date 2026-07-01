@@ -241,7 +241,7 @@
         .norm-no-frame .cover-border { border: none !important; }
         .a4-page h1 { font-size: 12pt; font-weight: bold; text-align: center; margin-top: 24pt; margin-bottom: 12pt; text-indent: 0; }
         .a4-page h2 { font-size: 12pt; font-weight: bold; text-align: left; margin-top: 24pt; margin-bottom: 12pt; text-indent: 0; }
-        .a4-page h3 { font-size: 12pt; font-weight: bold; text-align: left; margin-top: 24pt; margin-bottom: 12pt; text-indent: 0; }
+        .a4-page h3 { font-size: 12pt; font-weight: bold; font-style: italic; text-align: left; margin-top: 24pt; margin-bottom: 12pt; text-indent: 0; }
         .a4-page h4 { font-size: 12pt; font-weight: bold; text-align: left; margin-top: 24pt; margin-bottom: 12pt; text-indent: 0; padding-left: var(--doc-paragraph-indent); }
         .a4-page h5 { font-size: 12pt; font-weight: bold; font-style: italic; text-align: left; margin-top: 24pt; margin-bottom: 12pt; text-indent: 0; padding-left: var(--doc-paragraph-indent); }
         .a4-page .hanging-indent { padding-left: 1.27cm; text-indent: -1.27cm; margin-bottom: 12pt; text-align: left; }
@@ -331,18 +331,39 @@
             .mobile-hidden { transform: translateY(150%); opacity: 0; pointer-events: none; }
             .mobile-visible { transform: translateY(0); opacity: 1; pointer-events: auto; }
 
-            /* Barra de ferramentas fica escondida por padrão no celular (gaveta fechada) e só
-               aparece quando aberta pelo puxador #mobile-toolbar-tab. */
-            #word-toolbar { display: none; }
-            #word-toolbar.mobile-toolbar-open {
+            /* Barra de ferramentas: sidebar fixa na esquerda, sempre visível no celular */
+            #mobile-toolbar-tab { display: none !important; }
+            #word-toolbar {
                 display: flex !important;
-                /* top empurrado pra baixo do badge de usuário/créditos/Sair (fixed top-6,
-                   z-[40]) — com top: 5rem a gaveta ficava colada/embaixo do badge, que tem
-                   z-index maior e tampava as abas "Página Inicial" etc. */
-                left: 3.5rem; right: 1rem; top: 7.5rem; bottom: auto;
-                width: auto !important; height: auto !important; max-height: calc(100vh - 11.5rem) !important;
+                position: fixed !important;
+                left: 0 !important; top: 0 !important;
+                bottom: 3.5rem !important; right: auto !important;
+                width: 52px !important; height: auto !important; max-height: none !important;
+                border-radius: 0 1rem 1rem 0 !important;
+                overflow-y: auto !important; overflow-x: hidden !important;
+                z-index: 35 !important;
             }
+            /* Header do drag: esconde alça de arrastar no celular */
+            #word-toolbar-header .lg\:hidden { display: none !important; }
+            #word-toolbar-header { cursor: default !important; }
             #word-toolbar .resize-handle { display: none !important; }
+            /* Painéis das abas: flyout fixo ao lado da barra */
+            #word-toolbar .toolbar-tab-panel {
+                position: fixed !important;
+                left: 52px !important; top: 0 !important; bottom: 3.5rem !important;
+                width: calc(100vw - 52px) !important;
+                max-height: none !important; overflow-y: auto !important;
+                z-index: 34 !important;
+                background: #0f172a !important;
+                border-radius: 0 !important;
+                padding: 8px !important;
+                display: flex !important;
+                flex-wrap: wrap !important;
+                align-content: flex-start !important;
+            }
+            #word-toolbar .toolbar-tab-panel.hidden { display: none !important; }
+            /* Canvas principal: recua para não ficar atrás da sidebar */
+            #main-canvas { padding-left: 52px; }
         }
 
         /* Marca d'água MONOFY por página (some apenas se 1 crédito for consumido na exportação) */
@@ -736,6 +757,11 @@
             <!-- Aba: Referências -->
             <div data-tab-panel="references" class="toolbar-tab-panel hidden flex flex-wrap content-start items-center justify-center gap-1 py-2 px-1.5 overflow-auto custom-scrollbar">
                 <button onclick="quickInsertTool('citation')" title="Inserir Citação" class="word-tool-btn"><i data-lucide="quote" class="w-4 h-4"></i></button>
+                <button onclick="aiCorrectSelection()" title="Corrigir Seleção com IA (ortografia e gramática)" class="word-tool-btn text-purple-400"><i data-lucide="spell-check" class="w-4 h-4"></i></button>
+                <button onclick="showWordCount()" title="Contagem de Palavras" class="word-tool-btn text-sky-400"><i data-lucide="hash" class="w-4 h-4"></i></button>
+                <button onclick="openFindReplace()" title="Encontrar e Substituir" class="word-tool-btn text-amber-400"><i data-lucide="replace" class="w-4 h-4"></i></button>
+                <button onclick="aiSummarizeSection()" title="Resumir Seção Selecionada com IA" class="word-tool-btn text-emerald-400"><i data-lucide="minimize-2" class="w-4 h-4"></i></button>
+                <button onclick="aiExpandSection()" title="Expandir/Desenvolver Seleção com IA" class="word-tool-btn text-indigo-400"><i data-lucide="maximize-2" class="w-4 h-4"></i></button>
             </div>
 
             <!-- Salvar fica fixo fora das abas (igual ao atalho Ctrl+S do Word, independe da aba ativa) -->
@@ -1017,6 +1043,11 @@
                 <button onclick="switchTab('lab')" class="dock-btn hidden-state relative flex items-center justify-center w-12 h-12 lg:w-14 lg:h-14 rounded-full text-purple-500 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/30 transition-all active:scale-95 bg-transparent" id="dock-tab-lab">
                     <i data-lucide="flask-conical" class="dock-icon w-5 h-5 lg:w-6 lg:h-6"></i>
                     <span class="dock-tooltip">LAB</span>
+                </button>
+
+                <button onclick="switchTab('network')" class="dock-btn relative flex items-center justify-center w-12 h-12 lg:w-14 lg:h-14 rounded-full text-teal-500 dark:text-teal-400 hover:bg-teal-50 dark:hover:bg-teal-900/30 transition-all active:scale-95 bg-transparent" id="dock-tab-network">
+                    <i data-lucide="globe" class="dock-icon w-5 h-5 lg:w-6 lg:h-6"></i>
+                    <span class="dock-tooltip">Network</span>
                 </button>
 
                 <div class="w-px h-6 bg-slate-300 dark:bg-slate-600 mx-1"></div>
@@ -1419,6 +1450,154 @@
                 <div>
                     <h3 class="text-lg font-bold text-slate-700 dark:text-slate-300 mb-3">Modelos personalizados criados</h3>
                     <div id="lab-templates-list" class="space-y-2"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab: Network -->
+        <div id="tab-network" class="hidden-state absolute inset-0 z-40 bg-slate-100/95 dark:bg-slate-900/95 backdrop-blur-2xl overflow-y-auto pt-10 pb-32 px-4 custom-scrollbar">
+            <div class="max-w-5xl mx-auto space-y-8">
+                <div class="rounded-3xl bg-gradient-to-br from-teal-600 to-blue-600 p-6 text-white shadow-xl">
+                    <div class="flex items-center gap-3 mb-2">
+                        <i data-lucide="globe" class="w-6 h-6"></i>
+                        <h2 class="text-2xl font-extrabold">Network de Modelos</h2>
+                    </div>
+                    <p class="text-teal-100 text-sm leading-relaxed">Modelos prontos de universidades — com logo, margens, fonte e citação configurados. Aplique com um clique e seu documento muda de estilo automaticamente.</p>
+                </div>
+
+                <div class="relative">
+                    <i data-lucide="search" class="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none"></i>
+                    <input type="text" id="network-search" placeholder="Buscar por universidade ou modelo..." oninput="networkSearchQuery=this.value;renderNetworkGrid()" class="w-full pl-10 pr-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl outline-none text-sm shadow-sm">
+                </div>
+
+                <div id="network-templates-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div class="col-span-full text-center py-12 text-slate-400">
+                        <div class="text-4xl mb-3">🌐</div>
+                        <p class="text-sm">Carregando modelos da rede...</p>
+                    </div>
+                </div>
+
+                <!-- Seção exclusiva para admins: criar e publicar -->
+                <div id="network-admin-section" class="hidden-state">
+                    <div class="border-t-2 border-slate-200 dark:border-slate-700 pt-8 space-y-6">
+                        <div class="flex items-center gap-3">
+                            <div class="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-xl">
+                                <i data-lucide="flask-conical" class="w-5 h-5 text-purple-500"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-xl font-extrabold text-slate-800 dark:text-white">Publicar Modelo (Admin)</h3>
+                                <p class="text-xs text-slate-500">Crie um modelo formatado e publique para todos os usuários usarem.</p>
+                            </div>
+                        </div>
+
+                        <!-- IA: analisa arquivo e preenche campos -->
+                        <div class="bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800/50 rounded-2xl p-5">
+                            <h4 class="font-bold text-sm text-purple-800 dark:text-purple-300 mb-1 flex items-center gap-2">
+                                <i data-lucide="sparkles" class="w-4 h-4"></i>
+                                Analisar arquivo com IA <span class="font-normal text-xs text-purple-500">(opcional · 2 créditos)</span>
+                            </h4>
+                            <p class="text-xs text-purple-600 dark:text-purple-400 mb-3">Envie uma monografia ou trabalho acadêmico (.docx). A IA identifica as regras de formatação e preenche os campos abaixo automaticamente.</p>
+                            <div id="net-analyze-dropzone" class="border-2 border-dashed border-purple-300 dark:border-purple-700 rounded-xl p-5 text-center cursor-pointer hover:bg-purple-100 dark:hover:bg-purple-900/20 transition">
+                                <input type="file" id="net-analyze-file-input" accept=".docx,.txt" class="hidden">
+                                <i data-lucide="file-search" class="w-8 h-8 text-purple-400 mx-auto mb-2"></i>
+                                <p class="text-xs text-purple-500">Clique ou arraste um .docx aqui</p>
+                            </div>
+                            <button id="btn-analyze-norm" onclick="analyzeFileForNetworkNorm()" class="mt-3 w-full py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-sm font-bold transition disabled:opacity-50">
+                                Analisar com IA
+                            </button>
+                        </div>
+
+                        <!-- Logo + campos -->
+                        <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5 space-y-4 shadow-sm">
+                            <div class="flex items-center gap-4">
+                                <div id="net-lab-logo-wrapper" onclick="document.getElementById('net-lab-logo-input').click()" class="w-16 h-16 rounded-2xl bg-slate-100 dark:bg-slate-700 flex items-center justify-center cursor-pointer overflow-hidden shrink-0 border-2 border-dashed border-slate-300 dark:border-slate-600 hover:border-teal-400 transition">
+                                    <img id="net-lab-logo-preview" class="w-full h-full object-contain hidden" alt="Logo">
+                                    <i data-lucide="image-plus" id="net-lab-logo-icon" class="w-6 h-6 text-slate-400"></i>
+                                </div>
+                                <input type="file" id="net-lab-logo-input" accept="image/*" class="hidden" onchange="handleNetLogoUpload(this.files[0])">
+                                <div>
+                                    <p class="font-bold text-sm text-slate-800 dark:text-white">Logo da Universidade</p>
+                                    <p class="text-xs text-slate-400 mt-0.5">PNG ou JPG — aparece no card da rede</p>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div>
+                                    <label class="text-xs font-bold text-slate-500 mb-1 block">Nome do Modelo *</label>
+                                    <input type="text" id="net-lab-nome" placeholder="Ex: ABNT UPDS 2026" class="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none text-sm shadow-sm">
+                                </div>
+                                <div>
+                                    <label class="text-xs font-bold text-slate-500 mb-1 block">Universidade *</label>
+                                    <input type="text" id="net-lab-university" placeholder="Ex: UPDS – Cobija" class="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none text-sm shadow-sm">
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 mb-1 block">Descrição</label>
+                                <input type="text" id="net-lab-desc" placeholder="Ex: Norma oficial para cursos de graduação" class="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none text-sm shadow-sm">
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="text-xs font-bold text-slate-500 mb-1 block">Papel</label>
+                                    <select id="net-lab-papel" class="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none text-sm shadow-sm">
+                                        <option value="carta">Carta (21.59×27.94cm)</option>
+                                        <option value="a4">A4 (21×29.7cm)</option>
+                                        <option value="a3">A3 (29.7×42cm)</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="text-xs font-bold text-slate-500 mb-1 block">Estilo de citação</label>
+                                    <select id="net-lab-citacao" class="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none text-sm shadow-sm">
+                                        <option value="APA">APA 7ª ed.</option>
+                                        <option value="ABNT">ABNT</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="text-xs font-bold text-slate-500 mb-1 block">Fonte</label>
+                                    <input type="text" id="net-lab-fonte" value="Times New Roman" class="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none text-sm shadow-sm">
+                                </div>
+                                <div>
+                                    <label class="text-xs font-bold text-slate-500 mb-1 block">Tamanho (pt)</label>
+                                    <input type="number" id="net-lab-tamanho" value="12" step="0.5" class="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none text-sm shadow-sm">
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="text-xs font-bold text-slate-500 mb-1 block">Espaçamento de linha</label>
+                                    <input type="number" id="net-lab-espacamento" value="1.5" step="0.1" class="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none text-sm shadow-sm">
+                                </div>
+                                <div>
+                                    <label class="text-xs font-bold text-slate-500 mb-1 block">Recuo de parágrafo (cm)</label>
+                                    <input type="number" id="net-lab-recuo" value="1.27" step="0.01" class="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none text-sm shadow-sm">
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 mb-2 block">Margens (cm) — Superior / Inferior / Esquerda / Direita</label>
+                                <div class="grid grid-cols-4 gap-2">
+                                    <input type="number" id="net-lab-mt" value="2.54" step="0.1" placeholder="Sup" class="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none text-sm text-center shadow-sm">
+                                    <input type="number" id="net-lab-mb" value="2.54" step="0.1" placeholder="Inf" class="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none text-sm text-center shadow-sm">
+                                    <input type="number" id="net-lab-ml" value="3.0" step="0.1" placeholder="Esq" class="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none text-sm text-center shadow-sm">
+                                    <input type="number" id="net-lab-mr" value="2.54" step="0.1" placeholder="Dir" class="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none text-sm text-center shadow-sm">
+                                </div>
+                            </div>
+
+                            <label class="flex items-center gap-3 cursor-pointer select-none">
+                                <input type="checkbox" id="net-lab-moldura" class="w-5 h-5 accent-teal-600">
+                                <span class="text-sm font-medium text-slate-700 dark:text-slate-300">Capa com moldura de página</span>
+                            </label>
+
+                            <button onclick="publishNetworkTemplate()" class="w-full py-4 bg-teal-600 hover:bg-teal-700 text-white font-extrabold rounded-2xl transition-all shadow-xl hover:-translate-y-0.5 flex items-center justify-center gap-2 text-base">
+                                <i data-lucide="globe" class="w-5 h-5"></i>
+                                Publicar na Network
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -2378,6 +2557,297 @@
 
             document.getElementById('lab-preview-paragraph').style.textIndent = (recuo * scale) + 'px';
             document.getElementById('lab-preview-citation').textContent = citacao === 'ABNT' ? '(SILVA, 2026)' : '(Silva, 2026)';
+        }
+
+        // ==========================================
+        // NETWORK TAB
+        // ==========================================
+        let networkTemplates = [];
+        let networkSearchQuery = '';
+
+        async function renderNetworkTab() {
+            const adminSec = document.getElementById('network-admin-section');
+            if (adminSec) adminSec.classList.toggle('hidden-state', !(state.profile && state.profile.role === 'admin'));
+            await loadNetworkTemplates();
+            wireNetAnalyzeDropzone();
+        }
+
+        async function loadNetworkTemplates() {
+            const grid = document.getElementById('network-templates-grid');
+            if (!grid) return;
+            grid.innerHTML = '<div class="col-span-full text-center py-12 text-slate-400"><p class="text-sm animate-pulse">Carregando modelos da rede...</p></div>';
+            try {
+                const { data, error } = await supabaseClient
+                    .from('public_templates')
+                    .select('*')
+                    .order('downloads', { ascending: false });
+                if (error) throw error;
+                networkTemplates = data || [];
+                renderNetworkGrid();
+            } catch (err) {
+                grid.innerHTML = '<div class="col-span-full text-center py-12 text-red-400"><p class="text-sm">Erro ao carregar. Tente novamente.</p></div>';
+            }
+        }
+
+        function renderNetworkGrid() {
+            const grid = document.getElementById('network-templates-grid');
+            if (!grid) return;
+            const q = networkSearchQuery.toLowerCase();
+            const filtered = networkTemplates.filter(t =>
+                !q || t.template_name.toLowerCase().includes(q) || (t.university_name || '').toLowerCase().includes(q)
+            );
+            if (!filtered.length) {
+                grid.innerHTML = '<div class="col-span-full text-center py-12 text-slate-400"><div class="text-5xl mb-3">🌐</div><p class="text-sm">Nenhum modelo publicado ainda. Em breve!</p></div>';
+                lucide.createIcons();
+                return;
+            }
+            const isAdmin = state.profile && state.profile.role === 'admin';
+            grid.innerHTML = filtered.map(t => `
+                <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-4 flex flex-col gap-3 shadow-sm hover:shadow-lg transition hover:-translate-y-0.5">
+                    <div class="flex items-center gap-3">
+                        ${t.logo_base64 ? `<img src="${t.logo_base64}" class="w-12 h-12 rounded-xl object-contain bg-slate-100 dark:bg-slate-700 p-1 shrink-0" alt="">` : `<div class="w-12 h-12 rounded-xl bg-gradient-to-br from-teal-400 to-blue-500 flex items-center justify-center text-white font-bold text-xl shrink-0">${(t.university_name || t.template_name || 'U').charAt(0).toUpperCase()}</div>`}
+                        <div class="flex-1 min-w-0">
+                            <p class="font-bold text-sm text-slate-800 dark:text-white leading-tight truncate">${t.template_name}</p>
+                            <p class="text-xs text-slate-500 dark:text-slate-400 truncate">${t.university_name || ''}</p>
+                        </div>
+                    </div>
+                    ${t.description ? `<p class="text-xs text-slate-500 dark:text-slate-400 line-clamp-2">${t.description}</p>` : ''}
+                    <div class="flex items-center justify-between mt-auto pt-1 gap-2">
+                        <span class="text-xs text-slate-400 flex items-center gap-1 shrink-0"><i data-lucide="download" class="w-3 h-3"></i> ${t.downloads} uso${t.downloads !== 1 ? 's' : ''}</span>
+                        <button onclick="applyNetworkTemplate('${t.id}')" class="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1 shrink-0">
+                            <i data-lucide="check-circle" class="w-3 h-3"></i> Usar
+                        </button>
+                        ${isAdmin ? `<button onclick="deleteNetworkTemplate('${t.id}')" class="p-2 text-slate-400 hover:text-red-500 rounded-lg transition" title="Remover"><i data-lucide="trash-2" class="w-4 h-4"></i></button>` : ''}
+                    </div>
+                </div>
+            `).join('');
+            lucide.createIcons();
+        }
+
+        async function applyNetworkTemplate(id) {
+            const t = networkTemplates.find(t => t.id === id);
+            if (!t) return;
+            const raw = t.template_data;
+            const tplData = typeof raw === 'string' ? JSON.parse(raw) : { ...raw };
+            tplData.id = 'custom-' + Date.now();
+            tplData.builtin = false;
+            // Carry the logo into the local template so the cover uses it
+            if (t.logo_base64) tplData.logoBase64 = t.logo_base64;
+            state.customNormTemplates.push(tplData);
+            localStorage.setItem('monografia_norm_templates', JSON.stringify(state.customNormTemplates));
+            applyNormTemplate(tplData);
+            try {
+                await supabaseClient.rpc('increment_template_downloads', { template_id: id });
+                t.downloads++;
+                renderNetworkGrid();
+            } catch (_) {}
+            alert(`Modelo "${t.template_name}" aplicado! Seu documento foi atualizado.`);
+        }
+
+        async function deleteNetworkTemplate(id) {
+            if (!confirm('Remover este modelo da rede?')) return;
+            try {
+                const { error } = await supabaseClient.from('public_templates').delete().eq('id', id);
+                if (error) throw error;
+                networkTemplates = networkTemplates.filter(t => t.id !== id);
+                renderNetworkGrid();
+            } catch (err) {
+                alert('Erro ao remover: ' + err.message);
+            }
+        }
+
+        async function publishNetworkTemplate() {
+            const nome = document.getElementById('net-lab-nome').value.trim();
+            const university = document.getElementById('net-lab-university').value.trim();
+            if (!nome || !university) { alert('Preencha o nome do modelo e a universidade.'); return; }
+            const desc = document.getElementById('net-lab-desc').value.trim();
+            const logoEl = document.getElementById('net-lab-logo-preview');
+            const logoBase64 = logoEl && !logoEl.classList.contains('hidden') && logoEl.src.startsWith('data:') ? logoEl.src : '';
+            const tplData = {
+                id: 'custom-' + Date.now(), nome, builtin: false,
+                papel: document.getElementById('net-lab-papel').value,
+                margens: {
+                    mt: parseFloat(document.getElementById('net-lab-mt').value) || 2.54,
+                    mb: parseFloat(document.getElementById('net-lab-mb').value) || 2.54,
+                    ml: parseFloat(document.getElementById('net-lab-ml').value) || 3.0,
+                    mr: parseFloat(document.getElementById('net-lab-mr').value) || 2.54
+                },
+                fonte: `'${(document.getElementById('net-lab-fonte').value || 'Times New Roman').trim()}', serif`,
+                tamanhoFonte: `${parseFloat(document.getElementById('net-lab-tamanho').value) || 12}pt`,
+                espacamento: parseFloat(document.getElementById('net-lab-espacamento').value) || 1.5,
+                recuoParagrafo: parseFloat(document.getElementById('net-lab-recuo').value) || 1.27,
+                capaMoldura: document.getElementById('net-lab-moldura').checked,
+                capaAlinhamento: 'center',
+                estiloCitacao: document.getElementById('net-lab-citacao').value
+            };
+            try {
+                const { error } = await supabaseClient.from('public_templates').insert({
+                    publisher_id: state.profile.id,
+                    publisher_name: state.profile.name || 'Admin',
+                    university_name: university,
+                    template_name: nome,
+                    description: desc,
+                    template_data: tplData,
+                    logo_base64: logoBase64
+                });
+                if (error) throw error;
+                alert(`Modelo "${nome}" publicado na Network com sucesso!`);
+                document.getElementById('net-lab-nome').value = '';
+                document.getElementById('net-lab-university').value = '';
+                document.getElementById('net-lab-desc').value = '';
+                await loadNetworkTemplates();
+            } catch (err) {
+                alert('Erro ao publicar: ' + err.message);
+            }
+        }
+
+        function handleNetLogoUpload(file) {
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = document.getElementById('net-lab-logo-preview');
+                const icon = document.getElementById('net-lab-logo-icon');
+                if (img) { img.src = e.target.result; img.classList.remove('hidden'); }
+                if (icon) icon.classList.add('hidden');
+            };
+            reader.readAsDataURL(file);
+        }
+
+        async function analyzeFileForNetworkNorm() {
+            const fileInput = document.getElementById('net-analyze-file-input');
+            const file = fileInput && fileInput.files[0];
+            if (!file) { alert('Selecione um arquivo .docx primeiro no dropzone acima.'); return; }
+            const btn = document.getElementById('btn-analyze-norm');
+            if (btn) { btn.disabled = true; btn.textContent = 'Analisando…'; }
+            try {
+                let text = '';
+                if (typeof mammoth !== 'undefined' && file.name.toLowerCase().endsWith('.docx')) {
+                    const ab = await file.arrayBuffer();
+                    const result = await mammoth.extractRawText({ arrayBuffer: ab });
+                    text = result.value.substring(0, 3500);
+                } else {
+                    text = (await file.text()).substring(0, 3500);
+                }
+                const prompt = `Você é especialista em normas acadêmicas. Analise este trecho de trabalho acadêmico e identifique as regras de formatação. Retorne SOMENTE um objeto JSON (sem markdown):
+{"fonte":"Times New Roman","tamanhoFonte":12,"espacamento":1.5,"recuoParagrafo":1.27,"margemSuperior":2.54,"margemInferior":2.54,"margemEsquerda":3.0,"margemDireita":2.54,"estiloCitacao":"APA","papel":"a4"}
+
+TRECHO:
+${text}`;
+                const raw = await callAI(prompt, 2, 'lab_analyze_norm');
+                let json = raw.replace(/```json/gi,'').replace(/```/g,'').trim();
+                const f1 = json.indexOf('{'), l1 = json.lastIndexOf('}');
+                if (f1 !== -1) json = json.substring(f1, l1 + 1);
+                const p = JSON.parse(json);
+                const set = (id, val) => { const el = document.getElementById(id); if (el && val !== undefined) el.value = val; };
+                set('net-lab-fonte', p.fonte);
+                set('net-lab-tamanho', p.tamanhoFonte);
+                set('net-lab-espacamento', p.espacamento);
+                set('net-lab-recuo', p.recuoParagrafo);
+                set('net-lab-mt', p.margemSuperior);
+                set('net-lab-mb', p.margemInferior);
+                set('net-lab-ml', p.margemEsquerda);
+                set('net-lab-mr', p.margemDireita);
+                if (p.estiloCitacao) { const s = document.getElementById('net-lab-citacao'); if (s) s.value = p.estiloCitacao; }
+                if (p.papel) { const s = document.getElementById('net-lab-papel'); if (s) s.value = p.papel; }
+                alert('IA identificou a formatação e preencheu os campos! Revise, adicione o nome do modelo e publique.');
+            } catch (err) {
+                alert('Erro na análise: ' + err.message);
+            } finally {
+                if (btn) { btn.disabled = false; btn.textContent = 'Analisar com IA'; }
+            }
+        }
+
+        function wireNetAnalyzeDropzone() {
+            const dz = document.getElementById('net-analyze-dropzone');
+            const fi = document.getElementById('net-analyze-file-input');
+            if (!dz || !fi || dz._wired) return;
+            dz._wired = true;
+            dz.addEventListener('click', () => fi.click());
+            fi.addEventListener('change', (e) => { if (e.target.files[0]) { e.target.value = ''; } });
+            dz.addEventListener('dragover', (e) => { e.preventDefault(); dz.classList.add('bg-purple-100','dark:bg-purple-900/30'); });
+            dz.addEventListener('dragleave', () => dz.classList.remove('bg-purple-100','dark:bg-purple-900/30'));
+            dz.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dz.classList.remove('bg-purple-100','dark:bg-purple-900/30');
+                if (e.dataTransfer.files[0]) {
+                    const dt = new DataTransfer();
+                    dt.items.add(e.dataTransfer.files[0]);
+                    fi.files = dt.files;
+                    const ev = new Event('change'); fi.dispatchEvent(ev);
+                }
+            });
+        }
+
+        // ==========================================
+        // FERRAMENTAS DE CORREÇÃO (aba Referências)
+        // ==========================================
+        async function aiCorrectSelection() {
+            const sel = window.getSelection();
+            if (!sel || !sel.toString().trim()) { alert('Selecione um trecho de texto para corrigir.'); return; }
+            const original = sel.toString();
+            const range = sel.getRangeAt(0);
+            const activeTpl = getActiveNormTemplate();
+            const prompt = `Corrija ortografia, gramática e estilo acadêmico do trecho abaixo. Norma: ${activeTpl.estiloCitacao}. Retorne APENAS o trecho corrigido, sem explicações:
+
+${original}`;
+            try {
+                const corrected = await callAI(prompt, 2, 'ai_correct_selection');
+                range.deleteContents();
+                range.insertNode(document.createTextNode(corrected.trim()));
+            } catch (err) { alert('Erro: ' + err.message); }
+        }
+
+        function showWordCount() {
+            const container = document.getElementById('generated-content');
+            if (!container || !container.textContent.trim()) { alert('Nenhum conteúdo gerado ainda.'); return; }
+            const text = container.innerText || container.textContent;
+            const words = text.trim().split(/\s+/).filter(Boolean).length;
+            const chars = text.replace(/\s/g, '').length;
+            const pages = state.generatedSections.length;
+            alert(`Contagem:\n• Palavras: ${words.toLocaleString('pt-BR')}\n• Caracteres (sem espaço): ${chars.toLocaleString('pt-BR')}\n• Seções/páginas: ${pages}`);
+        }
+
+        function openFindReplace() {
+            const term = prompt('Encontrar texto:');
+            if (!term) return;
+            const replacement = prompt(`Substituir "${term}" por:`);
+            if (replacement === null) return;
+            const container = document.getElementById('generated-content');
+            if (!container) return;
+            let count = 0;
+            container.querySelectorAll('.apa-content').forEach(el => {
+                const original = el.innerHTML;
+                const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                const replaced = el.innerHTML.replace(new RegExp(escaped, 'gi'), (m) => { count++; return replacement; });
+                el.innerHTML = replaced;
+                if (el.innerHTML !== original) scheduleSyncSection(el.dataset.sectionId);
+            });
+            alert(count > 0 ? `${count} ocorrência(s) substituída(s).` : `"${term}" não encontrado no documento.`);
+        }
+
+        async function aiSummarizeSection() {
+            const sel = window.getSelection();
+            const text = sel && sel.toString().trim();
+            if (!text) { alert('Selecione o texto que deseja resumir.'); return; }
+            try {
+                const result = await callAI(`Resuma o trecho acadêmico abaixo de forma concisa, mantendo as ideias principais. Retorne apenas o texto resumido:\n\n${text}`, 2, 'ai_summarize');
+                const range = sel.getRangeAt(0);
+                range.deleteContents();
+                range.insertNode(document.createTextNode(result.trim()));
+            } catch (err) { alert('Erro: ' + err.message); }
+        }
+
+        async function aiExpandSection() {
+            const sel = window.getSelection();
+            const text = sel && sel.toString().trim();
+            if (!text) { alert('Selecione o texto que deseja expandir/desenvolver.'); return; }
+            try {
+                const activeTpl = getActiveNormTemplate();
+                const result = await callAI(`Expanda e desenvolva o trecho acadêmico abaixo com mais detalhes, argumentos e profundidade. Norma ${activeTpl.estiloCitacao}. Retorne apenas o texto expandido:\n\n${text}`, 3, 'ai_expand');
+                const range = sel.getRangeAt(0);
+                range.deleteContents();
+                range.insertNode(document.createTextNode(result.trim()));
+            } catch (err) { alert('Erro: ' + err.message); }
         }
 
         // ==========================================
@@ -3675,7 +4145,7 @@ O campo "body" deve ser texto simples curto (pode usar quebras de linha com \\n 
                 return;
             }
 
-            const allTabs = ['generator', 'slides', 'profile', 'settings', 'credits', 'myprofile', 'admin', 'lab'];
+            const allTabs = ['generator', 'slides', 'profile', 'settings', 'credits', 'myprofile', 'admin', 'lab', 'network'];
             allTabs.forEach(t => {
                 const btn = document.getElementById(`dock-tab-${t}`);
                 if(btn) {
@@ -3688,6 +4158,7 @@ O campo "body" deve ser texto simples curto (pode usar quebras de linha com \\n 
                         else if (t === 'myprofile') { btn.classList.add('bg-transparent', 'text-emerald-500', 'dark:text-emerald-400'); }
                         else if (t === 'admin') { btn.classList.add('bg-transparent', 'text-red-500', 'dark:text-red-400'); }
                         else if (t === 'lab') { btn.classList.add('bg-transparent', 'text-purple-500', 'dark:text-purple-400'); }
+                        else if (t === 'network') { btn.classList.add('bg-transparent', 'text-teal-500', 'dark:text-teal-400'); }
                         else if (t === 'slides') { btn.classList.add('bg-transparent', 'text-indigo-500', 'dark:text-indigo-400'); }
                         else { btn.classList.add('bg-transparent', 'text-slate-500', 'dark:text-slate-400'); }
                     }
@@ -3719,6 +4190,9 @@ O campo "body" deve ser texto simples curto (pode usar quebras de linha com \\n 
                 renderLabSections();
                 updateLabPreview();
                 renderNormTemplatesList();
+            } else if (tabId === 'network') {
+                document.getElementById('tab-network').classList.remove('hidden-state');
+                renderNetworkTab();
             } else if (tabId === 'slides') {
                 document.getElementById('tab-slides').classList.remove('hidden-state');
                 renderSlidesTab();
@@ -3764,6 +4238,15 @@ O campo "body" deve ser texto simples curto (pode usar quebras de linha com \\n 
 
         // Abas da barra de ferramentas, no estilo das abas do Word (Página Inicial, Inserir, Design, Layout, Referências)
         function setToolbarTab(tab) {
+            const isMobile = window.innerWidth < 1023;
+            const alreadyActive = document.querySelector(`.toolbar-tab-btn[data-tab="${tab}"]`)?.classList.contains('active-tab');
+            if (isMobile && alreadyActive) {
+                // segundo toque: fecha o flyout
+                document.querySelectorAll('.toolbar-tab-panel').forEach(p => p.classList.add('hidden'));
+                document.querySelectorAll('.toolbar-tab-btn').forEach(b => b.classList.remove('active-tab'));
+                localStorage.setItem('monografia_toolbar_tab', '');
+                return;
+            }
             document.querySelectorAll('.toolbar-tab-panel').forEach(p => p.classList.toggle('hidden', p.dataset.tabPanel !== tab));
             document.querySelectorAll('.toolbar-tab-btn').forEach(b => b.classList.toggle('active-tab', b.dataset.tab === tab));
             localStorage.setItem('monografia_toolbar_tab', tab);
@@ -3773,18 +4256,19 @@ O campo "body" deve ser texto simples curto (pode usar quebras de linha com \\n 
         // TUTORIAL GUIADO DE PRIMEIRO ACESSO
         // ==========================================
         const TOUR_STEPS = [
-            { title: 'Bem-vindo ao Monofy! 👋', text: 'Vamos te mostrar rapidinho como tudo funciona. Leva menos de 1 minuto — você pode pular quando quiser.' },
-            { target: '#dock-tab-generator', title: 'Estúdio', text: 'Aqui é onde você escreve e visualiza a sua monografia, já formatada e paginada como um documento real.' },
-            { target: '#dock-toggle-data', title: 'Dados', before: () => ensurePanelOpenForTour('panel-left'), text: 'Cole o seu texto-base, anexe PDFs de referência e preencha os dados da capa (universidade, título, autor...).' },
-            { target: '#btn-generate', title: 'Gerar com IA', before: () => ensurePanelOpenForTour('panel-right'), text: 'Com um clique, a IA escreve a monografia seção por seção a partir das suas notas (e da conversa com o Assistente, se houver). Isso consome créditos da sua conta.' },
-            { title: 'Editar o texto', text: 'Depois de gerada, clique em qualquer parágrafo para editar diretamente. Uma barra de ferramentas flutuante deixa você pedir à IA para melhorar um trecho, inserir imagens e mais.' },
-            { target: '#dock-toggle-assistant', title: 'Assistente', before: () => ensurePanelOpenForTour('panel-right'), text: 'Converse com o Assistente de IA sobre o que você quer antes de gerar — a conversa entra como contexto extra quando você clicar em "Redigir".' },
-            { target: '#dock-toggle-export', title: 'Exportar', before: () => ensurePanelOpenForTour('panel-export'), text: 'Salve o trabalho, remova a marca d\'água e exporte a monografia final em Word, PDF ou Texto.' },
-            { target: '#dock-tab-profile', title: 'Arquivo', text: 'Todos os documentos que você gerar ficam guardados aqui. Pode reabrir e continuar de onde parou quando quiser.' },
-            { target: '#dock-tab-credits', title: 'Créditos', text: 'Acompanhe e compre créditos aqui. Eles são usados para gerar com IA, exportar e remover a marca d\'água do documento final.' },
-            { target: '#dock-tab-settings', title: 'Ajustes', text: 'Escolha o idioma da redação, a norma (ABNT, APA...), o tema claro/escuro e gerencie modelos personalizados.' },
-            { target: '#dock-tab-myprofile', title: 'Perfil', text: 'Veja os seus dados de conta por aqui.' },
-            { title: 'Pronto! 🎉', text: 'Você já sabe o essencial. Se tiver algum problema, fale com o suporte pelo WhatsApp na aba Ajustes. Bom trabalho com a sua monografia!' }
+            { title: 'Bem-vindo ao Monofy!', text: 'Conheça as abas em menos de 2 minutos. Pode pular quando quiser.' },
+            { target: '#dock-tab-generator', title: 'Estúdio', text: 'Aqui você escreve e vê sua monografia formatada em tempo real, com capa e paginação como um documento de verdade.' },
+            { target: '#dock-toggle-data', title: 'Texto e Dados', before: () => { switchTab('generator'); ensurePanelOpenForTour('panel-left'); }, text: 'Toque para abrir o painel Dados. Cole suas notas, anexe PDFs de referência e preencha os dados da capa (universidade, título, autor...).' },
+            { target: '#dock-toggle-assistant', title: 'Chat da IA', before: () => { switchTab('generator'); ensurePanelOpenForTour('panel-right'); }, text: 'Toque aqui para abrir o chat com a IA. Converse sobre seu tema antes de gerar — a conversa entra como contexto extra na hora de redigir.' },
+            { target: '#btn-generate', title: 'Gerar com IA', before: () => switchTab('generator'), text: 'Com um clique a IA redige todas as seções (Introdução, Conclusão, Referências…) a partir das suas notas. Cada seção gerada consome créditos.' },
+            { title: 'Editar o documento', text: 'Clique (ou toque) em qualquer parágrafo para editar. Um menu flutuante aparece com formatação, citação e botão para a IA melhorar o trecho selecionado.' },
+            { target: '#dock-toggle-export', title: 'Exportar', before: () => { switchTab('generator'); ensurePanelOpenForTour('panel-export'); }, text: 'Toque para abrir Exportar. Salve em Word, PDF ou Texto. Exportar remove a marca d\'água e consome 1 crédito.' },
+            { target: '#dock-tab-slides', title: 'Slides', before: () => switchTab('generator'), text: 'Gere uma apresentação de slides a partir da sua monografia pronta. Exporte como PPTX para apresentar.' },
+            { target: '#dock-tab-profile', title: 'Arquivo', before: () => switchTab('generator'), text: 'Todos os seus documentos ficam salvos aqui. Toque para abrir e continuar de onde parou.' },
+            { target: '#dock-tab-network', title: 'Network', before: () => switchTab('generator'), text: 'Baixe modelos prontos de universidades — com logo, margens e fonte configurados. Aplique e seu documento muda de estilo na hora.' },
+            { target: '#dock-tab-credits', title: 'Créditos', before: () => switchTab('generator'), text: 'Veja seu saldo e compre créditos aqui. Há pacotes avulsos e plano mensal com créditos recorrentes.' },
+            { target: '#dock-tab-settings', title: 'Ajustes', before: () => switchTab('generator'), text: 'Idioma da redação, norma (ABNT/APA), tema claro/escuro e modelos personalizados ficam aqui.' },
+            { title: 'Pronto!', text: 'Você já conhece tudo. Precisa de ajuda? Fale pelo WhatsApp em Ajustes. Bom trabalho!' }
         ];
         let tourStep = 0;
 
