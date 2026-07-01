@@ -3698,13 +3698,25 @@ ${original}`;
             // dispara SIGNED_IN no onAuthStateChange abaixo, que abre o app. Em caso de
             // falha, mostramos o motivo real (ex.: verificador PKCE ausente).
             const _authCode = _oauthParams.get('code');
-            supabaseClient.auth.exchangeCodeForSession(_authCode).then(({ error }) => {
+            supabaseClient.auth.exchangeCodeForSession(_authCode).then(({ data, error }) => {
                 // Limpa o ?code= da URL de qualquer forma (o código só pode ser usado uma vez).
                 history.replaceState(null, '', window.location.pathname);
                 if (error) {
                     _showOAuthError(`Não foi possível concluir o login: ${error.message}`);
+                    return;
                 }
-                // Sucesso: o onAuthStateChange (SIGNED_IN) cuida de abrir o app.
+                // Aplica a sessão DIRETAMENTE do retorno, sem depender do evento SIGNED_IN
+                // (em alguns navegadores/celulares o evento não dispara a tempo, e o app
+                // ficava preso mostrando o login mesmo com a sessão já criada). O guard no
+                // onAuthStateChange evita abrir o app duas vezes se o evento também vier.
+                if (data && data.session) {
+                    _oauthPending = false;
+                    if (_oauthTimeout) { clearTimeout(_oauthTimeout); _oauthTimeout = null; }
+                    document.getElementById('oauth-loading-overlay')?.classList.add('hidden-state');
+                    if (!state.session || state.session.user?.id !== data.session.user?.id) {
+                        onAuthenticated(data.session);
+                    }
+                }
             }).catch((e) => {
                 history.replaceState(null, '', window.location.pathname);
                 _showOAuthError(`Não foi possível concluir o login: ${e?.message || e}`);
@@ -7313,9 +7325,23 @@ Responda APENAS com o título, sem aspas, sem explicações, em uma única linha
 
         /* REGISTRO DO SERVICE WORKER (PWA) */
         if ('serviceWorker' in navigator) {
+            // Quando uma versão nova do Service Worker assume o controle (ex.: depois de
+            // um deploy), recarrega a página UMA vez para trocar o código velho em cache
+            // pelo novo — sem isso, o usuário ficava preso numa versão antiga do app
+            // (a causa do login não abrir mesmo após correções já publicadas).
+            let _swReloaded = false;
+            navigator.serviceWorker.addEventListener('controllerchange', () => {
+                if (_swReloaded) return;
+                _swReloaded = true;
+                window.location.reload();
+            });
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('sw.js')
-                    .then(reg => console.log('Service Worker ativo para o Monofy.', reg.scope))
+                    .then(reg => {
+                        // Procura ativamente por uma versão mais nova a cada carga.
+                        reg.update().catch(() => {});
+                        console.log('Service Worker ativo para o Monofy.', reg.scope);
+                    })
                     .catch(err => console.warn('Falha ao registrar Service Worker do PWA:', err));
             });
         }
