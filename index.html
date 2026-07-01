@@ -1062,12 +1062,8 @@
                     <span class="dock-tooltip">Admin</span>
                 </button>
 
-                <button onclick="switchTab('lab')" class="dock-btn hidden-state relative flex items-center justify-center w-12 h-12 lg:w-14 lg:h-14 rounded-full text-purple-500 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/30 transition-all active:scale-95 bg-transparent" id="dock-tab-lab">
-                    <i data-lucide="flask-conical" class="dock-icon w-5 h-5 lg:w-6 lg:h-6"></i>
-                    <span class="dock-tooltip">LAB</span>
-                </button>
 
-                <button onclick="switchTab('network')" class="dock-btn relative flex items-center justify-center w-12 h-12 lg:w-14 lg:h-14 rounded-full text-teal-500 dark:text-teal-400 hover:bg-teal-50 dark:hover:bg-teal-900/30 transition-all active:scale-95 bg-transparent" id="dock-tab-network">
+<button onclick="switchTab('network')" class="dock-btn relative flex items-center justify-center w-12 h-12 lg:w-14 lg:h-14 rounded-full text-teal-500 dark:text-teal-400 hover:bg-teal-50 dark:hover:bg-teal-900/30 transition-all active:scale-95 bg-transparent" id="dock-tab-network">
                     <i data-lucide="globe" class="dock-icon w-5 h-5 lg:w-6 lg:h-6"></i>
                     <span class="dock-tooltip">Network</span>
                 </button>
@@ -1339,143 +1335,6 @@
             </div>
         </div>
 
-        <!-- Tab: LAB (admin) - criação visual de modelos de norma personalizados -->
-        <div id="tab-lab" class="hidden-state absolute inset-0 z-40 bg-slate-100/95 dark:bg-slate-900/95 backdrop-blur-2xl overflow-y-auto pt-10 pb-32 px-4 custom-scrollbar">
-            <div class="max-w-3xl mx-auto space-y-8">
-                <div class="bg-purple-600 rounded-[2rem] p-8 md:p-10 text-white shadow-xl">
-                    <h2 class="text-3xl font-extrabold mb-3 flex items-center gap-2"><i data-lucide="flask-conical" class="w-7 h-7"></i> LAB</h2>
-                    <p class="text-purple-50 text-sm">Crie a sua própria formatação (margens, fonte, capa, citação, estrutura de seções). Por enquanto, só admins têm acesso a esta aba — mas qualquer modelo criado aqui já fica disponível para uso nos seus projetos, em Ajustes &gt; Modelo de Norma, e pode ser exportado em .json para compartilhar.</p>
-                </div>
-
-                <div class="bg-white/80 dark:bg-slate-850/80 backdrop-blur p-6 rounded-3xl shadow-xl border border-white/40 dark:border-slate-700">
-                    <h3 class="text-sm font-bold text-slate-700 dark:text-slate-300 mb-3 flex items-center gap-2"><i data-lucide="eye" class="w-4 h-4 text-purple-500"></i> Pré-visualização ao vivo</h3>
-                    <div class="bg-slate-200 dark:bg-slate-950 rounded-2xl p-6 flex justify-center overflow-auto">
-                        <div id="lab-preview-page" style="background:#fff;position:relative;box-shadow:0 4px 16px rgba(0,0,0,.2);flex-shrink:0;">
-                            <div id="lab-preview-frame" style="position:absolute;inset:6px;border:3px double #1e293b;pointer-events:none;"></div>
-                            <div id="lab-preview-content" style="position:absolute;box-sizing:border-box;overflow:hidden;color:#1e293b;">
-                                <p id="lab-preview-title" style="margin:0 0 10px 0;font-weight:bold;text-transform:uppercase;">Título de Exemplo do Trabalho</p>
-                                <p id="lab-preview-paragraph" style="margin:0;text-align:justify;">Este é um parágrafo de exemplo para você ver como o texto vai ficar com a fonte, o tamanho, o espaçamento entre linhas e o recuo de parágrafo escolhidos abaixo <span id="lab-preview-citation">(Silva, 2026)</span>.</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="bg-white/80 dark:bg-slate-850/80 backdrop-blur p-8 rounded-3xl shadow-xl border border-white/40 dark:border-slate-700 space-y-6">
-                    <div>
-                        <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Nome do modelo</label>
-                        <input type="text" id="lab-nome" placeholder="Ex: Norma da Minha Faculdade" class="w-full p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none font-medium shadow-sm">
-                    </div>
-
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Papel</label>
-                            <select id="lab-papel" onchange="updateLabPreview()" class="w-full p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none font-medium shadow-sm">
-                                <option value="carta">Carta</option>
-                                <option value="a4">A4</option>
-                                <option value="a3">A3</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Estilo de citação</label>
-                            <select id="lab-citacao" onchange="updateLabPreview()" class="w-full p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none font-medium shadow-sm">
-                                <option value="APA">APA</option>
-                                <option value="ABNT">ABNT</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div>
-                        <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Margens (cm)</label>
-                        <div class="grid grid-cols-4 gap-3">
-                            <div>
-                                <label class="block text-xs text-slate-400 mb-1">Superior</label>
-                                <input type="number" step="0.1" id="lab-mt" value="2.54" oninput="updateLabPreview()" class="w-full p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none font-medium shadow-sm">
-                            </div>
-                            <div>
-                                <label class="block text-xs text-slate-400 mb-1">Inferior</label>
-                                <input type="number" step="0.1" id="lab-mb" value="2.54" oninput="updateLabPreview()" class="w-full p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none font-medium shadow-sm">
-                            </div>
-                            <div>
-                                <label class="block text-xs text-slate-400 mb-1">Esquerda</label>
-                                <input type="number" step="0.1" id="lab-ml" value="3.0" oninput="updateLabPreview()" class="w-full p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none font-medium shadow-sm">
-                            </div>
-                            <div>
-                                <label class="block text-xs text-slate-400 mb-1">Direita</label>
-                                <input type="number" step="0.1" id="lab-mr" value="2.54" oninput="updateLabPreview()" class="w-full p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none font-medium shadow-sm">
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Fonte</label>
-                            <input type="text" id="lab-fonte" value="Times New Roman" oninput="updateLabPreview()" class="w-full p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none font-medium shadow-sm">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Tamanho da fonte (pt)</label>
-                            <input type="number" step="0.5" id="lab-tamanho-fonte" value="12" oninput="updateLabPreview()" class="w-full p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none font-medium shadow-sm">
-                        </div>
-                    </div>
-
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Espaçamento entre linhas</label>
-                            <input type="number" step="0.1" id="lab-espacamento" value="1.5" oninput="updateLabPreview()" class="w-full p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none font-medium shadow-sm">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Recuo de parágrafo (cm)</label>
-                            <input type="number" step="0.01" id="lab-recuo" value="1.27" oninput="updateLabPreview()" class="w-full p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none font-medium shadow-sm">
-                        </div>
-                    </div>
-
-                    <div class="grid grid-cols-2 gap-4 items-end">
-                        <div>
-                            <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Alinhamento da capa</label>
-                            <select id="lab-capa-alinhamento" onchange="updateLabPreview()" class="w-full p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none font-medium shadow-sm">
-                                <option value="center">Centralizado</option>
-                                <option value="left">Esquerda</option>
-                            </select>
-                        </div>
-                        <label class="flex items-center gap-2 p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl cursor-pointer">
-                            <input type="checkbox" id="lab-capa-moldura" onchange="updateLabPreview()" class="w-5 h-5 accent-purple-600">
-                            <span class="text-sm font-bold text-slate-700 dark:text-slate-300">Capa com moldura</span>
-                        </label>
-                    </div>
-
-                    <button onclick="saveLabTemplate()" class="w-full py-4 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold shadow-lg transition active:scale-95 flex items-center justify-center gap-2">
-                        <i data-lucide="sparkles" class="w-5 h-5"></i> Criar e aplicar modelo
-                    </button>
-                </div>
-
-                <div class="bg-white/80 dark:bg-slate-850/80 backdrop-blur p-8 rounded-3xl shadow-xl border border-white/40 dark:border-slate-700 space-y-4">
-                    <div>
-                        <h3 class="text-sm font-bold text-slate-700 dark:text-slate-300 flex items-center gap-2"><i data-lucide="list-tree" class="w-4 h-4 text-purple-500"></i> Estrutura do documento (seções que a IA vai redigir)</h3>
-                        <p class="text-xs text-slate-400 mt-1">Adicione, remova e reordene as seções, e diga à IA o que escrever em cada uma. Essa estrutura vale só para quem estiver usando este modelo.</p>
-                    </div>
-                    <div id="lab-sections-list" class="space-y-3"></div>
-                    <button onclick="addLabSection()" class="w-full py-3 border-2 border-dashed border-purple-300 dark:border-purple-700/50 text-purple-600 dark:text-purple-400 rounded-xl font-bold text-sm hover:bg-purple-50 dark:hover:bg-purple-900/20 transition flex items-center justify-center gap-2">
-                        <i data-lucide="plus" class="w-4 h-4"></i> Adicionar seção
-                    </button>
-                </div>
-
-                <div class="bg-white/80 dark:bg-slate-850/80 backdrop-blur p-6 rounded-3xl shadow-xl border border-white/40 dark:border-slate-700">
-                    <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-3 flex items-center gap-2">
-                        <i data-lucide="upload-cloud" class="w-5 h-5 text-purple-500"></i> Importar modelo compartilhado
-                    </label>
-                    <div id="lab-import-dropzone" class="border-2 border-dashed border-purple-300 dark:border-purple-700/50 rounded-2xl p-6 text-center cursor-pointer hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors">
-                        <i data-lucide="upload-cloud" class="w-8 h-8 mx-auto mb-2 text-purple-400"></i>
-                        <p class="text-sm font-bold text-slate-600 dark:text-slate-300">Arraste um arquivo .json de modelo (exportado do LAB) aqui ou clique para enviar</p>
-                        <input type="file" id="lab-import-file-input" accept=".json" class="hidden">
-                    </div>
-                </div>
-
-                <div>
-                    <h3 class="text-lg font-bold text-slate-700 dark:text-slate-300 mb-3">Modelos personalizados criados</h3>
-                    <div id="lab-templates-list" class="space-y-2"></div>
-                </div>
-            </div>
-        </div>
-
         <!-- Tab: Network -->
         <div id="tab-network" class="hidden-state absolute inset-0 z-40 bg-slate-100/95 dark:bg-slate-900/95 backdrop-blur-2xl overflow-y-auto pt-10 pb-32 px-4 custom-scrollbar">
             <div class="max-w-5xl mx-auto space-y-8">
@@ -1562,7 +1421,7 @@
                             <div class="grid grid-cols-2 gap-3">
                                 <div>
                                     <label class="text-xs font-bold text-slate-500 mb-1 block">Papel</label>
-                                    <select id="net-lab-papel" class="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none text-sm shadow-sm">
+                                    <select id="net-lab-papel" onchange="updateNetLabPreview()" class="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none text-sm shadow-sm">
                                         <option value="carta">Carta (21.59×27.94cm)</option>
                                         <option value="a4">A4 (21×29.7cm)</option>
                                         <option value="a3">A3 (29.7×42cm)</option>
@@ -1570,7 +1429,7 @@
                                 </div>
                                 <div>
                                     <label class="text-xs font-bold text-slate-500 mb-1 block">Estilo de citação</label>
-                                    <select id="net-lab-citacao" class="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none text-sm shadow-sm">
+                                    <select id="net-lab-citacao" onchange="updateNetLabPreview()" class="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none text-sm shadow-sm">
                                         <option value="APA">APA 7ª ed.</option>
                                         <option value="ABNT">ABNT</option>
                                     </select>
@@ -1580,45 +1439,71 @@
                             <div class="grid grid-cols-2 gap-3">
                                 <div>
                                     <label class="text-xs font-bold text-slate-500 mb-1 block">Fonte</label>
-                                    <input type="text" id="net-lab-fonte" value="Times New Roman" class="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none text-sm shadow-sm">
+                                    <input type="text" id="net-lab-fonte" value="Times New Roman" oninput="updateNetLabPreview()" class="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none text-sm shadow-sm">
                                 </div>
                                 <div>
                                     <label class="text-xs font-bold text-slate-500 mb-1 block">Tamanho (pt)</label>
-                                    <input type="number" id="net-lab-tamanho" value="12" step="0.5" class="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none text-sm shadow-sm">
+                                    <input type="number" id="net-lab-tamanho" value="12" step="0.5" oninput="updateNetLabPreview()" class="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none text-sm shadow-sm">
                                 </div>
                             </div>
 
                             <div class="grid grid-cols-2 gap-3">
                                 <div>
                                     <label class="text-xs font-bold text-slate-500 mb-1 block">Espaçamento de linha</label>
-                                    <input type="number" id="net-lab-espacamento" value="1.5" step="0.1" class="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none text-sm shadow-sm">
+                                    <input type="number" id="net-lab-espacamento" value="1.5" step="0.1" oninput="updateNetLabPreview()" class="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none text-sm shadow-sm">
                                 </div>
                                 <div>
                                     <label class="text-xs font-bold text-slate-500 mb-1 block">Recuo de parágrafo (cm)</label>
-                                    <input type="number" id="net-lab-recuo" value="1.27" step="0.01" class="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none text-sm shadow-sm">
+                                    <input type="number" id="net-lab-recuo" value="1.27" step="0.01" oninput="updateNetLabPreview()" class="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none text-sm shadow-sm">
                                 </div>
                             </div>
 
                             <div>
                                 <label class="text-xs font-bold text-slate-500 mb-2 block">Margens (cm) — Superior / Inferior / Esquerda / Direita</label>
                                 <div class="grid grid-cols-4 gap-2">
-                                    <input type="number" id="net-lab-mt" value="2.54" step="0.1" placeholder="Sup" class="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none text-sm text-center shadow-sm">
-                                    <input type="number" id="net-lab-mb" value="2.54" step="0.1" placeholder="Inf" class="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none text-sm text-center shadow-sm">
-                                    <input type="number" id="net-lab-ml" value="3.0" step="0.1" placeholder="Esq" class="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none text-sm text-center shadow-sm">
-                                    <input type="number" id="net-lab-mr" value="2.54" step="0.1" placeholder="Dir" class="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none text-sm text-center shadow-sm">
+                                    <input type="number" id="net-lab-mt" value="2.54" step="0.1" placeholder="Sup" oninput="updateNetLabPreview()" class="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none text-sm text-center shadow-sm">
+                                    <input type="number" id="net-lab-mb" value="2.54" step="0.1" placeholder="Inf" oninput="updateNetLabPreview()" class="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none text-sm text-center shadow-sm">
+                                    <input type="number" id="net-lab-ml" value="3.0" step="0.1" placeholder="Esq" oninput="updateNetLabPreview()" class="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none text-sm text-center shadow-sm">
+                                    <input type="number" id="net-lab-mr" value="2.54" step="0.1" placeholder="Dir" oninput="updateNetLabPreview()" class="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none text-sm text-center shadow-sm">
                                 </div>
                             </div>
 
                             <label class="flex items-center gap-3 cursor-pointer select-none">
-                                <input type="checkbox" id="net-lab-moldura" class="w-5 h-5 accent-teal-600">
+                                <input type="checkbox" id="net-lab-moldura" onchange="updateNetLabPreview()" class="w-5 h-5 accent-teal-600">
                                 <span class="text-sm font-medium text-slate-700 dark:text-slate-300">Capa com moldura de página</span>
                             </label>
 
-                            <button onclick="publishNetworkTemplate()" class="w-full py-4 bg-teal-600 hover:bg-teal-700 text-white font-extrabold rounded-2xl transition-all shadow-xl hover:-translate-y-0.5 flex items-center justify-center gap-2 text-base">
-                                <i data-lucide="globe" class="w-5 h-5"></i>
-                                Publicar na Network
+                            <!-- Pré-visualização ao vivo -->
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 mb-2 flex items-center gap-1.5 block"><i data-lucide="eye" class="w-3.5 h-3.5 inline-block mr-1"></i>Pré-visualização</label>
+                                <div class="bg-slate-100 dark:bg-slate-950 rounded-xl p-3 flex justify-center overflow-auto">
+                                    <div id="net-lab-preview-page" style="background:#fff;position:relative;box-shadow:0 2px 10px rgba(0,0,0,.25);flex-shrink:0;width:220px;height:284px;">
+                                        <div id="net-lab-preview-frame" style="position:absolute;inset:4px;border:2px double #1e293b;pointer-events:none;display:none;"></div>
+                                        <div id="net-lab-preview-content" style="position:absolute;box-sizing:border-box;overflow:hidden;color:#1e293b;">
+                                            <p id="net-lab-preview-title" style="margin:0 0 6px 0;font-weight:bold;text-transform:uppercase;">TÍTULO DE EXEMPLO</p>
+                                            <p id="net-lab-preview-paragraph" style="margin:0;text-align:justify;">Este é um parágrafo de exemplo para ver como o texto ficará com a fonte, espaçamento e recuo configurados abaixo. <span id="net-lab-preview-citation">(Silva, 2026)</span>.</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Estrutura do documento (lógica de seções para a IA) -->
+                        <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5 space-y-4 shadow-sm">
+                            <div>
+                                <h4 class="font-bold text-sm text-slate-800 dark:text-white flex items-center gap-2"><i data-lucide="list-tree" class="w-4 h-4 text-teal-500"></i> Lógica e estrutura do documento</h4>
+                                <p class="text-xs text-slate-400 mt-1">Defina as seções que a IA vai redigir para quem usar este modelo. Arraste para reordenar, configure o tipo e adicione instruções.</p>
+                            </div>
+                            <div id="net-lab-sections-list" class="space-y-3"></div>
+                            <button onclick="addLabSection()" class="w-full py-3 border-2 border-dashed border-teal-300 dark:border-teal-700/50 text-teal-600 dark:text-teal-400 rounded-xl font-bold text-sm hover:bg-teal-50 dark:hover:bg-teal-900/20 transition flex items-center justify-center gap-2">
+                                <i data-lucide="plus" class="w-4 h-4"></i> Adicionar seção
                             </button>
                         </div>
+
+                        <button onclick="publishNetworkTemplate()" class="w-full py-4 bg-teal-600 hover:bg-teal-700 text-white font-extrabold rounded-2xl transition-all shadow-xl hover:-translate-y-0.5 flex items-center justify-center gap-2 text-base">
+                            <i data-lucide="globe" class="w-5 h-5"></i>
+                            Publicar na Network
+                        </button>
                     </div>
                 </div>
             </div>
@@ -2478,7 +2363,7 @@
         }
 
         function renderLabSections() {
-            const container = document.getElementById('lab-sections-list');
+            const container = document.getElementById('net-lab-sections-list');
             if (!container) return;
             container.innerHTML = labSectionsDraft.map((s, i) => `
                 <div class="border border-slate-200 dark:border-slate-700 rounded-2xl p-4 space-y-3">
@@ -2525,48 +2410,48 @@
             renderLabSections();
         }
 
-        // Pré-visualização aproximada (não usa o mesmo motor de paginação do editor real,
-        // só escala margens/fonte/espaçamento numa página em miniatura) pra dar um feedback
-        // visual imediato enquanto a pessoa mexe no formulário do LAB.
-        function updateLabPreview() {
-            const page = document.getElementById('lab-preview-page');
+        function updateNetLabPreview() {
+            const page = document.getElementById('net-lab-preview-page');
             if (!page) return;
-            const papel = document.getElementById('lab-papel').value;
+            const papel = (document.getElementById('net-lab-papel') || {}).value || 'carta';
             const size = PAPER_SIZES[papel] || PAPER_SIZES.carta;
             const pageWcm = parseFloat(size.w);
             const pageHcm = parseFloat(size.h);
-            const previewWpx = 280;
+            const previewWpx = 220;
             const previewHpx = previewWpx * (pageHcm / pageWcm);
             const scale = previewWpx / pageWcm;
 
-            const mt = parseFloat(document.getElementById('lab-mt').value) || 0;
-            const mb = parseFloat(document.getElementById('lab-mb').value) || 0;
-            const ml = parseFloat(document.getElementById('lab-ml').value) || 0;
-            const mr = parseFloat(document.getElementById('lab-mr').value) || 0;
-            const fonte = (document.getElementById('lab-fonte').value || 'Times New Roman').trim();
-            const tamanho = parseFloat(document.getElementById('lab-tamanho-fonte').value) || 12;
-            const espacamento = parseFloat(document.getElementById('lab-espacamento').value) || 1.5;
-            const recuo = parseFloat(document.getElementById('lab-recuo').value) || 1.27;
-            const moldura = document.getElementById('lab-capa-moldura').checked;
-            const alinhamento = document.getElementById('lab-capa-alinhamento').value;
-            const citacao = document.getElementById('lab-citacao').value;
+            const mt = parseFloat((document.getElementById('net-lab-mt') || {}).value) || 2.54;
+            const mb = parseFloat((document.getElementById('net-lab-mb') || {}).value) || 2.54;
+            const ml = parseFloat((document.getElementById('net-lab-ml') || {}).value) || 3.0;
+            const mr = parseFloat((document.getElementById('net-lab-mr') || {}).value) || 2.54;
+            const fonte = ((document.getElementById('net-lab-fonte') || {}).value || 'Times New Roman').trim();
+            const tamanho = parseFloat((document.getElementById('net-lab-tamanho') || {}).value) || 12;
+            const espacamento = parseFloat((document.getElementById('net-lab-espacamento') || {}).value) || 1.5;
+            const recuo = parseFloat((document.getElementById('net-lab-recuo') || {}).value) || 1.27;
+            const moldura = (document.getElementById('net-lab-moldura') || {}).checked;
+            const citacao = (document.getElementById('net-lab-citacao') || {}).value || 'APA';
 
             page.style.width = previewWpx + 'px';
             page.style.height = previewHpx + 'px';
-            document.getElementById('lab-preview-frame').style.display = moldura ? 'block' : 'none';
+            const frame = document.getElementById('net-lab-preview-frame');
+            if (frame) frame.style.display = moldura ? 'block' : 'none';
 
-            const content = document.getElementById('lab-preview-content');
-            content.style.top = (mt * scale) + 'px';
-            content.style.bottom = (mb * scale) + 'px';
-            content.style.left = (ml * scale) + 'px';
-            content.style.right = (mr * scale) + 'px';
-            content.style.fontFamily = `'${fonte}', serif`;
-            content.style.fontSize = Math.max(6, tamanho * (scale / 2.5)) + 'px';
-            content.style.lineHeight = espacamento;
-            content.style.textAlign = alinhamento === 'left' ? 'left' : 'center';
-
-            document.getElementById('lab-preview-paragraph').style.textIndent = (recuo * scale) + 'px';
-            document.getElementById('lab-preview-citation').textContent = citacao === 'ABNT' ? '(SILVA, 2026)' : '(Silva, 2026)';
+            const content = document.getElementById('net-lab-preview-content');
+            if (content) {
+                content.style.top = (mt * scale) + 'px';
+                content.style.bottom = (mb * scale) + 'px';
+                content.style.left = (ml * scale) + 'px';
+                content.style.right = (mr * scale) + 'px';
+                content.style.fontFamily = `'${fonte}', serif`;
+                content.style.fontSize = Math.max(5, tamanho * (scale / 2.5)) + 'px';
+                content.style.lineHeight = espacamento;
+                content.style.textAlign = 'justify';
+            }
+            const para = document.getElementById('net-lab-preview-paragraph');
+            if (para) para.style.textIndent = (recuo * scale) + 'px';
+            const cit = document.getElementById('net-lab-preview-citation');
+            if (cit) cit.textContent = citacao === 'ABNT' ? '(SILVA, 2026)' : '(Silva, 2026)';
         }
 
         // ==========================================
@@ -2576,10 +2461,16 @@
         let networkSearchQuery = '';
 
         async function renderNetworkTab() {
+            const isAdmin = !!(state.profile && state.profile.role === 'admin');
             const adminSec = document.getElementById('network-admin-section');
-            if (adminSec) adminSec.classList.toggle('hidden-state', !(state.profile && state.profile.role === 'admin'));
+            if (adminSec) adminSec.classList.toggle('hidden-state', !isAdmin);
             await loadNetworkTemplates();
             wireNetAnalyzeDropzone();
+            if (isAdmin) {
+                if (!labSectionsDraft.length) labSectionsDraft = defaultLabSectionsDraft();
+                renderLabSections();
+                updateNetLabPreview();
+            }
         }
 
         async function loadNetworkTemplates() {
@@ -2688,7 +2579,8 @@
                 recuoParagrafo: parseFloat(document.getElementById('net-lab-recuo').value) || 1.27,
                 capaMoldura: document.getElementById('net-lab-moldura').checked,
                 capaAlinhamento: 'center',
-                estiloCitacao: document.getElementById('net-lab-citacao').value
+                estiloCitacao: document.getElementById('net-lab-citacao').value,
+                secoes: buildSecoesFromLabDraft()
             };
             try {
                 const { error } = await supabaseClient.from('public_templates').insert({
@@ -2759,6 +2651,7 @@ ${text}`;
                 set('net-lab-mr', p.margemDireita);
                 if (p.estiloCitacao) { const s = document.getElementById('net-lab-citacao'); if (s) s.value = p.estiloCitacao; }
                 if (p.papel) { const s = document.getElementById('net-lab-papel'); if (s) s.value = p.papel; }
+                updateNetLabPreview();
                 alert('IA identificou a formatação e preencheu os campos! Revise, adicione o nome do modelo e publique.');
             } catch (err) {
                 alert('Erro na análise: ' + err.message);
@@ -3145,7 +3038,6 @@ ${original}`;
                 }
                 if (data.role === 'admin') {
                     document.getElementById('dock-tab-admin').classList.remove('hidden-state');
-                    document.getElementById('dock-tab-lab').classList.remove('hidden-state');
                 }
                 updateWatermarkButtonUI();
                 syncWatermarkRemovedClass();
@@ -4195,12 +4087,6 @@ O campo "body" deve ser texto simples curto (pode usar quebras de linha com \\n 
             } else if (tabId === 'admin') {
                 document.getElementById('tab-admin').classList.remove('hidden-state');
                 renderAdminTab();
-            } else if (tabId === 'lab') {
-                document.getElementById('tab-lab').classList.remove('hidden-state');
-                if (!labSectionsDraft.length) labSectionsDraft = defaultLabSectionsDraft();
-                renderLabSections();
-                updateLabPreview();
-                renderNormTemplatesList();
             } else if (tabId === 'network') {
                 document.getElementById('tab-network').classList.remove('hidden-state');
                 renderNetworkTab();
