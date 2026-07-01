@@ -141,34 +141,48 @@
         .word-tool-btn { width: 2.25rem; height: 2.25rem; display: flex; align-items: center; justify-content: center; border-radius: 0.6rem; color: #cbd5e1; flex-shrink: 0; transition: background-color 0.15s, color 0.15s; }
         .word-tool-btn:hover { background-color: rgba(255,255,255,0.1); color: #fff; }
         .toolbar-tab-btn.active-tab { background-color: #2563eb; color: #fff; }
-        #word-toolbar-bottom { flex-shrink: 0; }
         .paper-size-btn.ps-active { background-color: #1d4ed8 !important; border-color: #3b82f6 !important; color: #fff !important; }
         #font-family-select option { font-size: 13px; }
         .word-tool-sep { width: 1.75rem; height: 1px; background: rgba(255,255,255,0.12); margin: 0.25rem 0; flex-shrink: 0; }
 
-        /* Desktop: tira de ícones fica estreita e comprida; ao clicar numa aba o painel
-           VOLA para a direita da tira (flyout) — sem redimensionar nada. */
+        /* Desktop: tira de ícones estreita; painel abre como flyout à direita da barra.
+           No modo docked-top (overrides abaixo), o painel expande inline. */
         @media (min-width: 1024px) {
             #word-toolbar {
                 overflow: visible !important;
-                max-height: none !important;
             }
             #word-toolbar .toolbar-tab-panel {
                 position: absolute !important;
-                left: 100% !important;
+                left: calc(100% + 4px) !important;
                 top: 0 !important;
-                width: 200px !important;
-                max-height: calc(100vh - 3rem) !important;
+                width: 220px !important;
+                max-height: 85vh !important;
+                min-height: 0 !important;
                 overflow-y: auto !important;
                 background: #0f172a !important;
+                border-radius: 1rem !important;
+                padding: 0.5rem 0.5rem !important;
+                box-shadow: 6px 8px 32px rgba(0,0,0,0.55) !important;
                 border: 1px solid rgba(255,255,255,0.08) !important;
-                border-left: none !important;
-                border-radius: 0 1rem 1rem 0 !important;
-                padding: 8px !important;
-                box-shadow: 4px 0 20px rgba(0,0,0,0.5) !important;
-                flex: none !important;
-                z-index: 1 !important;
+                z-index: 100 !important;
             }
+        }
+
+        /* Docked-top: painel expande inline abaixo da faixa de ícones horizontais */
+        #word-toolbar.docked-top {
+            overflow: hidden !important;
+        }
+        #word-toolbar.docked-top .toolbar-tab-panel {
+            position: static !important;
+            left: auto !important; top: auto !important;
+            width: auto !important; max-height: none !important;
+            flex: 1 1 auto !important; min-height: 0 !important;
+            overflow-y: auto !important;
+            background: transparent !important;
+            border: none !important; border-radius: 0 !important;
+            padding: 0.5rem 0.375rem !important;
+            box-shadow: none !important;
+            z-index: auto !important;
         }
 
         /* Encaixe (dock) da barra de ferramentas nas paredes esquerda/direita/topo da tela */
@@ -188,8 +202,11 @@
         #word-toolbar.docked-top > .resize-handle.resize-se, #word-toolbar.docked-top > .resize-handle.resize-sw, #word-toolbar.docked-top > .resize-handle.resize-ne, #word-toolbar.docked-top > .resize-handle.resize-nw,
         #word-toolbar.docked-top > .resize-handle.resize-n { display: none !important; }
 
-        /* Controles flutuantes (página/margens/zoom) descem quando a barra está encaixada no topo */
-        body.toolbar-docked-top #floating-controls { top: calc(40vh + 0.75rem) !important; }
+        /* Em cima: ícones ficam em linha horizontal; separador vira linha vertical */
+        #word-toolbar.docked-top #word-toolbar-icons { flex-direction: row !important; flex-wrap: wrap !important; justify-content: center !important; border-bottom: none !important; border-right: 1px solid rgba(255,255,255,0.1) !important; padding-bottom: 0.25rem !important; align-self: stretch !important; }
+        #word-toolbar.docked-top .toolbar-action-sep { width: 1px !important; height: 1.5rem !important; margin: 0 0.1rem !important; }
+
+        /* Controles flutuantes: posição ajustada via JS (syncFloatingControlsPosition) */
 
         /* Scrollbar Melhorada e Visível */
         ::-webkit-scrollbar { width: 8px; height: 8px; }
@@ -384,7 +401,7 @@
             #word-toolbar:not(.mobile-toolbar-open) .toolbar-tab-panel { display: none !important; }
             #word-toolbar-header { cursor: default !important; flex-shrink: 0 !important; }
             #word-toolbar .resize-handle { display: none !important; }
-            #word-toolbar > div:nth-child(2) { flex-shrink: 0 !important; }
+            #word-toolbar-icons { flex-shrink: 0 !important; }
             /* Painel de aba: flyout compacto (200px) ao lado da coluna, não tela cheia */
             #word-toolbar .toolbar-tab-panel {
                 position: fixed !important;
@@ -402,16 +419,6 @@
                 box-shadow: 4px 0 16px rgba(0,0,0,0.5) !important;
             }
             #word-toolbar .toolbar-tab-panel.hidden { display: none !important; }
-            /* Save row: margin-top:auto empurra para o fundo da coluna */
-            #word-toolbar-bottom {
-                margin-top: auto !important;
-                flex-shrink: 0 !important;
-                background: #0f172a !important;
-                border-top: 1px solid rgba(255,255,255,0.08) !important;
-                border-radius: 0 0 1rem 0 !important;
-                width: 52px !important;
-                box-sizing: border-box !important;
-            }
             /* Toolbar desliza por cima do canvas; sem padding-left permanente */
         }
 
@@ -541,6 +548,12 @@
     </div>
 
     <div id="login-screen" class="absolute inset-0 z-[200] flex items-center justify-center p-6 bg-slate-100 dark:bg-slate-900 transition-opacity duration-500">
+        <!-- Overlay de carregamento para retorno do OAuth (Google PKCE redirect com ?code=) -->
+        <div id="oauth-loading-overlay" class="hidden-state absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 bg-slate-100 dark:bg-slate-900">
+            <div class="w-12 h-12 border-4 border-primary-500 border-t-transparent rounded-full animate-spin"></div>
+            <p class="text-slate-600 dark:text-slate-300 font-semibold text-sm">Finalizando login com Google…</p>
+            <p id="oauth-timeout-msg" class="hidden-state text-red-500 text-xs text-center px-6 max-w-xs">Não foi possível concluir o login. <button onclick="document.getElementById('oauth-loading-overlay').classList.add('hidden-state')" class="underline font-medium">Tentar novamente</button></p>
+        </div>
         <button id="pwa-install-btn-login" onclick="installPWA()" class="hidden-state absolute top-4 right-4 text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white bg-white/90 dark:bg-slate-800/90 backdrop-blur px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 shadow transition">Instalar App</button>
         <div class="max-w-md w-full bg-white dark:bg-slate-850 rounded-[2rem] shadow-2xl p-10 text-center space-y-6 border border-white/20 dark:border-slate-700/50">
             <div class="bg-primary-50 dark:bg-primary-900/30 w-24 h-24 rounded-[1.5rem] flex items-center justify-center mx-auto mb-2 transform rotate-3">
@@ -758,12 +771,17 @@
                 <button onclick="toggleMobileToolbar()" class="lg:hidden absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-slate-400 hover:text-white rounded-full hover:bg-white/10"><i data-lucide="x" class="w-4 h-4"></i></button>
             </div>
             <!-- Abas no estilo Word: cada aba mostra só o grupo de funções correspondente -->
-            <div class="flex flex-wrap items-center justify-center gap-0.5 px-1.5 pt-1 pb-1.5 border-b border-white/10">
+            <div id="word-toolbar-icons" class="flex flex-col items-center gap-0.5 px-1.5 pt-1 pb-1.5 border-b border-white/10 flex-shrink-0">
                 <button onclick="setToolbarTab('home')" data-tab="home" class="toolbar-tab-btn word-tool-btn" title="Página Inicial"><i data-lucide="house" class="w-4 h-4"></i></button>
                 <button onclick="setToolbarTab('insert')" data-tab="insert" class="toolbar-tab-btn word-tool-btn" title="Inserir"><i data-lucide="plus-square" class="w-4 h-4"></i></button>
                 <button onclick="setToolbarTab('design')" data-tab="design" class="toolbar-tab-btn word-tool-btn" title="Design"><i data-lucide="palette" class="w-4 h-4"></i></button>
                 <button onclick="setToolbarTab('layout')" data-tab="layout" class="toolbar-tab-btn word-tool-btn" title="Layout"><i data-lucide="layout-grid" class="w-4 h-4"></i></button>
                 <button onclick="setToolbarTab('references')" data-tab="references" class="toolbar-tab-btn word-tool-btn" title="Referências"><i data-lucide="book-open" class="w-4 h-4"></i></button>
+                <!-- Salvar, Assistente e Lupa ficam sempre visíveis na tira de ícones -->
+                <div class="word-tool-sep toolbar-action-sep"></div>
+                <button onclick="saveCurrentWork()" title="Salvar Trabalho" class="word-tool-btn text-emerald-400"><i data-lucide="save" class="w-4 h-4"></i></button>
+                <button id="btn-assistant-mode-toolbar" onclick="toggleAssistantMode()" type="button" title="Ativar Modo Assistente" class="btn-assistant-mode-toggle word-tool-btn text-indigo-400"><i data-lucide="sparkles" class="w-4 h-4"></i></button>
+                <button id="btn-magnifier-toggle" onclick="toggleMagnifier()" type="button" title="Lupa de Escrita (só no computador)" class="hidden lg:flex word-tool-btn text-sky-400"><i data-lucide="search" class="w-4 h-4"></i></button>
             </div>
 
             <!-- Aba: Página Inicial -->
@@ -867,14 +885,6 @@
                 <button onclick="aiExpandSection()" title="Expandir/Desenvolver Seleção com IA" class="word-tool-btn text-indigo-400"><i data-lucide="maximize-2" class="w-4 h-4"></i></button>
             </div>
 
-            <!-- Salvar fica fixo fora das abas (igual ao atalho Ctrl+S do Word, independe da aba ativa) -->
-            <div id="word-toolbar-bottom" class="flex items-center justify-center gap-1 py-2 px-1.5 border-t border-white/10">
-                <button onclick="saveCurrentWork()" title="Salvar Trabalho" class="word-tool-btn text-emerald-400"><i data-lucide="save" class="w-4 h-4"></i></button>
-                <!-- Modo Assistente mora aqui na barra de ferramentas (antes havia também um botão flutuante solto no canto da tela, removido por ser confuso/sem contexto) -->
-                <button id="btn-assistant-mode-toolbar" onclick="toggleAssistantMode()" type="button" title="Ativar Modo Assistente: a IA sugere continuações e tópicos de pesquisa enquanto você escreve." class="btn-assistant-mode-toggle word-tool-btn text-indigo-400"><i data-lucide="sparkles" class="w-4 h-4"></i></button>
-                <!-- Lupa de escrita: só no computador -->
-                <button id="btn-magnifier-toggle" onclick="toggleMagnifier()" type="button" title="Lupa de Escrita: dá um zoom de verdade no documento e mantém o cursor sempre visível enquanto você digita (só no computador)." class="hidden lg:flex word-tool-btn text-sky-400"><i data-lucide="search" class="w-4 h-4"></i></button>
-            </div>
         </div>
 
         <!-- PAINEL: Borda de Página (Capa) — equivalente ao Design > Bordas de Página do Word -->
@@ -1813,6 +1823,7 @@
             applyCoverFrameToCSS();
             updateCoverFrameButtonTooltip();
             setToolbarTab(localStorage.getItem('monografia_toolbar_tab') || 'home');
+            requestAnimationFrame(syncFloatingControlsPosition);
             applyWatermarkStamps();
             document.getElementById('assistant-chat-cost').innerText = AI_COST_CHAT;
             renderAssistantChat();
@@ -1827,6 +1838,17 @@
             makeResizable('panel-right', { minW: 300, maxW: 0.4, minH: 400 });
             makeResizable('panel-export', { minW: 280, maxW: 0.4, minH: 400 });
             makeResizable('word-toolbar', { minW: 48, maxW: 0.3, minH: 160 });
+
+            // Restaura posição da toolbar (padrão: encaixada na esquerda no desktop)
+            if (window.innerWidth >= 1024) {
+                const savedDock = localStorage.getItem('monografia_toolbar_dock');
+                if (savedDock === 'left' || savedDock === 'right' || savedDock === 'top') {
+                    dockToolbar(savedDock);
+                } else if (!savedDock) {
+                    dockToolbar('left');
+                }
+                // savedDock === 'none' → toolbar fica flutuando na posição padrão do CSS
+            }
 
             // Clicar/tocar num painel traz ele para a frente (como janelas no Windows)
             ['panel-left', 'panel-right', 'panel-export', 'panel-assistant', 'cover-frame-panel'].forEach(id => {
@@ -1856,6 +1878,26 @@
         // Lógica de Arrastar com Limite de Teto e Laterais (Evita perder janelas)
         const DOCK_EDGE_THRESHOLD = 60;
 
+        function syncFloatingControlsPosition() {
+            const fc = document.getElementById('floating-controls');
+            if (!fc) return;
+            const tb = document.getElementById('word-toolbar');
+            if (!tb) { fc.style.top = ''; return; }
+            if (tb.classList.contains('docked-top')) {
+                requestAnimationFrame(() => {
+                    // Mede só a tira de ícones (não o painel aberto) para os controles
+                    // flutuantes não descerem quando o usuário abre uma aba da toolbar.
+                    const header = document.getElementById('word-toolbar-header');
+                    const icons  = document.getElementById('word-toolbar-icons');
+                    const hh = header ? header.getBoundingClientRect().height : 0;
+                    const ih = icons  ? icons.getBoundingClientRect().height  : 0;
+                    fc.style.top = (hh + ih + 8) + 'px';
+                });
+            } else {
+                fc.style.top = '';
+            }
+        }
+
         function dockToolbar(edge) {
             const el = document.getElementById('word-toolbar');
             el.classList.remove('docked-left', 'docked-right', 'docked-top');
@@ -1863,6 +1905,8 @@
             el.dataset.dock = edge;
             ['top', 'left', 'right', 'bottom', 'width', 'height', 'maxHeight'].forEach(p => el.style[p] = '');
             document.body.classList.toggle('toolbar-docked-top', edge === 'top');
+            localStorage.setItem('monografia_toolbar_dock', edge);
+            requestAnimationFrame(syncFloatingControlsPosition);
         }
 
         function undockToolbarToRect(el, rect) {
@@ -1874,7 +1918,9 @@
             el.style.right = 'auto';
             el.style.bottom = 'auto';
             el.style.width = rect.width + 'px';
-            el.style.height = rect.height + 'px';
+            el.style.height = '';  // auto: expande com o painel, não fica preso no tamanho do dock
+            localStorage.setItem('monografia_toolbar_dock', 'none');
+            syncFloatingControlsPosition();
         }
 
         function showDockHint(zone) {
@@ -3281,8 +3327,19 @@ ${original}`;
         async function signInWithEmail() {
             const email = document.getElementById('auth-email').value.trim();
             const password = document.getElementById('auth-password').value;
+            if (!email || !password) { showAuthError('Preencha o email e a senha.'); return; }
+            const btn = document.querySelector('#email-auth-form button[onclick="signInWithEmail()"]');
+            if (btn) { btn.disabled = true; btn.textContent = 'Entrando…'; }
             const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
-            if (error) showAuthError(error.message);
+            if (btn) { btn.disabled = false; btn.textContent = 'Entrar'; }
+            if (error) {
+                const msgs = {
+                    'Invalid login credentials': 'Email ou senha incorretos.',
+                    'Email not confirmed': 'Confirme seu email antes de entrar (cheque a caixa de entrada).',
+                    'User not found': 'Nenhuma conta com este email.'
+                };
+                showAuthError(msgs[error.message] || error.message);
+            }
         }
 
         async function signUpWithEmail() {
@@ -3300,14 +3357,16 @@ ${original}`;
             // quando a sessão chega de volta.
             const redirectTo = window.location.origin + window.location.pathname;
             // Escopo extra do Drive (só os arquivos criados pelo próprio Monofy, não o Drive
-            // inteiro) pra poder salvar o documento automaticamente lá. access_type=offline +
-            // prompt=consent é o jeito de pedir esse escopo "de verdade" ao Google.
+            // inteiro) pra poder salvar o documento automaticamente lá.
+            // select_account → mostra o seletor de conta do Google (permite trocar de conta).
+            // consent       → garante que o refresh_token chega mesmo que o usuário já tenha
+            //                 autorizado antes (necessário para access_type=offline).
             const { error } = await supabaseClient.auth.signInWithOAuth({
                 provider: 'google',
                 options: {
                     redirectTo,
                     scopes: 'https://www.googleapis.com/auth/drive.file',
-                    queryParams: { access_type: 'offline', prompt: 'consent' }
+                    queryParams: { access_type: 'offline', prompt: 'select_account consent' }
                 }
             });
             if (error) showAuthError(error.message);
@@ -3535,7 +3594,9 @@ ${original}`;
 
         async function onAuthenticated(session) {
             state.session = session;
-            await loadProfile();
+            // loadProfile pode falhar (perfil ainda não criado, RLS, rede) — o try-catch
+            // garante que um erro aqui nunca vai bloquear a abertura do app.
+            try { await loadProfile(); } catch(e) { console.warn('loadProfile error:', e); }
             // provider_token só vem quando o login foi com o Google (não existe em
             // login por email/senha) — é ele que liberta o autosave no Drive.
             if (session.provider_token) {
@@ -3547,19 +3608,56 @@ ${original}`;
                 document.getElementById('login-screen').classList.add('hidden-state');
                 document.getElementById('app-screen').classList.remove('opacity-0', 'pointer-events-none');
                 updateCoverPage();
-                // maybeStartTour(); // tutorial desativado por hora (ainda disponível manualmente em Ajustes)
             }, 400);
         }
 
-        supabaseClient.auth.onAuthStateChange((_event, session) => {
+        // OAuth PKCE callback: quando o Google redireciona de volta, a URL tem ?code=.
+        // O Supabase troca esse código por uma sessão de forma assíncrona, mas antes de
+        // concluir pode disparar INITIAL_SESSION com null — o que mostraria a tela de
+        // login por engano. Detectamos o callback e bloqueamos esse comportamento.
+        const _isOAuthCallback = new URLSearchParams(window.location.search).has('code');
+        let _oauthPending = _isOAuthCallback;
+        let _oauthTimeout = null;
+        let _everAuthenticated = false;
+
+        if (_isOAuthCallback) {
+            // O DOM acima deste script já foi parseado (login-screen está na linha ~550),
+            // então podemos mostrar o overlay sem esperar DOMContentLoaded.
+            const overlay = document.getElementById('oauth-loading-overlay');
+            if (overlay) overlay.classList.remove('hidden-state');
+            // Timeout de segurança: se em 15 s nenhuma sessão chegar, exibe mensagem de erro
+            _oauthTimeout = setTimeout(() => {
+                _oauthPending = false;
+                document.getElementById('oauth-timeout-msg')?.classList.remove('hidden-state');
+            }, 15000);
+        }
+
+        supabaseClient.auth.onAuthStateChange((event, session) => {
             if (session) {
-                onAuthenticated(session);
+                _oauthPending = false;
+                if (_oauthTimeout) { clearTimeout(_oauthTimeout); _oauthTimeout = null; }
+                document.getElementById('oauth-loading-overlay')?.classList.add('hidden-state');
+                if (!_everAuthenticated) {
+                    _everAuthenticated = true;
+                    onAuthenticated(session);
+                } else {
+                    state.session = session; // TOKEN_REFRESHED / re-auth: só atualiza o token
+                }
             } else {
+                _everAuthenticated = false;
+                if (_oauthPending) return; // troca de código em andamento — aguardar SIGNED_IN
                 state.session = null;
                 document.getElementById('app-screen').classList.add('opacity-0', 'pointer-events-none');
-                document.getElementById('login-screen').classList.remove('hidden-state');
-                document.getElementById('login-screen').classList.add('opacity-0');
-                setTimeout(() => document.getElementById('login-screen').classList.remove('opacity-0'), 10);
+                // Só anima a entrada da tela de login se ela estava escondida (o usuário
+                // estava no app). Se já estava visível (carga inicial sem sessão), não pisca.
+                const loginEl = document.getElementById('login-screen');
+                if (loginEl.classList.contains('hidden-state')) {
+                    loginEl.classList.remove('hidden-state');
+                    loginEl.classList.add('opacity-0');
+                    requestAnimationFrame(() => requestAnimationFrame(() => loginEl.classList.remove('opacity-0')));
+                } else {
+                    loginEl.classList.remove('opacity-0', 'pointer-events-none');
+                }
             }
         });
 
@@ -4191,6 +4289,79 @@ ${original}`;
             return (d.innerText || d.textContent || '').replace(/\s+/g, ' ').trim();
         }
 
+        // Extrai hierarquia de títulos de texto puro (notas do usuário ou material carregado).
+        // Detecta: markdown (#/##/###), numeração (1., 1.1., 1.1.1.), romanos (I. II.), CAPS curto.
+        function extractHeadingsFromText(text) {
+            if (!text) return [];
+            const headings = [];
+            const seen = new Set();
+            for (const raw of text.split('\n')) {
+                const line = raw.trim();
+                if (!line || line.length < 2) continue;
+                let level = 0, title = '';
+
+                const mdMatch = line.match(/^(#{1,4})\s+(.+)/);
+                if (mdMatch) { level = mdMatch[1].length; title = mdMatch[2].trim(); }
+
+                if (!level) {
+                    const numMatch = line.match(/^(\d+(?:\.\d+)*)\.\s+(.+)/);
+                    if (numMatch) {
+                        const dots = (numMatch[1].match(/\./g) || []).length + 1;
+                        level = Math.min(dots, 4); title = numMatch[2].trim();
+                    }
+                }
+
+                if (!level) {
+                    const romanMatch = line.match(/^([IVX]{1,6})\.\s+(.+)/i);
+                    if (romanMatch && romanMatch[1].length <= 4) { level = 1; title = romanMatch[2].trim(); }
+                }
+
+                if (!level && line.length <= 70 && line === line.toUpperCase() && /[A-ZÁÉÍÓÚÀÃÕ]{3}/.test(line) && !/[.!?]{3,}/.test(line)) {
+                    level = 1; title = line;
+                }
+
+                if (level && title && !seen.has(title.toLowerCase())) {
+                    seen.add(title.toLowerCase());
+                    headings.push({ level, title });
+                }
+            }
+            return headings;
+        }
+
+        // Monta o bloco de contexto estrutural que vai no prompt de cada seção.
+        // Inclui: outline detectado no material do usuário + headings das seções já geradas.
+        function buildOutlineContext(planId, generatedSections, rawText, uploadedText) {
+            const noteHeadings   = extractHeadingsFromText(rawText).slice(0, 40);
+            const uploadHeadings = extractHeadingsFromText(uploadedText).slice(0, 40);
+            const allDetected    = [...noteHeadings, ...uploadHeadings]
+                .filter((h, i, arr) => arr.findIndex(x => x.title.toLowerCase() === h.title.toLowerCase()) === i);
+
+            const lines = [];
+
+            if (generatedSections.length > 0) {
+                lines.push('SEÇÕES JÁ GERADAS NO DOCUMENTO:');
+                for (const sec of generatedSections) {
+                    const tmp = document.createElement('div');
+                    tmp.innerHTML = sec.content || '';
+                    const subHeadings = [...tmp.querySelectorAll('h2,h3,h4')]
+                        .map(h => `${'  '.repeat(parseInt(h.tagName[1]) - 2)}↳ ${h.innerText.trim()}`)
+                        .join('\n');
+                    lines.push(`• ${sec.title}${subHeadings ? '\n' + subHeadings : ''}`);
+                }
+            }
+
+            if (allDetected.length > 0) {
+                lines.push('');
+                lines.push('ESTRUTURA DE TÍTULOS DETECTADA NO MATERIAL DO USUÁRIO (use estes títulos como subtítulos desta seção quando relevantes; adapte ao idioma de saída):');
+                for (const h of allDetected) {
+                    lines.push('  '.repeat(h.level - 1) + `• ${h.title}`);
+                }
+                lines.push('Instrução: se algum título acima pertence à seção atual, use-o como <h2> ou <h3> no content, na ordem em que aparecem. Não invente títulos se o material já os fornece.');
+            }
+
+            return lines.length ? '\n\n' + lines.join('\n') : '';
+        }
+
         async function generateSlidesWithAI() {
             if (state.isDemo) { alert('Modo demonstração: geração com IA desativada. Crie uma conta para usar de verdade.'); return; }
             if (!state.profile) { alert('Aguarde o carregamento do seu perfil.'); return; }
@@ -4489,6 +4660,7 @@ O campo "body" deve ser texto simples curto (pode usar quebras de linha com \\n 
             document.querySelectorAll('.toolbar-tab-panel').forEach(p => p.classList.toggle('hidden', p.dataset.tabPanel !== tab));
             document.querySelectorAll('.toolbar-tab-btn').forEach(b => b.classList.toggle('active-tab', b.dataset.tab === tab));
             localStorage.setItem('monografia_toolbar_tab', tab);
+            requestAnimationFrame(syncFloatingControlsPosition);
         }
 
         // ==========================================
@@ -4880,6 +5052,9 @@ Responda APENAS com o título, sem aspas, sem explicações, em uma única linha
                     ? `Redacta la lista de REFERENCIAS BIBLIOGRÁFICAS. ${refRulesByStyle} Envuelve CADA referencia obligatoriamente en <p class="hanging-indent"> para lograr la sangría francesa. El contenido debe comenzar DIRECTAMENTE con la primera referencia — NO incluyas ningún párrafo introductorio, explicativo o de cierre antes o después de la lista, ni texto que no sea una referencia bibliográfica en sí.`
                     : plan.instructions;
                 const otherLabels = sectionPlan.filter(p => p.id !== plan.id).map(p => p.label).join(', ');
+                const outlineContext = plan.id === 'referencias' || plan.id === 'abstract'
+                    ? ''
+                    : buildOutlineContext(plan.id, state.generatedSections, rawText, state.uploadedContextText || '');
 
                 // O Abstract é sempre a tradução fiel do Resumo já gerado (que vem antes
                 // dele no DOC_SECTION_PLAN), independente do idioma de saída escolhido pelo
@@ -4910,7 +5085,7 @@ Responda APENAS com o título, sem aspas, sem explicações, em uma única linha
 
                     ${sectionInstructions}
 
-                    JERARQUÍA DE TÍTULOS DENTRO DEL CONTENIDO: usa <h2> para subtítulos y <h3> para sub-subtítulos si es necesario. Usa <p> para párrafos.
+                    JERARQUÍA DE TÍTULOS DENTRO DEL CONTENIDO: usa <h2> para subtítulos directos e <h3> para sub-subtítulos. Usa <p> para parágrafos. Quando o material do usuário já fornece títulos/subtítulos para esta seção, use-os exatamente (traduzidos ao idioma de saída) — não invente títulos genéricos se o material já define a estrutura.${outlineContext}
 
                     MATERIAL DE REFERENCIA DEL USUARIO (Extrae argumentos de aquí si los hay):
                     ${state.uploadedContextText}
