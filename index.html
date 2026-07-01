@@ -141,7 +141,6 @@
         .word-tool-btn { width: 2.25rem; height: 2.25rem; display: flex; align-items: center; justify-content: center; border-radius: 0.6rem; color: #cbd5e1; flex-shrink: 0; transition: background-color 0.15s, color 0.15s; }
         .word-tool-btn:hover { background-color: rgba(255,255,255,0.1); color: #fff; }
         .toolbar-tab-btn.active-tab { background-color: #2563eb; color: #fff; }
-        #word-toolbar-bottom { flex-shrink: 0; }
         .paper-size-btn.ps-active { background-color: #1d4ed8 !important; border-color: #3b82f6 !important; color: #fff !important; }
         #font-family-select option { font-size: 13px; }
         .word-tool-sep { width: 1.75rem; height: 1px; background: rgba(255,255,255,0.12); margin: 0.25rem 0; flex-shrink: 0; }
@@ -400,16 +399,6 @@
                 box-shadow: 4px 0 16px rgba(0,0,0,0.5) !important;
             }
             #word-toolbar .toolbar-tab-panel.hidden { display: none !important; }
-            /* Save row: margin-top:auto empurra para o fundo da coluna */
-            #word-toolbar-bottom {
-                margin-top: auto !important;
-                flex-shrink: 0 !important;
-                background: #0f172a !important;
-                border-top: 1px solid rgba(255,255,255,0.08) !important;
-                border-radius: 0 0 1rem 0 !important;
-                width: 52px !important;
-                box-sizing: border-box !important;
-            }
             /* Toolbar desliza por cima do canvas; sem padding-left permanente */
         }
 
@@ -756,12 +745,17 @@
                 <button onclick="toggleMobileToolbar()" class="lg:hidden absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-slate-400 hover:text-white rounded-full hover:bg-white/10"><i data-lucide="x" class="w-4 h-4"></i></button>
             </div>
             <!-- Abas no estilo Word: cada aba mostra só o grupo de funções correspondente -->
-            <div class="flex flex-wrap items-center justify-center gap-0.5 px-1.5 pt-1 pb-1.5 border-b border-white/10">
+            <div class="flex flex-wrap items-center justify-center gap-0.5 px-1.5 pt-1 pb-1.5 border-b border-white/10 flex-shrink-0">
                 <button onclick="setToolbarTab('home')" data-tab="home" class="toolbar-tab-btn word-tool-btn" title="Página Inicial"><i data-lucide="house" class="w-4 h-4"></i></button>
                 <button onclick="setToolbarTab('insert')" data-tab="insert" class="toolbar-tab-btn word-tool-btn" title="Inserir"><i data-lucide="plus-square" class="w-4 h-4"></i></button>
                 <button onclick="setToolbarTab('design')" data-tab="design" class="toolbar-tab-btn word-tool-btn" title="Design"><i data-lucide="palette" class="w-4 h-4"></i></button>
                 <button onclick="setToolbarTab('layout')" data-tab="layout" class="toolbar-tab-btn word-tool-btn" title="Layout"><i data-lucide="layout-grid" class="w-4 h-4"></i></button>
                 <button onclick="setToolbarTab('references')" data-tab="references" class="toolbar-tab-btn word-tool-btn" title="Referências"><i data-lucide="book-open" class="w-4 h-4"></i></button>
+                <!-- Salvar, Assistente e Lupa ficam sempre visíveis na tira de ícones -->
+                <div class="word-tool-sep w-full"></div>
+                <button onclick="saveCurrentWork()" title="Salvar Trabalho" class="word-tool-btn text-emerald-400"><i data-lucide="save" class="w-4 h-4"></i></button>
+                <button id="btn-assistant-mode-toolbar" onclick="toggleAssistantMode()" type="button" title="Ativar Modo Assistente" class="btn-assistant-mode-toggle word-tool-btn text-indigo-400"><i data-lucide="sparkles" class="w-4 h-4"></i></button>
+                <button id="btn-magnifier-toggle" onclick="toggleMagnifier()" type="button" title="Lupa de Escrita (só no computador)" class="hidden lg:flex word-tool-btn text-sky-400"><i data-lucide="search" class="w-4 h-4"></i></button>
             </div>
 
             <!-- Aba: Página Inicial -->
@@ -865,14 +859,6 @@
                 <button onclick="aiExpandSection()" title="Expandir/Desenvolver Seleção com IA" class="word-tool-btn text-indigo-400"><i data-lucide="maximize-2" class="w-4 h-4"></i></button>
             </div>
 
-            <!-- Salvar fica fixo fora das abas (igual ao atalho Ctrl+S do Word, independe da aba ativa) -->
-            <div id="word-toolbar-bottom" class="flex items-center justify-center gap-1 py-2 px-1.5 border-t border-white/10">
-                <button onclick="saveCurrentWork()" title="Salvar Trabalho" class="word-tool-btn text-emerald-400"><i data-lucide="save" class="w-4 h-4"></i></button>
-                <!-- Modo Assistente mora aqui na barra de ferramentas (antes havia também um botão flutuante solto no canto da tela, removido por ser confuso/sem contexto) -->
-                <button id="btn-assistant-mode-toolbar" onclick="toggleAssistantMode()" type="button" title="Ativar Modo Assistente: a IA sugere continuações e tópicos de pesquisa enquanto você escreve." class="btn-assistant-mode-toggle word-tool-btn text-indigo-400"><i data-lucide="sparkles" class="w-4 h-4"></i></button>
-                <!-- Lupa de escrita: só no computador -->
-                <button id="btn-magnifier-toggle" onclick="toggleMagnifier()" type="button" title="Lupa de Escrita: dá um zoom de verdade no documento e mantém o cursor sempre visível enquanto você digita (só no computador)." class="hidden lg:flex word-tool-btn text-sky-400"><i data-lucide="search" class="w-4 h-4"></i></button>
-            </div>
         </div>
 
         <!-- PAINEL: Borda de Página (Capa) — equivalente ao Design > Bordas de Página do Word -->
@@ -1811,6 +1797,7 @@
             applyCoverFrameToCSS();
             updateCoverFrameButtonTooltip();
             setToolbarTab(localStorage.getItem('monografia_toolbar_tab') || 'home');
+            requestAnimationFrame(syncFloatingControlsPosition);
             applyWatermarkStamps();
             document.getElementById('assistant-chat-cost').innerText = AI_COST_CHAT;
             renderAssistantChat();
