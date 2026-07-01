@@ -492,6 +492,7 @@
     </div>
 
     <div id="login-screen" class="absolute inset-0 z-[200] flex items-center justify-center p-6 bg-slate-100 dark:bg-slate-900 transition-opacity duration-500">
+        <button id="pwa-install-btn-login" onclick="installPWA()" class="hidden-state absolute top-4 right-4 text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white bg-white/90 dark:bg-slate-800/90 backdrop-blur px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 shadow transition">Instalar App</button>
         <div class="max-w-md w-full bg-white dark:bg-slate-850 rounded-[2rem] shadow-2xl p-10 text-center space-y-6 border border-white/20 dark:border-slate-700/50">
             <div class="bg-primary-50 dark:bg-primary-900/30 w-24 h-24 rounded-[1.5rem] flex items-center justify-center mx-auto mb-2 transform rotate-3">
                 <i data-lucide="sparkles" class="text-primary-600 dark:text-primary-400 w-12 h-12 -rotate-3"></i>
@@ -535,6 +536,27 @@
             <a href="https://wa.me/5519989765398" target="_blank" rel="noopener" class="w-full flex items-center justify-center gap-2 text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 font-bold text-xs">
                 <i data-lucide="message-circle" class="w-4 h-4"></i> Falar no WhatsApp
             </a>
+        </div>
+    </div>
+
+    <!-- ONBOARDING: Seleção de Norma/Modelo (mostrado uma vez após login) -->
+    <div id="onboarding-screen" class="hidden-state fixed inset-0 z-[180] flex flex-col overflow-hidden bg-slate-900">
+        <div class="shrink-0 px-5 pt-8 pb-4 flex items-start justify-between gap-4">
+            <div>
+                <div class="flex items-center gap-3 mb-2">
+                    <div class="w-10 h-10 rounded-xl bg-primary-600/20 flex items-center justify-center"><i data-lucide="layout-template" class="w-5 h-5 text-primary-400"></i></div>
+                    <h1 class="text-2xl font-extrabold text-white">Escolha seu Modelo</h1>
+                </div>
+                <p class="text-slate-400 text-sm leading-relaxed max-w-md">Selecione a norma ou modelo da sua universidade. Você pode alterar depois na aba <strong class="text-slate-300">Network</strong>.</p>
+            </div>
+            <button onclick="dismissNormOnboarding()" class="shrink-0 text-xs font-bold text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 border border-slate-700 px-4 py-2 rounded-xl transition mt-1">Pular</button>
+        </div>
+        <div id="onboarding-template-grid" class="flex-1 overflow-y-auto px-5 pb-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 content-start custom-scrollbar pt-2">
+            <!-- Renderizado por renderOnboardingTemplates() -->
+        </div>
+        <div class="shrink-0 px-5 py-4 border-t border-slate-800 flex gap-3">
+            <button id="onboarding-apply-btn" onclick="applyOnboardingTemplate()" class="hidden-state flex-1 bg-primary-600 hover:bg-primary-700 active:bg-primary-800 text-white font-bold py-3.5 rounded-xl transition text-sm shadow-lg shadow-primary-900/40">Abrir no Editor</button>
+            <button onclick="dismissNormOnboarding()" class="flex-1 text-slate-400 hover:text-slate-200 font-bold py-3.5 rounded-xl border border-slate-700 hover:border-slate-500 transition text-sm">Pular</button>
         </div>
     </div>
 
@@ -1608,7 +1630,7 @@
                 <h2 class="text-3xl font-extrabold text-slate-800 dark:text-white">Ajustes da Ferramenta</h2>
 
                 <button id="pwa-install-btn-settings" onclick="installPWA()" class="hidden-state w-full flex items-center justify-center gap-2 bg-white/80 dark:bg-slate-850/80 backdrop-blur p-5 rounded-3xl shadow-xl border border-white/40 dark:border-slate-700 font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition">
-                    <i data-lucide="download" class="w-5 h-5 text-primary-500"></i> Instalar o Monofy no dispositivo
+                    <i data-lucide="download" class="w-5 h-5 text-primary-500"></i> Instalar App
                 </button>
 
                 <div id="drive-save-status-box" class="hidden-state w-full flex items-center gap-3 bg-white/80 dark:bg-slate-850/80 backdrop-blur p-5 rounded-3xl shadow-xl border border-white/40 dark:border-slate-700">
@@ -1630,19 +1652,6 @@
                             <option value="Português">Português</option>
                             <option value="English">Inglês</option>
                         </select>
-                    </div>
-
-                    <div>
-                        <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-3 flex items-center gap-2">
-                            <i data-lucide="ruler" class="w-5 h-5 text-indigo-500"></i> Modelo de Norma (margens, capa, citação)
-                        </label>
-                        <div id="norm-dropzone" class="border-2 border-dashed border-indigo-300 dark:border-indigo-700/50 rounded-2xl p-6 text-center cursor-pointer hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors">
-                            <i data-lucide="upload-cloud" class="w-8 h-8 mx-auto mb-2 text-indigo-400"></i>
-                            <p class="text-sm font-bold text-slate-600 dark:text-slate-300">Arraste um arquivo .txt aqui ou clique para enviar</p>
-                            <p class="text-xs text-slate-400 mt-1">Define margens, fonte, borda de página da capa e estilo de citação do seu modelo</p>
-                            <input type="file" id="norm-file-input" accept=".txt,.json" class="hidden">
-                        </div>
-                        <div id="norm-templates-list" class="mt-4 space-y-2"></div>
                     </div>
 
                     <div>
@@ -2318,6 +2327,7 @@
             document.getElementById('print-area').classList.toggle('norm-no-frame', !state.coverFrame.enabled);
 
             renderNormTemplatesList();
+            if (tpl.logoBase64) setCustomLogo(tpl.logoBase64);
         }
 
         function handleNormTemplateFile(file) {
@@ -3015,6 +3025,7 @@ ${original}`;
                 document.getElementById('login-screen').classList.add('hidden-state');
                 document.getElementById('app-screen').classList.remove('opacity-0', 'pointer-events-none');
                 updateCoverPage();
+                if (!localStorage.getItem('monografia_norm_chosen')) showNormOnboarding();
             }, 500);
         }
 
@@ -6828,29 +6839,124 @@ Responda APENAS com o título, sem aspas, sem explicações, em uma única linha
             });
         }
 
+        // ==========================================
+        // ONBOARDING: SELEÇÃO DE NORMA/MODELO
+        // ==========================================
+        let _onboardingTemplates = [];
+        let _onboardingSelectedId = null;
+
+        function showNormOnboarding() {
+            const screen = document.getElementById('onboarding-screen');
+            if (!screen) return;
+            screen.classList.remove('hidden-state');
+            renderOnboardingTemplates();
+            // Tenta carregar templates de rede se ainda não foram carregados
+            if (networkTemplates.length === 0 && supabaseClient) {
+                supabaseClient.from('public_templates').select('*').order('downloads', { ascending: false }).limit(50)
+                    .then(({ data }) => {
+                        if (data && data.length > 0) {
+                            networkTemplates = data;
+                            renderOnboardingTemplates();
+                        }
+                    }).catch(() => {});
+            }
+        }
+
+        function renderOnboardingTemplates() {
+            const grid = document.getElementById('onboarding-template-grid');
+            if (!grid) return;
+            _onboardingTemplates = [
+                ...BUILTIN_NORM_TEMPLATES.map(t => ({ ...t, _type: 'builtin' })),
+                ...networkTemplates.map(t => ({ ...t, _type: 'network' }))
+            ];
+            if (_onboardingTemplates.length === 0) {
+                grid.innerHTML = '<p class="col-span-full text-center text-slate-500 py-10 text-sm">Carregando modelos...</p>';
+                return;
+            }
+            grid.innerHTML = _onboardingTemplates.map(tpl => {
+                const isNetwork = tpl._type === 'network';
+                const id = String(tpl.id);
+                const nome = isNetwork ? (tpl.template_name || tpl.nome || 'Modelo') : tpl.nome;
+                const univ = isNetwork ? (tpl.university_name || '') : '';
+                const desc = isNetwork ? (tpl.description || '') : (tpl.estiloCitacao ? `Citação: ${tpl.estiloCitacao}` : '');
+                const logoSrc = isNetwork ? (tpl.logo_base64 || null) : null;
+                const logoHtml = logoSrc
+                    ? `<img src="${logoSrc}" alt="Logo" class="w-12 h-12 object-contain rounded-xl mb-3 bg-white/5 p-1">`
+                    : `<div class="w-12 h-12 rounded-xl bg-primary-900/40 flex items-center justify-center mb-3"><i data-lucide="file-text" class="w-6 h-6 text-primary-400"></i></div>`;
+                const badge = isNetwork
+                    ? `<span class="text-[10px] px-2 py-0.5 bg-indigo-900/60 text-indigo-300 rounded-full font-bold">Network</span>`
+                    : `<span class="text-[10px] px-2 py-0.5 bg-slate-700 text-slate-300 rounded-full font-bold">Nativo</span>`;
+                return `<div onclick="selectOnboardingTemplate('${id}')" id="onboard-card-${id}" class="onboard-card cursor-pointer rounded-2xl border-2 border-slate-700 bg-slate-800 hover:bg-slate-750 p-5 hover:border-primary-500 transition-all flex flex-col select-none">
+                    ${logoHtml}
+                    <div class="flex items-start justify-between gap-2 mb-1">
+                        <span class="font-bold text-white text-sm leading-tight">${nome}</span>
+                        ${badge}
+                    </div>
+                    ${univ ? `<p class="text-xs text-slate-400 mt-0.5">${univ}</p>` : ''}
+                    ${desc ? `<p class="text-xs text-slate-500 mt-1 line-clamp-2">${desc}</p>` : ''}
+                </div>`;
+            }).join('');
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        function selectOnboardingTemplate(id) {
+            _onboardingSelectedId = id;
+            document.querySelectorAll('.onboard-card').forEach(c => {
+                c.classList.remove('border-primary-500', '!bg-primary-900/20');
+            });
+            const card = document.getElementById(`onboard-card-${id}`);
+            if (card) card.classList.add('border-primary-500', '!bg-primary-900/20');
+            document.getElementById('onboarding-apply-btn')?.classList.remove('hidden-state');
+        }
+
+        function applyOnboardingTemplate() {
+            if (!_onboardingSelectedId) return;
+            const tpl = _onboardingTemplates.find(t => String(t.id) === String(_onboardingSelectedId));
+            if (!tpl) return;
+            // Normaliza campos de rede para o formato esperado por applyNormTemplate
+            let normalized = tpl;
+            if (tpl._type === 'network' && tpl.template_data) {
+                normalized = {
+                    ...tpl.template_data,
+                    id: tpl.id,
+                    nome: tpl.template_name || tpl.nome,
+                    logoBase64: tpl.logo_base64 || null
+                };
+            }
+            applyNormTemplate(normalized);
+            dismissNormOnboarding();
+        }
+
+        function dismissNormOnboarding() {
+            localStorage.setItem('monografia_norm_chosen', '1');
+            document.getElementById('onboarding-screen')?.classList.add('hidden-state');
+            _onboardingSelectedId = null;
+        }
+
         /* BOTÃO DE INSTALAÇÃO DO PWA */
         // O navegador só dispara beforeinstallprompt quando considera o app "instalável"
         // (manifest + service worker ok) — guardamos o evento aqui pra poder chamar
         // .prompt() depois, no clique do usuário (não pode ser disparado sem gesto dele).
         let deferredPWAInstallPrompt = null;
+        function _setPWABtnsVisible(visible) {
+            const ids = ['pwa-install-btn', 'pwa-install-btn-settings', 'pwa-install-btn-login'];
+            ids.forEach(id => document.getElementById(id)?.classList.toggle('hidden-state', !visible));
+        }
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault();
             deferredPWAInstallPrompt = e;
-            document.getElementById('pwa-install-btn')?.classList.remove('hidden-state');
-            document.getElementById('pwa-install-btn-settings')?.classList.remove('hidden-state');
+            _setPWABtnsVisible(true);
         });
         window.addEventListener('appinstalled', () => {
             deferredPWAInstallPrompt = null;
-            document.getElementById('pwa-install-btn')?.classList.add('hidden-state');
-            document.getElementById('pwa-install-btn-settings')?.classList.add('hidden-state');
+            _setPWABtnsVisible(false);
         });
         async function installPWA() {
             if (!deferredPWAInstallPrompt) return;
             deferredPWAInstallPrompt.prompt();
             await deferredPWAInstallPrompt.userChoice;
             deferredPWAInstallPrompt = null;
-            document.getElementById('pwa-install-btn')?.classList.add('hidden-state');
-            document.getElementById('pwa-install-btn-settings')?.classList.add('hidden-state');
+            _setPWABtnsVisible(false);
         }
     </script>
 </body>
