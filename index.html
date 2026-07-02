@@ -2580,9 +2580,13 @@
             const container = document.getElementById('net-lab-sections-list');
             if (!container) return;
             container.innerHTML = labSectionsDraft.map((s, i) => `
-                <div class="border border-slate-200 dark:border-slate-700 rounded-2xl p-4 space-y-3">
+                <div class="lab-sec-card border border-slate-200 dark:border-slate-700 rounded-2xl p-4 space-y-3 transition"
+                     ondragover="labDragOver(event)" ondrop="labDrop(event, ${i})"
+                     ondragenter="this.classList.add('ring-2','ring-teal-400')"
+                     ondragleave="if(!this.contains(event.relatedTarget))this.classList.remove('ring-2','ring-teal-400')">
                     <div class="flex items-center gap-2">
-                        <input type="text" value="${(s.label || '').replace(/"/g, '&quot;')}" onchange="updateLabSection(${i}, 'label', this.value)" placeholder="Título da seção" class="flex-1 p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none font-bold text-sm shadow-sm">
+                        <span draggable="true" ondragstart="labDragStart(event, ${i})" ondragend="labDragEnd()" title="Arraste para reordenar" class="cursor-grab active:cursor-grabbing p-1 text-slate-300 hover:text-teal-500 flex-shrink-0 touch-none"><i data-lucide="grip-vertical" class="w-4 h-4"></i></span>
+                        <input type="text" value="${(s.label || '').replace(/"/g, '&quot;')}" onchange="updateLabSection(${i}, 'label', this.value)" placeholder="Título da seção" class="flex-1 min-w-0 p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none font-bold text-sm shadow-sm">
                         <select onchange="updateLabSection(${i}, 'tipo', this.value)" class="p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none text-xs font-bold shadow-sm">
                             <option value="normal" ${s.tipo === 'normal' ? 'selected' : ''}>Texto normal</option>
                             <option value="resumo" ${s.tipo === 'resumo' ? 'selected' : ''}>Resumo (fonte do Abstract)</option>
@@ -2622,6 +2626,40 @@
             if (j < 0 || j >= labSectionsDraft.length) return;
             [labSectionsDraft[i], labSectionsDraft[j]] = [labSectionsDraft[j], labSectionsDraft[i]];
             renderLabSections();
+        }
+
+        // Arrastar-e-soltar para reordenar as seções (desktop). No celular, os botões
+        // ↑↓ continuam funcionando, pois o drag-and-drop HTML5 não é confiável no toque.
+        let _labDragFrom = null;
+        function labDragStart(e, i) {
+            _labDragFrom = i;
+            if (e.dataTransfer) {
+                e.dataTransfer.effectAllowed = 'move';
+                try { e.dataTransfer.setData('text/plain', String(i)); } catch (_) {}
+            }
+        }
+        function labDragOver(e) {
+            e.preventDefault();
+            if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+        }
+        function labClearDragRings() {
+            document.querySelectorAll('#net-lab-sections-list .lab-sec-card').forEach(c => c.classList.remove('ring-2', 'ring-teal-400'));
+        }
+        function labDragEnd() {
+            _labDragFrom = null;
+            labClearDragRings();
+        }
+        function labDrop(e, to) {
+            e.preventDefault();
+            labClearDragRings();
+            const from = _labDragFrom;
+            _labDragFrom = null;
+            if (from === null || from === to || from < 0 || from >= labSectionsDraft.length) return;
+            const [moved] = labSectionsDraft.splice(from, 1);
+            // Após remover o item de "from", os índices acima dele deslocam 1 pra baixo.
+            labSectionsDraft.splice(to > from ? to - 1 : to, 0, moved);
+            renderLabSections();
+            updateNetLabPreview();
         }
 
         function updateNetLabPreview() {
