@@ -3430,12 +3430,11 @@ ${original}`;
             } catch (err) {
                 console.error('Erro ao encerrar sessão:', err);
             }
-            state.session = null;
-            state.profile = null;
-            state.isDemo = false;
             stopDriveAutosave();
-            document.getElementById('app-screen').classList.add('opacity-0', 'pointer-events-none');
-            document.getElementById('login-screen').classList.remove('hidden-state', 'opacity-0', 'pointer-events-none');
+            // Recarrega a página para voltar a uma tela de login 100% limpa e clicável.
+            // Sem isso, sobrava estado/overlay da sessão anterior por cima do login e os
+            // botões ficavam "travados" (sem responder aos cliques).
+            window.location.reload();
         }
 
         function enterDemoMode() {
