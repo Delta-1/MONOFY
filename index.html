@@ -523,7 +523,10 @@
                o que "vazava" para a página seguinte ficava colado, sem margem no topo/rodapé.
                A capa usa uma margem física menor (1cm) porque a moldura (.cover-border) é que
                cria o respiro até o texto — @page :first cobre só a primeira página (a capa). */
-            @page { size: 21.59cm 27.94cm; margin: var(--page-mt) var(--page-mr) var(--page-mb) var(--page-ml); }
+            /* Fallback com valores literais — var() dentro de @page não é aplicado na
+               impressão de vários navegadores (a margem sumia). O #dynamic-page-size
+               (via updatePrintPageRule) sobrescreve isto com a margem real do usuário. */
+            @page { size: 21.59cm 27.94cm; margin: 2.54cm 2.54cm 2.54cm 3cm; }
             @page :first { margin: 1cm; }
 
             .a4-page { box-shadow: none; margin: 0 auto; border: none; padding: 0 !important; width: auto; }
@@ -2173,6 +2176,8 @@
             document.documentElement.style.setProperty('--page-mb', `${state.margins.mb}cm`);
             document.documentElement.style.setProperty('--page-ml', `${state.margins.ml}cm`);
             document.documentElement.style.setProperty('--page-mr', `${state.margins.mr}cm`);
+            // Reaplica a margem literal no @page da impressão (var() não funciona lá).
+            if (typeof updatePrintPageRule === 'function') updatePrintPageRule();
         }
 
         // Borda de página da capa: customizável pelo usuário (cor, espessura, ligado/desligado),
@@ -2301,13 +2306,24 @@
             const size = PAPER_SIZES[papel] || PAPER_SIZES.carta;
             document.documentElement.style.setProperty('--page-w', size.w);
             document.documentElement.style.setProperty('--page-h', size.h);
+            updatePrintPageRule();
+        }
+
+        // Injeta a regra @page da impressão com o tamanho de papel e a margem REAIS, em
+        // valores literais (ex.: "2.54cm"). Antes usávamos var(--page-mt) dentro do @page,
+        // mas var() dentro de @page não é aplicado na impressão de muitos navegadores
+        // (Chrome mobile, print-to-PDF etc.) — a margem sumia e o texto (marco teórico
+        // longo etc.) vinha colado no topo/rodapé das páginas de continuação. Precisa ser
+        // re-chamada quando o papel OU a margem mudam.
+        function updatePrintPageRule() {
             const styleEl = document.getElementById('dynamic-page-size');
-            // Tem que repetir aqui a mesma margem nativa (@page) do bloco principal de
-            // impressão — como esta tag fica depois dele no <head>, "margin: 0" aqui
-            // sobrescrevia a margem de toda página física sempre que o papel A4 (ex.: norma
-            // ABNT) era aplicado, voltando a colar o conteúdo na borda do papel.
-            if (styleEl) styleEl.textContent = `@media print {
-                @page { size: ${size.w} ${size.h}; margin: var(--page-mt) var(--page-mr) var(--page-mb) var(--page-ml); }
+            if (!styleEl) return;
+            const cs = getComputedStyle(document.documentElement);
+            const w = (cs.getPropertyValue('--page-w').trim()) || '21.59cm';
+            const h = (cs.getPropertyValue('--page-h').trim()) || '27.94cm';
+            const m = state.margins;
+            styleEl.textContent = `@media print {
+                @page { size: ${w} ${h}; margin: ${m.mt}cm ${m.mr}cm ${m.mb}cm ${m.ml}cm; }
                 @page :first { margin: 1cm; }
             }`;
         }
