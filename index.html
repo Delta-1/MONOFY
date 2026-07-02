@@ -411,17 +411,19 @@
                 display: flex !important;
                 flex-direction: column !important;
                 position: fixed !important;
-                left: 0 !important; top: 0 !important;
+                left: -52px !important; top: 0 !important;
                 bottom: 3.5rem !important; right: auto !important;
                 width: 52px !important;
                 height: auto !important; max-height: none !important;
                 border-radius: 0 1rem 1rem 0 !important;
-                overflow: hidden !important;
+                /* SEM transform aqui: um transform tornaria a barra o "containing block"
+                   dos painéis (position:fixed) e, junto do overflow, os cortava fora
+                   (não abriam no celular). Deslizamos com "left" em vez de translateX. */
+                overflow: visible !important;
                 z-index: 35 !important;
-                transform: translateX(-52px) !important;
-                transition: transform 0.2s ease !important;
+                transition: left 0.2s ease !important;
             }
-            #word-toolbar.mobile-toolbar-open { transform: translateX(0) !important; }
+            #word-toolbar.mobile-toolbar-open { left: 0 !important; }
             #word-toolbar:not(.mobile-toolbar-open) .toolbar-tab-panel { display: none !important; }
             #word-toolbar-header { cursor: default !important; flex-shrink: 0 !important; }
             #word-toolbar .resize-handle { display: none !important; }
@@ -795,7 +797,7 @@
         <!-- BARRA DE FERRAMENTAS DE FORMATAÇÃO (estilo Photoshop, ferramentas de Word) — arrastável e redimensionável em todas as bordas no desktop; no celular abre como gaveta pelo puxador acima -->
         <div id="word-toolbar" class="flex fixed left-4 top-24 z-30 hide-on-print flex-col bg-slate-900 dark:bg-slate-950 rounded-2xl shadow-2xl border border-slate-700/50 w-12 h-auto lg:max-h-[85vh]">
             <div id="word-toolbar-header" title="Arrastar barra de ferramentas (solte perto de uma parede para fixar)" class="relative flex items-center justify-center py-1.5 cursor-move shrink-0 hover:bg-white/5 rounded-t-2xl transition-colors">
-                <i data-lucide="grip-horizontal" class="toolbar-grip-icon w-5 h-5 text-slate-500"></i>
+                <i data-lucide="grip-horizontal" class="toolbar-grip-icon w-5 h-5 text-slate-500 hidden lg:block"></i>
                 <button onclick="toggleMobileToolbar()" class="lg:hidden absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-slate-400 hover:text-white rounded-full hover:bg-white/10"><i data-lucide="x" class="w-4 h-4"></i></button>
             </div>
             <!-- Abas no estilo Word: cada aba mostra só o grupo de funções correspondente -->
