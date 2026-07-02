@@ -70,7 +70,8 @@
             { id: 'pack_10', credits: 10, price: 'R$ 10,00' },
             { id: 'pack_25', credits: 25, price: 'R$ 22,00' },
             { id: 'pack_60', credits: 60, price: 'R$ 45,00', highlight: true },
-            { id: 'pack_150', credits: 150, price: 'R$ 95,00' }
+            { id: 'pack_150', credits: 150, price: 'R$ 95,00' },
+            { id: 'pack_500', credits: 500, price: 'R$ 200,00' }
         ];
         const CREDITS_PER_EXPORT = 10; // remover marca d'água
         const AI_COST_CHAT = 2;           // conversar com o Assistente IA
@@ -1368,20 +1369,6 @@
                 <div id="credits-error" class="hidden-state p-4 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-xl text-sm font-medium"></div>
 
                 <div id="credit-packs-container" class="grid grid-cols-1 md:grid-cols-3 gap-6"></div>
-
-                <div id="subscription-card" class="bg-gradient-to-br from-indigo-600 to-purple-700 rounded-3xl p-6 md:p-8 text-white shadow-xl relative overflow-hidden">
-                    <i data-lucide="sparkles" class="absolute -right-4 -bottom-4 w-40 h-40 text-white opacity-10"></i>
-                    <div class="relative z-10 flex flex-col md:flex-row md:items-center gap-5 justify-between">
-                        <div>
-                            <span class="inline-block bg-white/20 text-xs font-bold px-3 py-1 rounded-full mb-2">Assinatura Mensal</span>
-                            <h3 class="text-2xl font-extrabold">200 créditos todo mês por R$ 100,00</h3>
-                            <p class="text-indigo-100 text-sm mt-1 max-w-md">Renova automaticamente todo mês enquanto o pagamento continuar ativo. Cancele quando quiser, sem multa.</p>
-                        </div>
-                        <div id="subscription-action" class="shrink-0">
-                            <button onclick="subscribeMonthly()" class="bg-white text-indigo-700 font-bold py-3 px-6 rounded-xl hover:bg-indigo-50 transition-all whitespace-nowrap">Assinar agora</button>
-                        </div>
-                    </div>
-                </div>
 
                 <div class="bg-white/80 dark:bg-slate-850/80 backdrop-blur p-6 rounded-3xl shadow border border-white/40 dark:border-slate-700 text-sm text-slate-500 dark:text-slate-400">
                     <h4 class="font-bold text-slate-700 dark:text-slate-200 mb-2 flex items-center gap-2"><i data-lucide="receipt" class="w-4 h-4"></i> Histórico de Transações</h4>
@@ -3857,7 +3844,6 @@ ${original}`;
             `).join('');
             lucide.createIcons();
             renderCreditHistory();
-            renderSubscriptionCard();
         }
 
         async function renderCreditHistory() {
@@ -3911,6 +3897,7 @@ ${original}`;
         // ==========================================
         async function renderSubscriptionCard() {
             const actionEl = document.getElementById('subscription-action');
+            if (!actionEl) return; // assinatura mensal removida — não há mais card
             if (state.isDemo) {
                 actionEl.innerHTML = `<button onclick="subscribeMonthly()" class="bg-white text-indigo-700 font-bold py-3 px-6 rounded-xl hover:bg-indigo-50 transition-all whitespace-nowrap">Assinar agora</button>`;
                 return;
@@ -4870,7 +4857,7 @@ O campo "body" deve ser texto simples curto (pode usar quebras de linha com \\n 
             { target: '#dock-tab-slides', title: 'Slides', before: () => switchTab('generator'), text: 'Gere uma apresentação de slides a partir da sua monografia pronta. Exporte como PPTX para apresentar.' },
             { target: '#dock-tab-profile', title: 'Arquivo', before: () => switchTab('generator'), text: 'Todos os seus documentos ficam salvos aqui. Toque para abrir e continuar de onde parou.' },
             { target: '#dock-tab-network', title: 'Network', before: () => switchTab('generator'), text: 'Baixe modelos prontos de universidades — com logo, margens e fonte configurados. Aplique e seu documento muda de estilo na hora.' },
-            { target: '#dock-tab-credits', title: 'Créditos', before: () => switchTab('generator'), text: 'Veja seu saldo e compre créditos aqui. Há pacotes avulsos e plano mensal com créditos recorrentes.' },
+            { target: '#dock-tab-credits', title: 'Créditos', before: () => switchTab('generator'), text: 'Veja seu saldo e compre créditos aqui, em pacotes que vão de 10 até 500 créditos.' },
             { target: '#dock-tab-settings', title: 'Ajustes', before: () => switchTab('generator'), text: 'Idioma da redação, norma (ABNT/APA), tema claro/escuro e modelos personalizados ficam aqui.' },
             { title: 'Pronto!', text: 'Você já conhece tudo. Precisa de ajuda? Fale pelo WhatsApp em Ajustes. Bom trabalho!' }
         ];
