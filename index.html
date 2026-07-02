@@ -3451,11 +3451,22 @@ ${original}`;
         }
 
         async function loadProfile() {
-            const { data, error } = await supabaseClient
-                .from('profiles')
-                .select('credits, email, full_name, avatar_url, role, region, cpf')
-                .eq('id', state.session.user.id)
-                .single();
+            // Timeout de 12 s: em conexões que travam requisições à API, o fetch podia
+            // ficar pendurado pra sempre. Com o abortSignal ele desiste e o app segue
+            // funcionando (os créditos aparecem quando/se a busca voltar).
+            const _ctrl = new AbortController();
+            const _to = setTimeout(() => _ctrl.abort(), 12000);
+            let data, error;
+            try {
+                ({ data, error } = await supabaseClient
+                    .from('profiles')
+                    .select('credits, email, full_name, avatar_url, role, region, cpf')
+                    .eq('id', state.session.user.id)
+                    .abortSignal(_ctrl.signal)
+                    .single());
+            } finally {
+                clearTimeout(_to);
+            }
             if (!error && data) {
                 state.profile = data;
                 const creditsLabel = data.role === 'admin' ? '∞' : data.credits;
@@ -3638,16 +3649,16 @@ ${original}`;
             alert('Senha atualizada!');
         }
 
-        async function onAuthenticated(session) {
+        function onAuthenticated(session) {
             state.session = session;
-            // loadProfile pode falhar (perfil ainda não criado, RLS, rede) — o try-catch
-            // garante que um erro aqui nunca vai bloquear a abertura do app.
-            try { await loadProfile(); } catch(e) { console.warn('loadProfile error:', e); }
-            // provider_token só vem quando o login foi com o Google (não existe em
-            // login por email/senha) — é ele que liberta o autosave no Drive.
+            // ABRE O APP IMEDIATAMENTE — não esperar o loadProfile. Em conexões que
+            // bloqueiam/travam requisições de fundo à API (a mesma condição que causava
+            // "Load failed" no cadastro), o await do loadProfile podia NUNCA voltar,
+            // deixando o usuário preso na tela de login mesmo com o login já concluído
+            // (token na URL, mas o app não abria). O perfil carrega em segundo plano e
+            // atualiza a UI quando chega; se falhar/travar, o app já está aberto.
             if (session.provider_token) {
                 state.driveAccessToken = session.provider_token;
-                startDriveAutosave();
             }
             document.getElementById('login-screen').classList.add('opacity-0', 'pointer-events-none');
             setTimeout(() => {
@@ -3655,6 +3666,9 @@ ${original}`;
                 document.getElementById('app-screen').classList.remove('opacity-0', 'pointer-events-none');
                 updateCoverPage();
             }, 400);
+            // Segundo plano — nunca bloqueiam a abertura do app:
+            loadProfile().catch(e => console.warn('loadProfile error:', e));
+            if (session.provider_token) startDriveAutosave();
         }
 
         // OAuth PKCE callback: quando o Google redireciona de volta, a URL traz ?code=
