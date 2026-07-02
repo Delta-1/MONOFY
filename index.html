@@ -2006,7 +2006,10 @@
                 el.classList.remove('lg:bottom-24');
 
                 if (dockable) {
-                    if (newTop <= DOCK_EDGE_THRESHOLD) dockZone = 'top';
+                    // No celular (largura < 1024) não permitir encaixe no topo — o usuário
+                    // não quer a barra de ferramentas grudada no topo da tela nesses aparelhos.
+                    const allowTopDock = window.innerWidth >= 1024;
+                    if (allowTopDock && newTop <= DOCK_EDGE_THRESHOLD) dockZone = 'top';
                     else if (newLeft <= DOCK_EDGE_THRESHOLD) dockZone = 'left';
                     else dockZone = null;
                     showDockHint(dockZone);
