@@ -787,8 +787,9 @@
 
         <!-- Aba/puxador no canto esquerdo: só no celular. A barra de ferramentas fica escondida
              por padrão lá (pra não poluir a tela pequena) e abre como uma gaveta ao tocar aqui. -->
-        <button id="mobile-toolbar-tab" onclick="toggleMobileToolbar()" title="Ferramentas de edição" class="lg:hidden fixed left-0 top-1/2 -translate-y-1/2 z-40 hide-on-print bg-slate-900 dark:bg-slate-950 text-slate-300 rounded-r-xl shadow-xl border border-slate-700/50 border-l-0 w-7 h-16 flex items-center justify-center active:scale-95 transition">
-            <i data-lucide="chevron-right" class="w-4 h-4"></i>
+        <button id="mobile-toolbar-tab" onclick="toggleMobileToolbar()" title="Ferramentas de edição" class="lg:hidden fixed left-0 top-1/2 -translate-y-1/2 z-40 hide-on-print bg-primary-600 text-white rounded-r-xl shadow-xl border border-primary-500 border-l-0 w-8 h-20 flex flex-col items-center justify-center gap-1 active:scale-95 transition">
+            <i data-lucide="wrench" class="w-4 h-4"></i>
+            <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i>
         </button>
 
         <!-- BARRA DE FERRAMENTAS DE FORMATAÇÃO (estilo Photoshop, ferramentas de Word) — arrastável e redimensionável em todas as bordas no desktop; no celular abre como gaveta pelo puxador acima -->
@@ -4820,6 +4821,19 @@ O campo "body" deve ser texto simples curto (pode usar quebras de linha com \\n 
             if (tab) {
                 if (open) tab.style.setProperty('display', 'none', 'important');
                 else tab.style.removeProperty('display');
+            }
+            // Ao ABRIR a gaveta no celular, garante que um painel de ferramentas apareça
+            // logo de cara. Sem isso, se nenhuma aba estivesse ativa, a gaveta abria só com
+            // os ícones das abas e o usuário via "nenhuma ferramenta". Mostro o painel
+            // direto (sem passar por setToolbarTab, que no 2º toque fecharia o flyout).
+            if (open) {
+                let current = document.querySelector('.toolbar-tab-btn.active-tab')?.dataset.tab
+                    || localStorage.getItem('monografia_toolbar_tab') || 'home';
+                if (!current) current = 'home';
+                document.querySelectorAll('.toolbar-tab-panel').forEach(p => p.classList.toggle('hidden', p.dataset.tabPanel !== current));
+                document.querySelectorAll('.toolbar-tab-btn').forEach(b => b.classList.toggle('active-tab', b.dataset.tab === current));
+                localStorage.setItem('monografia_toolbar_tab', current);
+                if (window.lucide) lucide.createIcons();
             }
         }
 
