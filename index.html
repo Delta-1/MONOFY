@@ -3722,9 +3722,9 @@ ${original}`;
                 document.getElementById('app-screen').classList.remove('opacity-0', 'pointer-events-none');
                 updateCoverPage();
             }, 400);
-            // Segundo plano — nunca bloqueiam a abertura do app:
+            // Segundo plano — nunca bloqueiam a abertura do app nem podem quebrar o login:
             loadProfile().catch(e => console.warn('loadProfile error:', e));
-            if (session.provider_token) startDriveAutosave();
+            try { if (session.provider_token) startDriveAutosave(); } catch (e) { console.warn('startDriveAutosave error:', e); }
         }
 
         // OAuth PKCE callback: quando o Google redireciona de volta, a URL traz ?code=
@@ -7323,8 +7323,12 @@ Responda APENAS com o título, sem aspas, sem explicações, em uma única linha
         // e modo demonstração não geram token do Google). O token dura ~1h e o
         // Supabase não o renova sozinho — quando ele expira, paramos o autosave em
         // silêncio até a pessoa logar de novo com o Google.
-        let driveAutosaveIntervalId = null;
-        let driveAutosaveFileId = null;
+        // var (não let): estas variáveis são usadas por start/stopDriveAutosave, que são
+        // chamadas por onAuthenticated (login com Google) e por signOut. Com "let", se essas
+        // funções rodassem antes desta linha ser executada, dava erro TDZ ("Cannot access
+        // 'driveAutosaveIntervalId' before initialization"). "var" é içado e evita isso.
+        var driveAutosaveIntervalId = null;
+        var driveAutosaveFileId = null;
 
         function startDriveAutosave() {
             if (driveAutosaveIntervalId) return;
