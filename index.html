@@ -3047,8 +3047,10 @@
                     text = (await file.text()).substring(0, 3500);
                 }
 
-                const prompt = `Você é especialista em normas acadêmicas. Analise este trecho de trabalho acadêmico e identifique as regras de formatação. Retorne SOMENTE um objeto JSON (sem markdown):
-{"fonte":"Times New Roman","tamanhoFonte":12,"espacamento":1.5,"recuoParagrafo":1.27,"margemSuperior":2.54,"margemInferior":2.54,"margemEsquerda":3.0,"margemDireita":2.54,"estiloCitacao":"APA","papel":"a4"}
+                const prompt = `Você é especialista em normas acadêmicas. Analise este trecho de trabalho acadêmico e identifique as regras de formatação E a estrutura (as seções/partes principais do documento, na ordem em que aparecem). Retorne SOMENTE um objeto JSON (sem markdown):
+{"fonte":"Times New Roman","tamanhoFonte":12,"espacamento":1.5,"recuoParagrafo":1.27,"margemSuperior":2.54,"margemInferior":2.54,"margemEsquerda":3.0,"margemDireita":2.54,"estiloCitacao":"APA","papel":"a4","estrutura":["Resumo","Introdução","Marco Teórico","Metodologia","Resultados","Conclusão","Referências"]}
+
+Em "estrutura", liste os títulos das seções principais do documento, na ordem. Se não conseguir identificar, use uma estrutura acadêmica padrão.
 
 TRECHO:
 ${text}`;
@@ -3068,8 +3070,23 @@ ${text}`;
                 set('net-lab-mr', p.margemDireita);
                 if (p.estiloCitacao) { const s = document.getElementById('net-lab-citacao'); if (s) s.value = p.estiloCitacao; }
                 if (p.papel) { const s = document.getElementById('net-lab-papel'); if (s) s.value = p.papel; }
+                // Estrutura detectada pela IA → preenche o montador de seções (que a pessoa
+                // pode reordenar arrastando). Mapeia nomes especiais pros tipos com lógica própria.
+                let estruturaMsg = '';
+                if (Array.isArray(p.estrutura) && p.estrutura.length) {
+                    labSectionsDraft = p.estrutura.filter(Boolean).map(label => {
+                        const low = String(label).toLowerCase();
+                        let tipo = 'normal';
+                        if (low.includes('abstract')) tipo = 'abstract';
+                        else if (low.includes('resumo')) tipo = 'resumo';
+                        else if (low.includes('refer') || low.includes('bibliograf')) tipo = 'referencias';
+                        return { label: String(label).slice(0, 80), tipo, instructions: '' };
+                    });
+                    renderLabSections();
+                    estruturaMsg = ` Também montei a estrutura em ${labSectionsDraft.length} seções — arraste pra reordenar.`;
+                }
                 updateNetLabPreview();
-                alert('IA identificou a formatação e preencheu os campos! Revise, adicione o nome do modelo e publique.');
+                alert('IA identificou a formatação e preencheu os campos!' + estruturaMsg + ' Revise, dê um nome ao modelo e publique.');
             } catch (err) {
                 alert('Erro na análise: ' + err.message);
             } finally {
