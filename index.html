@@ -757,9 +757,9 @@
                         </div>
 
                         <div style="margin-top: 2cm; margin-left: 15%; text-align: left; width: 85%; font-size: 12pt; text-indent: 0;">
-                            <p style="font-weight: bold; margin: 0 0 8px 0; text-indent: 0; text-align: left !important;">Asignatura: <span id="out-subject">Metodología de la Investigación</span></p>
-                            <p style="font-weight: bold; margin: 0 0 8px 0; text-indent: 0; text-align: left !important;">Docente: <span id="out-professor">Nome do Docente</span></p>
-                            <p style="font-weight: bold; margin: 0; text-indent: 0; text-align: left !important; white-space: pre-wrap;">Estudiantes: <span id="out-student">Nome do Estudante</span></p>
+                            <p style="margin: 0 0 8px 0; text-indent: 0; text-align: left !important;"><strong>Asignatura:</strong> <span id="out-subject">Metodología de la Investigación</span></p>
+                            <p style="margin: 0 0 8px 0; text-indent: 0; text-align: left !important;"><strong>Docente:</strong> <span id="out-professor">Nome do Docente</span></p>
+                            <p style="margin: 0; text-indent: 0; text-align: left !important; white-space: pre-wrap;"><strong>Estudiantes:</strong> <span id="out-student">Nome do Estudante</span></p>
                         </div>
 
                         <div style="margin-top: auto; padding-top: 1.5cm; padding-bottom: 0.5cm; text-align: center;">
@@ -7061,10 +7061,14 @@ Responda APENAS com o título, sem aspas, sem explicações, em uma única linha
             blocks.push(new docx.Paragraph({ alignment: docx.AlignmentType.CENTER, spacing: { before: cmToTwip(1.5), after: 0 }, children: [new docx.TextRun({ text: 'MONOGRAFÍA', bold: true, size: titleSize })] }));
             blocks.push(new docx.Paragraph({ alignment: docx.AlignmentType.CENTER, spacing: tight, children: [new docx.TextRun({ text: val('out-title'), bold: true, size: ptToHalfPt(12) })] }));
 
+            // Rótulo em negrito, valor em texto normal (a pedido do usuário) — dois runs.
             const infoLine = (label, value) => new docx.Paragraph({
                 indent: { left: cmToTwip(2.5) },
                 spacing: { after: 160 },
-                children: [new docx.TextRun({ text: `${label} ${value}`, bold: true, size: ptToHalfPt(12) })]
+                children: [
+                    new docx.TextRun({ text: `${label} `, bold: true, size: ptToHalfPt(12) }),
+                    new docx.TextRun({ text: value, bold: false, size: ptToHalfPt(12) })
+                ]
             });
             blocks.push(infoLine('Asignatura:', val('out-subject')));
             blocks.push(infoLine('Docente:', val('out-professor')));
