@@ -142,6 +142,7 @@
                 espacamento: 1.5, recuoParagrafo: 1.27, papel: 'carta',
                 capaMoldura: false, capaAlinhamento: 'center', estiloCitacao: 'APA',
                 secoes: UAP_SECOES,
+                capaLinhaExtra: 'INVESTIGACIÓN EN ASIGNATURA',
                 capaDados: { universidade: 'UNIVERSIDAD AMAZÓNICA DE PANDO', faculdade: 'UNIDAD ACADÉMICA DESCONCENTRADA PUERTO EVO', carreira: 'CARRERA DE MEDICINA', local: 'Bella Flor - Pando - Bolivia' }
             },
             {
@@ -775,6 +776,7 @@
                         </div>
 
                         <div style="margin-top: 1.5cm; text-align: center;">
+                            <p id="out-uap-line" class="hidden-state" style="font-size: 14pt; font-weight: bold; text-transform: uppercase; margin: 0 0 12pt 0; text-indent: 0; text-align: center !important;">INVESTIGACIÓN EN ASIGNATURA</p>
                             <p style="font-size: 14pt; font-weight: bold; text-transform: uppercase; margin: 0; text-indent: 0; text-align: center !important;">MONOGRAFÍA</p>
                             <h2 style="font-size: 12pt; font-weight: bold; text-transform: capitalize; margin: 12pt 0 0 0; text-align: center; text-indent: 0; line-height: 1.5;" id="out-title">Título da Monografia</h2>
                         </div>
@@ -2467,6 +2469,18 @@
 
             renderNormTemplatesList();
             if (tpl.logoBase64) setCustomLogo(tpl.logoBase64);
+
+            // Linha extra da capa (ex.: "INVESTIGACIÓN EN ASIGNATURA" na UAP) — só aparece
+            // nos modelos que a definem; escondida nos demais.
+            const uapLineEl = document.getElementById('out-uap-line');
+            if (uapLineEl) {
+                if (tpl.capaLinhaExtra) {
+                    uapLineEl.textContent = tpl.capaLinhaExtra;
+                    uapLineEl.classList.remove('hidden-state');
+                } else {
+                    uapLineEl.classList.add('hidden-state');
+                }
+            }
 
             // Preenche os dados da capa do modelo (universidade, faculdade, carreira,
             // cidade) nos campos in-*, e a capa é atualizada via updateCoverPage. A pessoa
@@ -7229,7 +7243,16 @@ Responda APENAS com o título, sem aspas, sem explicações, em uma única linha
                 } catch (e) { /* sem logo válido, segue sem imagem */ }
             }
 
-            blocks.push(new docx.Paragraph({ alignment: docx.AlignmentType.CENTER, spacing: { before: cmToTwip(1.5), after: 0 }, children: [new docx.TextRun({ text: 'MONOGRAFÍA', bold: true, size: titleSize })] }));
+            // Linha extra da capa (ex.: "INVESTIGACIÓN EN ASIGNATURA" no modelo UAP) —
+            // só entra se estiver visível na pré-visualização.
+            const _uapLineEl = document.getElementById('out-uap-line');
+            const _uapLineOn = _uapLineEl && !_uapLineEl.classList.contains('hidden-state') && _uapLineEl.textContent.trim();
+            if (_uapLineOn) {
+                blocks.push(new docx.Paragraph({ alignment: docx.AlignmentType.CENTER, spacing: { before: cmToTwip(1.5), after: 240 }, children: [new docx.TextRun({ text: _uapLineEl.textContent.trim(), bold: true, size: titleSize })] }));
+                blocks.push(new docx.Paragraph({ alignment: docx.AlignmentType.CENTER, spacing: { after: 0 }, children: [new docx.TextRun({ text: 'MONOGRAFÍA', bold: true, size: titleSize })] }));
+            } else {
+                blocks.push(new docx.Paragraph({ alignment: docx.AlignmentType.CENTER, spacing: { before: cmToTwip(1.5), after: 0 }, children: [new docx.TextRun({ text: 'MONOGRAFÍA', bold: true, size: titleSize })] }));
+            }
             blocks.push(new docx.Paragraph({ alignment: docx.AlignmentType.CENTER, spacing: tight, children: [new docx.TextRun({ text: val('out-title'), bold: true, size: ptToHalfPt(12) })] }));
 
             // Rótulo em negrito, valor em texto normal (a pedido do usuário) — dois runs.
