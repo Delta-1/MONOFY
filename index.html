@@ -3589,14 +3589,22 @@ ${original}`;
             // etc.) — sem o try/catch, esse erro interrompia a função antes de esconder o
             // app-screen e mostrar o login-screen, deixando o botão "Sair" parecendo travado.
             try {
-                if (!state.isDemo) await supabaseClient.auth.signOut();
+                // scope 'local': limpa a sessão SÓ no aparelho, sem depender de resposta
+                // do servidor — em conexões instáveis o signOut() normal ficava pendurado
+                // esperando a rede e o logout nunca concluía (não voltava pro login).
+                // Promise.race com timeout garante que a gente sempre segue pro reload.
+                if (!state.isDemo && supabaseClient) {
+                    await Promise.race([
+                        supabaseClient.auth.signOut({ scope: 'local' }),
+                        new Promise(res => setTimeout(res, 1500))
+                    ]);
+                }
             } catch (err) {
                 console.error('Erro ao encerrar sessão:', err);
             }
-            stopDriveAutosave();
+            try { stopDriveAutosave(); } catch (_) {}
             // Recarrega a página para voltar a uma tela de login 100% limpa e clicável.
-            // Sem isso, sobrava estado/overlay da sessão anterior por cima do login e os
-            // botões ficavam "travados" (sem responder aos cliques).
+            // Acontece SEMPRE, mesmo se o passo acima falhar/travar.
             window.location.reload();
         }
 
