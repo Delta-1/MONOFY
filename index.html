@@ -5017,7 +5017,7 @@ O campo "body" deve ser texto simples curto (pode usar quebras de linha com \\n 
         function setToolbarTab(tab) {
             const isMobile = window.innerWidth < 1023;
             const alreadyActive = document.querySelector(`.toolbar-tab-btn[data-tab="${tab}"]`)?.classList.contains('active-tab');
-            if (isMobile && alreadyActive) {
+            if (alreadyActive) { // clicar de novo na aba aberta FECHA (desktop e celular)
                 // segundo toque: fecha o flyout
                 document.querySelectorAll('.toolbar-tab-panel').forEach(p => p.classList.add('hidden'));
                 document.querySelectorAll('.toolbar-tab-btn').forEach(b => b.classList.remove('active-tab'));
@@ -7729,6 +7729,26 @@ Responda APENAS com o título, sem aspas, sem explicações, em uma única linha
                 if (String(err.message).includes('401')) stopDriveAutosave();
             }
         }
+
+        /* Desencorajador de inspeção (F12 / clique direito / ver-fonte). IMPORTANTE:
+           código no navegador é sempre acessível — isto só afasta curiosos casuais e
+           é facilmente contornável. Os segredos reais ficam nas Edge Functions/servidor. */
+        (function () {
+            document.addEventListener('contextmenu', function (e) {
+                const t = e.target;
+                // Deixa o clique direito nos campos de texto/editor (pra não quebrar o "colar").
+                if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+                e.preventDefault();
+            });
+            document.addEventListener('keydown', function (e) {
+                const k = (e.key || '').toUpperCase();
+                if (k === 'F12'
+                    || (e.ctrlKey && e.shiftKey && (k === 'I' || k === 'J' || k === 'C'))
+                    || (e.ctrlKey && k === 'U')) {
+                    e.preventDefault();
+                }
+            });
+        })();
 
         /* REGISTRO DO SERVICE WORKER (PWA) */
         if ('serviceWorker' in navigator) {
