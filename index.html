@@ -6089,6 +6089,9 @@ Responda APENAS com o título, sem aspas, sem explicações, em uma única linha
             syncWatermarkRemovedClass();
             resetAssistantChat();
             switchTab('generator');
+            // Pergunta o modelo do novo projeto (UPDS / UAP / começar do zero → norma),
+            // igual ao fluxo de quem entra pela primeira vez.
+            showNormOnboarding();
         }
 
         // ==========================================
@@ -7535,11 +7538,56 @@ Responda APENAS com o título, sem aspas, sem explicações, em uma única linha
                     ${univ ? `<p class="text-xs text-slate-400 mt-0.5">${univ}</p>` : ''}
                     ${desc ? `<p class="text-xs text-slate-500 mt-1 line-clamp-2">${desc}</p>` : ''}
                 </div>`;
-            }).join('');
+            }).join('') + `
+                <div onclick="selectOnboardingTemplate('__scratch__')" id="onboard-card-__scratch__" class="onboard-card cursor-pointer rounded-2xl border-2 border-dashed border-slate-600 bg-slate-800/50 hover:bg-slate-750 p-5 hover:border-primary-500 transition-all flex flex-col select-none">
+                    <div class="w-12 h-12 rounded-xl bg-slate-700/60 flex items-center justify-center mb-3"><i data-lucide="file-plus" class="w-6 h-6 text-slate-300"></i></div>
+                    <div class="flex items-start justify-between gap-2 mb-1">
+                        <span class="font-bold text-white text-sm leading-tight">Começar do zero</span>
+                    </div>
+                    <p class="text-xs text-slate-500 mt-1">Sem modelo de universidade — você escolhe só a norma (ABNT ou APA) e preenche a capa.</p>
+                </div>`;
             if (typeof lucide !== 'undefined') lucide.createIcons();
         }
 
+        // "Começar do zero": mostra a escolha de norma (ABNT/APA) dentro do onboarding.
+        function showOnboardingScratchStep() {
+            const grid = document.getElementById('onboarding-template-grid');
+            if (!grid) return;
+            document.getElementById('onboarding-apply-btn')?.classList.add('hidden-state');
+            grid.innerHTML = `
+                <div class="col-span-full max-w-md mx-auto w-full pt-2">
+                    <button onclick="renderOnboardingTemplates()" class="text-slate-400 hover:text-white text-xs font-bold mb-4 flex items-center gap-1"><i data-lucide="arrow-left" class="w-3.5 h-3.5"></i> Voltar aos modelos</button>
+                    <p class="text-slate-300 text-sm font-bold mb-3">Qual norma você quer usar?</p>
+                    <div class="space-y-3">
+                        <button onclick="applyScratchNorm('abnt')" class="w-full text-left rounded-2xl border-2 border-slate-700 bg-slate-800 hover:border-primary-500 hover:bg-slate-750 p-4 transition">
+                            <span class="font-bold text-white text-sm">ABNT</span>
+                            <p class="text-xs text-slate-400 mt-0.5">Norma brasileira — A4, margens 3/2/3/2, citação ABNT.</p>
+                        </button>
+                        <button onclick="applyScratchNorm('apa')" class="w-full text-left rounded-2xl border-2 border-slate-700 bg-slate-800 hover:border-primary-500 hover:bg-slate-750 p-4 transition">
+                            <span class="font-bold text-white text-sm">APA</span>
+                            <p class="text-xs text-slate-400 mt-0.5">Formato APA — papel carta, citação APA.</p>
+                        </button>
+                    </div>
+                </div>`;
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        function applyScratchNorm(normId) {
+            const blankCapa = { universidade: '', faculdade: '', carreira: '', local: '' };
+            let tpl;
+            if (normId === 'abnt') {
+                const base = BUILTIN_NORM_TEMPLATES.find(t => t.id === 'abnt');
+                tpl = { ...base, capaDados: blankCapa };
+            } else {
+                const base = BUILTIN_NORM_TEMPLATES.find(t => t.id === 'apa-upds');
+                tpl = { ...base, id: 'apa-generica', nome: 'APA (genérica)', secoes: undefined, capaMoldura: false, capaDados: blankCapa };
+            }
+            if (tpl) applyNormTemplate(tpl);
+            dismissNormOnboarding();
+        }
+
         function selectOnboardingTemplate(id) {
+            if (id === '__scratch__') { showOnboardingScratchStep(); return; }
             _onboardingSelectedId = id;
             document.querySelectorAll('.onboard-card').forEach(c => {
                 c.classList.remove('border-primary-500', '!bg-primary-900/20');
