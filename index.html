@@ -16,7 +16,7 @@
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
-        tailwind.config = {
+        if (typeof tailwind !== 'undefined') tailwind.config = {
             darkMode: 'class',
             theme: { 
                 extend: { 
@@ -1465,9 +1465,7 @@
                     <h2 class="text-3xl font-extrabold mb-3 flex items-center gap-2"><i data-lucide="shield" class="w-7 h-7"></i> Painel Admin</h2>
                     <p class="text-red-50 text-sm">Gerencie os créditos de qualquer usuário.</p>
                 </div>
-                <div id="admin-users-list" class="bg-white/80 dark:bg-slate-850/80 backdrop-blur rounded-3xl shadow-xl border border-white/40 dark:border-slate-700 divide-y divide-slate-100 dark:divide-slate-800"></div>
-
-                <!-- Logos de universidade (galeria da Network) -->
+                <!-- Logos de universidade (galeria da Network) — no topo pra acesso rápido -->
                 <div class="bg-white/80 dark:bg-slate-850/80 backdrop-blur rounded-3xl shadow-xl border border-white/40 dark:border-slate-700 p-6 space-y-4">
                     <h4 class="font-bold text-slate-700 dark:text-slate-200 flex items-center gap-2"><i data-lucide="images" class="w-5 h-5 text-primary-500"></i> Logos de Universidade (Network)</h4>
                     <p class="text-xs text-slate-500 dark:text-slate-400">Suba os logos aqui; eles aparecem na galeria para todos os usuários escolherem na capa.</p>
@@ -1480,6 +1478,19 @@
                         <button onclick="uploadUniversityLogo()" class="px-5 py-3 bg-primary-600 hover:bg-primary-700 text-white font-bold rounded-xl text-sm transition">Adicionar</button>
                     </div>
                     <div id="admin-logos-list" class="grid grid-cols-2 sm:grid-cols-4 gap-3"></div>
+                </div>
+
+                <!-- Usuários: busca + paginação -->
+                <div class="bg-white/80 dark:bg-slate-850/80 backdrop-blur rounded-3xl shadow-xl border border-white/40 dark:border-slate-700 p-4 sm:p-6 space-y-3">
+                    <div class="flex items-center gap-3 flex-wrap">
+                        <h4 class="font-bold text-slate-700 dark:text-slate-200 flex items-center gap-2 shrink-0"><i data-lucide="users" class="w-5 h-5 text-red-500"></i> Usuários</h4>
+                        <div class="relative flex-1 min-w-[180px]">
+                            <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"></i>
+                            <input type="text" id="admin-user-search" oninput="adminUserSearch=this.value;adminUserPage=0;renderAdminUsersPage()" placeholder="Pesquisar por nome ou email..." class="w-full pl-9 pr-3 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none text-sm">
+                        </div>
+                    </div>
+                    <div id="admin-users-list" class="divide-y divide-slate-100 dark:divide-slate-800"></div>
+                    <div id="admin-users-pagination" class="flex items-center justify-between gap-2 pt-1"></div>
                 </div>
             </div>
         </div>
@@ -3768,6 +3779,11 @@ ${original}`;
         // ==========================================
         // PAINEL ADMIN
         // ==========================================
+        let _adminUsers = [];
+        let adminUserSearch = '';
+        let adminUserPage = 0;
+        const ADMIN_USERS_PER_PAGE = 8;
+
         async function renderAdminTab() {
             renderAdminLogos();
             const list = document.getElementById('admin-users-list');
@@ -3779,7 +3795,33 @@ ${original}`;
 
             if (error || !data) { list.innerHTML = '<p class="p-6 text-red-500">Erro ao carregar usuários.</p>'; return; }
 
-            list.innerHTML = data.map(u => `
+            _adminUsers = data;
+            adminUserPage = 0;
+            renderAdminUsersPage();
+        }
+
+        function renderAdminUsersPage() {
+            const list = document.getElementById('admin-users-list');
+            const pag = document.getElementById('admin-users-pagination');
+            if (!list) return;
+            const q = (adminUserSearch || '').trim().toLowerCase();
+            const filtered = q
+                ? _adminUsers.filter(u => (u.full_name || '').toLowerCase().includes(q) || (u.email || '').toLowerCase().includes(q))
+                : _adminUsers;
+            const total = filtered.length;
+            const pages = Math.max(1, Math.ceil(total / ADMIN_USERS_PER_PAGE));
+            if (adminUserPage >= pages) adminUserPage = pages - 1;
+            if (adminUserPage < 0) adminUserPage = 0;
+            const start = adminUserPage * ADMIN_USERS_PER_PAGE;
+            const pageUsers = filtered.slice(start, start + ADMIN_USERS_PER_PAGE);
+
+            if (!total) {
+                list.innerHTML = '<p class="p-6 text-slate-400 text-sm text-center">Nenhum usuário encontrado.</p>';
+                if (pag) pag.innerHTML = '';
+                return;
+            }
+
+            list.innerHTML = pageUsers.map(u => `
                 <div class="flex items-center justify-between gap-4 p-5 flex-wrap">
                     <div class="min-w-[180px]">
                         <p class="font-bold text-slate-800 dark:text-white">${u.full_name || u.email}</p>
@@ -3798,6 +3840,15 @@ ${original}`;
                     </div>
                 </div>
             `).join('');
+
+            if (pag) {
+                pag.innerHTML = `
+                    <span class="text-xs text-slate-400">${total} usuário${total !== 1 ? 's' : ''} · página ${adminUserPage + 1} de ${pages}</span>
+                    <div class="flex items-center gap-2">
+                        <button onclick="adminUserPage=Math.max(0,adminUserPage-1);renderAdminUsersPage()" ${adminUserPage === 0 ? 'disabled' : ''} class="px-3 py-1.5 rounded-lg text-xs font-bold border border-slate-200 dark:border-slate-700 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-800 transition">Anterior</button>
+                        <button onclick="adminUserPage=Math.min(${pages - 1},adminUserPage+1);renderAdminUsersPage()" ${adminUserPage >= pages - 1 ? 'disabled' : ''} class="px-3 py-1.5 rounded-lg text-xs font-bold border border-slate-200 dark:border-slate-700 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-800 transition">Próxima</button>
+                    </div>`;
+            }
             lucide.createIcons();
         }
 
@@ -5115,26 +5166,31 @@ O campo "body" deve ser texto simples curto (pode usar quebras de linha com \\n 
             }
         });
 
-        // Upload / drag-and-drop do arquivo .txt de modelo de norma
+        // Upload / drag-and-drop do arquivo .txt de modelo de norma.
+        // Guarda de existência: este elemento foi removido da UI, mas o código ficou —
+        // sem o if, o getElementById devolvia null e o addEventListener QUEBRAVA todo o
+        // restante do script (era a causa do app "bugado" e do logout não funcionar).
         const normDropzone = document.getElementById('norm-dropzone');
         const normFileInput = document.getElementById('norm-file-input');
-        normDropzone.addEventListener('click', () => normFileInput.click());
-        normFileInput.addEventListener('change', (e) => {
-            if (e.target.files[0]) handleNormTemplateFile(e.target.files[0]);
-            e.target.value = '';
-        });
-        normDropzone.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            normDropzone.classList.add('bg-indigo-50', 'dark:bg-indigo-900/30');
-        });
-        normDropzone.addEventListener('dragleave', () => {
-            normDropzone.classList.remove('bg-indigo-50', 'dark:bg-indigo-900/30');
-        });
-        normDropzone.addEventListener('drop', (e) => {
-            e.preventDefault();
-            normDropzone.classList.remove('bg-indigo-50', 'dark:bg-indigo-900/30');
-            if (e.dataTransfer.files[0]) handleNormTemplateFile(e.dataTransfer.files[0]);
-        });
+        if (normDropzone && normFileInput) {
+            normDropzone.addEventListener('click', () => normFileInput.click());
+            normFileInput.addEventListener('change', (e) => {
+                if (e.target.files[0]) handleNormTemplateFile(e.target.files[0]);
+                e.target.value = '';
+            });
+            normDropzone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                normDropzone.classList.add('bg-indigo-50', 'dark:bg-indigo-900/30');
+            });
+            normDropzone.addEventListener('dragleave', () => {
+                normDropzone.classList.remove('bg-indigo-50', 'dark:bg-indigo-900/30');
+            });
+            normDropzone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                normDropzone.classList.remove('bg-indigo-50', 'dark:bg-indigo-900/30');
+                if (e.dataTransfer.files[0]) handleNormTemplateFile(e.dataTransfer.files[0]);
+            });
+        }
 
         const labImportDropzone = document.getElementById('lab-import-dropzone');
         const labImportFileInput = document.getElementById('lab-import-file-input');
@@ -5169,7 +5225,7 @@ O campo "body" deve ser texto simples curto (pode usar quebras de linha com \\n 
         // ==========================================
         // GALERIA DE LOGOS DE UNIVERSIDADE (Network) — admin sobe, todos escolhem
         // ==========================================
-        let _universityLogos = null;
+        var _universityLogos = null;
 
         // Redimensiona a imagem (mantém proporção, máx. maxSize px) e devolve data URI PNG.
         function _imageFileToBase64(file, maxSize = 300) {
