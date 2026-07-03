@@ -71,14 +71,14 @@
             { id: 'pack_25', credits: 25, price: 'R$ 22,00' },
             { id: 'pack_60', credits: 60, price: 'R$ 45,00', highlight: true },
             { id: 'pack_150', credits: 150, price: 'R$ 95,00' },
-            { id: 'pack_500', credits: 500, price: 'R$ 200,00' }
+            { id: 'pack_500', credits: 500, price: 'R$ 400,00' }
         ];
         const CREDITS_PER_EXPORT = 10; // remover marca d'água
         const AI_COST_CHAT = 2;           // conversar com o Assistente IA
         const AI_COST_REFINE = 3;         // usar IA pra refinar 1 página
         const AI_COST_TITLE_FROM_CHAT = 4; // IA define o título com base na conversa com o Assistente
         const AI_COST_PER_SECTION = 6;    // gerar 1 seção da monografia com IA (6 seções = 36 + título 4 = 40, igual ao custo fixo da monografia completa)
-        const AI_COST_SLIDES = 25;        // gerar/atualizar a apresentação inteira com IA a partir da monografia
+        const AI_COST_SLIDES = 20;        // gerar/atualizar a apresentação inteira com IA a partir da monografia
 
         const SLIDE_THEMES = {
             azul:   { name: 'Azul Acadêmico',     accent: '#16215c', bar: '#0f2a6b', bg: '#eef2f9', text: '#0f172a', light: '#ffffff' },
@@ -133,6 +133,7 @@
                 fonte: "'Tinos', 'Times New Roman', Times, serif", tamanhoFonte: '12pt',
                 espacamento: 1.5, recuoParagrafo: 1.27, papel: 'carta',
                 capaMoldura: true, capaAlinhamento: 'center', estiloCitacao: 'APA',
+                logoKeys: ['upds', 'domingo', 'savio'],
                 capaDados: { universidade: 'UNIVERSIDAD PRIVADA DOMINGO SAVIO', faculdade: 'FACULTAD DE CIENCIA DE LA SALUD', carreira: 'CARRERA DE MEDICINA', local: 'Cobija-Pando-Bolivia' }
             },
             {
@@ -142,6 +143,7 @@
                 espacamento: 1.5, recuoParagrafo: 1.27, papel: 'carta',
                 capaMoldura: false, capaAlinhamento: 'center', estiloCitacao: 'APA',
                 secoes: UAP_SECOES,
+                logoKeys: ['uap', 'amaz', 'pando'],
                 capaLinhaExtra: 'INVESTIGACIÓN EN ASIGNATURA',
                 capaDados: { universidade: 'UNIVERSIDAD AMAZÓNICA DE PANDO', faculdade: 'UNIDAD ACADÉMICA DESCONCENTRADA PUERTO EVO', carreira: 'CARRERA DE MEDICINA', local: 'Bella Flor - Pando - Bolivia' }
             },
@@ -2480,6 +2482,7 @@
 
             renderNormTemplatesList();
             if (tpl.logoBase64) setCustomLogo(tpl.logoBase64);
+            else if (tpl.logoKeys) { const _m = findModelLogo(tpl); if (_m) setCustomLogo(_m); }
 
             // Linha extra da capa (ex.: "INVESTIGACIÓN EN ASIGNATURA" na UAP) — só aparece
             // nos modelos que a definem; escondida nos demais.
@@ -2794,6 +2797,9 @@
             const isAdmin = !!(state.profile && state.profile.role === 'admin');
             const adminSec = document.getElementById('network-admin-section');
             if (adminSec) adminSec.classList.toggle('hidden-state', !isAdmin);
+            // Carrega os logos da galeria antes, pra os modelos oficiais mostrarem o logo
+            // da universidade correspondente (casado por logoKeys).
+            fetchUniversityLogos().then(() => renderNetworkGrid()).catch(() => {});
             await loadNetworkTemplates();
             wireNetAnalyzeDropzone();
             if (isAdmin) {
@@ -2819,6 +2825,25 @@
             }
         }
 
+        // Acha, na galeria de logos, o logo da universidade do modelo oficial (casa por
+        // logoKeys com o nome do logo). Retorna o data URI ou null.
+        function findModelLogo(model) {
+            const keys = model.logoKeys || [];
+            if (!keys.length || !Array.isArray(_universityLogos)) return null;
+            const logo = _universityLogos.find(l => {
+                const n = (l.name || '').toLowerCase();
+                return keys.some(k => n.includes(k));
+            });
+            return logo ? logo.logo_base64 : null;
+        }
+
+        function officialLogoHtml(t) {
+            const src = findModelLogo(t);
+            return src
+                ? `<img src="${src}" class="w-14 h-14 rounded-xl object-contain bg-slate-100 dark:bg-slate-700 p-1 shrink-0 shadow-sm" alt="">`
+                : `<div class="w-14 h-14 rounded-xl bg-gradient-to-br from-teal-400 to-blue-500 flex items-center justify-center text-white font-bold text-2xl shrink-0 shadow-sm">${(t.capaDados.universidade || t.nome || 'U').charAt(0).toUpperCase()}</div>`;
+        }
+
         function renderNetworkGrid() {
             const grid = document.getElementById('network-templates-grid');
             if (!grid) return;
@@ -2839,7 +2864,7 @@
             const officialCards = officials.map(t => `
                 <div onclick="useBuiltinModel('${t.id}')" class="group bg-white dark:bg-slate-800 rounded-2xl border-2 border-teal-300 dark:border-teal-600 hover:border-teal-500 p-4 flex flex-col gap-3 shadow-sm hover:shadow-xl transition-all cursor-pointer active:scale-[.98]">
                     <div class="flex items-center gap-3">
-                        <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-teal-400 to-blue-500 flex items-center justify-center text-white font-bold text-2xl shrink-0 shadow-sm">${(t.capaDados.universidade || t.nome || 'U').charAt(0).toUpperCase()}</div>
+                        ${officialLogoHtml(t)}
                         <div class="flex-1 min-w-0">
                             <p class="font-bold text-sm text-slate-800 dark:text-white leading-tight">${t.nome}</p>
                             <p class="text-xs text-slate-500 dark:text-slate-400 truncate mt-0.5">${t.capaDados.universidade}</p>
