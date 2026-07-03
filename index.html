@@ -998,6 +998,7 @@
                         </div>
                         <input type="file" id="logo-upload" accept="image/*" class="hidden" />
                     </label>
+                    <button type="button" onclick="openLogoGallery()" class="w-full flex items-center justify-center gap-2 text-xs font-bold text-primary-600 dark:text-primary-400 border border-primary-200 dark:border-primary-700/50 rounded-xl py-2.5 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition"><i data-lucide="images" class="w-4 h-4"></i> Escolher logo da universidade (Network)</button>
 
                     <input type="text" id="in-university" placeholder="Universidade" class="w-full text-sm p-3 bg-white/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 focus:border-primary-500 rounded-xl outline-none transition-colors" value="UNIVERSIDAD PRIVADA DOMINGO SAVIO">
                     <div class="flex gap-2">
@@ -1463,6 +1464,32 @@
                     <p class="text-red-50 text-sm">Gerencie os créditos de qualquer usuário.</p>
                 </div>
                 <div id="admin-users-list" class="bg-white/80 dark:bg-slate-850/80 backdrop-blur rounded-3xl shadow-xl border border-white/40 dark:border-slate-700 divide-y divide-slate-100 dark:divide-slate-800"></div>
+
+                <!-- Logos de universidade (galeria da Network) -->
+                <div class="bg-white/80 dark:bg-slate-850/80 backdrop-blur rounded-3xl shadow-xl border border-white/40 dark:border-slate-700 p-6 space-y-4">
+                    <h4 class="font-bold text-slate-700 dark:text-slate-200 flex items-center gap-2"><i data-lucide="images" class="w-5 h-5 text-primary-500"></i> Logos de Universidade (Network)</h4>
+                    <p class="text-xs text-slate-500 dark:text-slate-400">Suba os logos aqui; eles aparecem na galeria para todos os usuários escolherem na capa.</p>
+                    <div class="flex flex-col sm:flex-row gap-2">
+                        <input type="text" id="admin-logo-name" placeholder="Nome (ex.: UAP — Amazónica de Pando)" class="flex-1 p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none text-sm">
+                        <label class="cursor-pointer flex items-center justify-center gap-2 px-4 py-3 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 transition">
+                            <i data-lucide="upload" class="w-4 h-4"></i> <span id="admin-logo-filename">Escolher imagem</span>
+                            <input type="file" id="admin-logo-file" accept="image/*" class="hidden" onchange="document.getElementById('admin-logo-filename').textContent = this.files[0] ? this.files[0].name.slice(0,24) : 'Escolher imagem'">
+                        </label>
+                        <button onclick="uploadUniversityLogo()" class="px-5 py-3 bg-primary-600 hover:bg-primary-700 text-white font-bold rounded-xl text-sm transition">Adicionar</button>
+                    </div>
+                    <div id="admin-logos-list" class="grid grid-cols-2 sm:grid-cols-4 gap-3"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- MODAL: galeria de logos de universidade -->
+        <div id="logo-gallery-modal" class="hidden-state fixed inset-0 z-[190] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <div class="bg-white dark:bg-slate-850 rounded-3xl shadow-2xl w-full max-w-lg max-h-[80vh] flex flex-col overflow-hidden">
+                <div class="flex items-center justify-between p-5 border-b border-slate-100 dark:border-slate-800">
+                    <h3 class="font-extrabold text-slate-800 dark:text-white flex items-center gap-2"><i data-lucide="images" class="w-5 h-5 text-primary-500"></i> Escolha o logo da universidade</h3>
+                    <button onclick="document.getElementById('logo-gallery-modal').classList.add('hidden-state')" class="p-2 text-slate-400 hover:text-slate-700 dark:hover:text-white rounded-full hover:bg-slate-100 dark:hover:bg-slate-800"><i data-lucide="x" class="w-5 h-5"></i></button>
+                </div>
+                <div id="logo-gallery-grid" class="p-5 overflow-y-auto grid grid-cols-2 sm:grid-cols-3 gap-3 custom-scrollbar"></div>
             </div>
         </div>
 
@@ -3694,6 +3721,7 @@ ${original}`;
         // PAINEL ADMIN
         // ==========================================
         async function renderAdminTab() {
+            renderAdminLogos();
             const list = document.getElementById('admin-users-list');
             list.innerHTML = '<p class="p-6 text-slate-400">Carregando...</p>';
             const { data, error } = await supabaseClient
@@ -5088,6 +5116,111 @@ O campo "body" deve ser texto simples curto (pode usar quebras de linha com \\n 
             document.getElementById('logo-preview-img').src = base64;
             document.getElementById('logo-preview-img').classList.remove('hidden-state');
             document.getElementById('logo-icon').classList.add('hidden-state');
+        }
+
+        // ==========================================
+        // GALERIA DE LOGOS DE UNIVERSIDADE (Network) — admin sobe, todos escolhem
+        // ==========================================
+        let _universityLogos = null;
+
+        // Redimensiona a imagem (mantém proporção, máx. maxSize px) e devolve data URI PNG.
+        function _imageFileToBase64(file, maxSize = 300) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => {
+                    const img = new Image();
+                    img.onload = () => {
+                        let { width, height } = img;
+                        if (width > maxSize || height > maxSize) {
+                            const scale = maxSize / Math.max(width, height);
+                            width = Math.round(width * scale); height = Math.round(height * scale);
+                        }
+                        const canvas = document.createElement('canvas');
+                        canvas.width = width; canvas.height = height;
+                        canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+                        resolve(canvas.toDataURL('image/png'));
+                    };
+                    img.onerror = reject;
+                    img.src = reader.result;
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
+
+        async function fetchUniversityLogos(force) {
+            if (_universityLogos && !force) return _universityLogos;
+            try {
+                const { data } = await supabaseClient.from('university_logos').select('id, name, logo_base64').order('created_at', { ascending: true });
+                _universityLogos = data || [];
+            } catch (e) { _universityLogos = _universityLogos || []; }
+            return _universityLogos;
+        }
+
+        async function renderAdminLogos() {
+            const list = document.getElementById('admin-logos-list');
+            if (!list) return;
+            const logos = await fetchUniversityLogos(true);
+            if (!logos.length) { list.innerHTML = '<p class="col-span-full text-xs text-slate-400">Nenhum logo ainda.</p>'; return; }
+            list.innerHTML = logos.map(l => `
+                <div class="relative group border border-slate-200 dark:border-slate-700 rounded-xl p-2 bg-white dark:bg-slate-900 flex flex-col items-center gap-1">
+                    <img src="${l.logo_base64}" class="w-14 h-14 object-contain" alt="">
+                    <span class="text-[10px] text-slate-500 text-center leading-tight line-clamp-2">${(l.name || '').replace(/</g, '&lt;')}</span>
+                    <button onclick="deleteUniversityLogo('${l.id}')" class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center shadow opacity-0 group-hover:opacity-100 transition" title="Apagar"><i data-lucide="trash-2" class="w-3 h-3"></i></button>
+                </div>`).join('');
+            if (window.lucide) lucide.createIcons();
+        }
+
+        async function uploadUniversityLogo() {
+            const nameEl = document.getElementById('admin-logo-name');
+            const fileEl = document.getElementById('admin-logo-file');
+            const name = (nameEl.value || '').trim();
+            const file = fileEl.files[0];
+            if (!name) { alert('Digite um nome para o logo.'); return; }
+            if (!file) { alert('Escolha uma imagem.'); return; }
+            try {
+                const base64 = await _imageFileToBase64(file, 300);
+                const { error } = await supabaseClient.from('university_logos').insert({ name, logo_base64: base64 });
+                if (error) throw error;
+                nameEl.value = ''; fileEl.value = '';
+                const fn = document.getElementById('admin-logo-filename'); if (fn) fn.textContent = 'Escolher imagem';
+                await renderAdminLogos();
+                alert('Logo adicionado! Já aparece na galeria para todos.');
+            } catch (e) { alert('Erro ao adicionar logo: ' + (e.message || e)); }
+        }
+
+        async function deleteUniversityLogo(id) {
+            if (!confirm('Apagar este logo? Ele sairá da galeria para todos os usuários.')) return;
+            try {
+                const { error } = await supabaseClient.from('university_logos').delete().eq('id', id);
+                if (error) throw error;
+                await renderAdminLogos();
+            } catch (e) { alert('Erro ao apagar: ' + (e.message || e)); }
+        }
+
+        async function openLogoGallery() {
+            const modal = document.getElementById('logo-gallery-modal');
+            const grid = document.getElementById('logo-gallery-grid');
+            if (!modal || !grid) return;
+            grid.innerHTML = '<p class="col-span-full text-center text-sm text-slate-400 py-6">Carregando…</p>';
+            modal.classList.remove('hidden-state');
+            const logos = await fetchUniversityLogos(true);
+            if (!logos.length) {
+                grid.innerHTML = '<p class="col-span-full text-center text-sm text-slate-400 py-6">Nenhum logo disponível ainda. Peça ao administrador para adicionar.</p>';
+                return;
+            }
+            grid.innerHTML = logos.map(l => `
+                <button onclick="applyGalleryLogo('${l.id}')" class="border-2 border-slate-200 dark:border-slate-700 rounded-2xl p-3 bg-white dark:bg-slate-900 hover:border-primary-500 transition flex flex-col items-center gap-2">
+                    <img src="${l.logo_base64}" class="w-16 h-16 object-contain" alt="">
+                    <span class="text-[11px] text-slate-600 dark:text-slate-300 text-center leading-tight line-clamp-2">${(l.name || '').replace(/</g, '&lt;')}</span>
+                </button>`).join('');
+            if (window.lucide) lucide.createIcons();
+        }
+
+        function applyGalleryLogo(id) {
+            const logo = (_universityLogos || []).find(l => String(l.id) === String(id));
+            if (logo) setCustomLogo(logo.logo_base64);
+            document.getElementById('logo-gallery-modal')?.classList.add('hidden-state');
         }
 
         document.getElementById('multi-file-upload').addEventListener('change', async function(e) {
