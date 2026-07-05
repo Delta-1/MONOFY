@@ -4530,6 +4530,41 @@ ${original}`;
             localStorage.setItem('monografia_slide_logo_size', state.slideLogoSize);
             localStorage.setItem('monografia_slide_logo_top_size', state.slideLogoTopSize);
             localStorage.setItem('monografia_slide_text_scale', state.slideTextScale);
+            // Os slides são salvos JUNTO com o projeto atual (histórico[0]), para que ao abrir
+            // um projeto salvo os slides voltem exatamente como estavam.
+            if (state.history && state.history.length > 0) {
+                Object.assign(state.history[0], slideBundleForSave());
+                localStorage.setItem('monografia_history', JSON.stringify(state.history));
+            }
+        }
+
+        // Empacota os slides + tema/logos/tamanhos para salvar no registro do projeto.
+        function slideBundleForSave() {
+            return {
+                slides: state.slides,
+                slideTheme: state.slideTheme,
+                slideLogoBase64: state.slideLogoBase64 || '',
+                slideLogoTopBase64: state.slideLogoTopBase64 || '',
+                slideLogoSize: state.slideLogoSize,
+                slideLogoTopSize: state.slideLogoTopSize,
+                slideTextScale: state.slideTextScale
+            };
+        }
+
+        // Restaura os slides de um projeto salvo (ou zera para um slide de capa novo).
+        function restoreSlideBundle(doc) {
+            state.slides = Array.isArray(doc && doc.slides) ? doc.slides : [];
+            state.activeSlideId = state.slides.length ? state.slides[0].id : null;
+            if (doc && doc.slideTheme) state.slideTheme = doc.slideTheme;
+            if (doc) {
+                state.slideLogoBase64 = doc.slideLogoBase64 || '';
+                state.slideLogoTopBase64 = doc.slideLogoTopBase64 || '';
+                if (doc.slideLogoSize) state.slideLogoSize = doc.slideLogoSize;
+                if (doc.slideLogoTopSize) state.slideLogoTopSize = doc.slideLogoTopSize;
+                if (doc.slideTextScale) state.slideTextScale = doc.slideTextScale;
+            }
+            localStorage.setItem('monografia_slides', JSON.stringify(state.slides));
+            if (typeof renderSlidesTab === 'function') renderSlidesTab();
         }
 
         function newSlideObj(type) {
@@ -6862,6 +6897,12 @@ Responda APENAS com o título, sem aspas, sem explicações, em uma única linha
             document.getElementById('raw-text').value = '';
             state.uploadedContextText = '';
             document.getElementById('uploaded-files-list').innerHTML = '';
+            // Projeto novo começa com uma apresentação nova (um slide de capa em branco).
+            // Escreve só no localStorage — o projeto anterior no histórico não é alterado.
+            state.slides = [newSlideObj('cover')];
+            state.activeSlideId = state.slides[0].id;
+            localStorage.setItem('monografia_slides', JSON.stringify(state.slides));
+            if (typeof renderSlidesTab === 'function') renderSlidesTab();
             updateCoverPage();
 
             document.getElementById('generated-content').innerHTML = `
@@ -7055,6 +7096,7 @@ Responda APENAS com o título, sem aspas, sem explicações, em uma única linha
                 state.history[0].title = title;
                 state.history[0].watermarkRemoved = state.currentDocWatermarkRemoved;
                 state.history[0].cover = captureCoverFields();
+                Object.assign(state.history[0], slideBundleForSave()); // slides junto do projeto
                 localStorage.setItem('monografia_history', JSON.stringify(state.history));
             } else {
                 saveDocumentToHistory(title, state.generatedSections, state.references);
@@ -7542,7 +7584,8 @@ Responda APENAS com o título, sem aspas, sem explicações, em uma única linha
                 references: references || [],
                 logo: state.logoBase64,
                 cover: captureCoverFields(),
-                date: new Date().toLocaleString()
+                date: new Date().toLocaleString(),
+                ...slideBundleForSave() // slides do projeto ficam salvos junto
             });
             localStorage.setItem('monografia_history', JSON.stringify(state.history));
             renderHistory();
@@ -7600,6 +7643,7 @@ Responda APENAS com o título, sem aspas, sem explicações, em uma única linha
             state.generatedSections = doc.sections;
             state.references = doc.references || [];
             state.currentDocWatermarkRemoved = doc.watermarkRemoved || false;
+            restoreSlideBundle(doc); // traz de volta os slides salvos com este projeto
             renderSections();
             updateWatermarkButtonUI();
             syncWatermarkRemovedClass();
@@ -8431,6 +8475,14 @@ Responda APENAS com o título, sem aspas, sem explicações, em uma única linha
                     ${desc ? `<p class="text-xs text-slate-500 mt-1 line-clamp-2">${desc}</p>` : ''}
                 </div>`;
             }).join('') + `
+                <div onclick="showOnboardingCustomModelStep()" id="onboard-card-__custom__" class="onboard-card cursor-pointer rounded-2xl border-2 border-dashed border-primary-500/60 bg-primary-900/10 hover:bg-primary-900/20 p-5 hover:border-primary-400 transition-all flex flex-col select-none">
+                    <div class="w-12 h-12 rounded-xl bg-primary-700/40 flex items-center justify-center mb-3"><i data-lucide="wand-2" class="w-6 h-6 text-primary-300"></i></div>
+                    <div class="flex items-start justify-between gap-2 mb-1">
+                        <span class="font-bold text-white text-sm leading-tight">Criar meu modelo com IA</span>
+                        <span class="text-[10px] px-2 py-0.5 bg-primary-800/70 text-primary-200 rounded-full font-bold">Novo</span>
+                    </div>
+                    <p class="text-xs text-slate-400 mt-1">Envie o manual ou um trabalho já formatado da sua instituição (e a logo, se quiser). A IA cria um modelo só seu.</p>
+                </div>
                 <div onclick="selectOnboardingTemplate('__scratch__')" id="onboard-card-__scratch__" class="onboard-card cursor-pointer rounded-2xl border-2 border-dashed border-slate-600 bg-slate-800/50 hover:bg-slate-750 p-5 hover:border-primary-500 transition-all flex flex-col select-none">
                     <div class="w-12 h-12 rounded-xl bg-slate-700/60 flex items-center justify-center mb-3"><i data-lucide="file-plus" class="w-6 h-6 text-slate-300"></i></div>
                     <div class="flex items-start justify-between gap-2 mb-1">
@@ -8476,6 +8528,169 @@ Responda APENAS com o título, sem aspas, sem explicações, em uma única linha
             }
             if (tpl) applyNormTemplate(tpl);
             dismissNormOnboarding();
+        }
+
+        // --- Criar modelo sob medida com IA (a partir do manual/trabalho da instituição) ---
+        let _customModelFile = null;
+        let _customModelLogo = null;
+
+        function showOnboardingCustomModelStep() {
+            const grid = document.getElementById('onboarding-template-grid');
+            if (!grid) return;
+            _customModelFile = null;
+            _customModelLogo = null;
+            document.getElementById('onboarding-apply-btn')?.classList.add('hidden-state');
+            grid.innerHTML = `
+                <div class="col-span-full max-w-lg mx-auto w-full pt-2">
+                    <button onclick="renderOnboardingTemplates()" class="text-slate-400 hover:text-white text-xs font-bold mb-4 flex items-center gap-1"><i data-lucide="arrow-left" class="w-3.5 h-3.5"></i> Voltar aos modelos</button>
+                    <p class="text-white text-lg font-extrabold mb-1">Criar meu modelo com IA</p>
+                    <p class="text-slate-400 text-sm mb-5">Envie o <b>manual de normas</b> da sua instituição <b>ou um trabalho já formatado</b>. A IA estuda a formatação (margens, fonte, espaçamento, citação e estrutura) e monta um modelo só pra você. Se enviar um manual, ela segue o passo a passo; se for um trabalho pronto, ela entende o formato e reproduz.</p>
+
+                    <div id="custom-model-dropzone" class="rounded-2xl border-2 border-dashed border-slate-600 bg-slate-800/50 hover:border-primary-500 p-5 text-center cursor-pointer transition mb-3">
+                        <i data-lucide="upload-cloud" class="w-8 h-8 mx-auto mb-2 text-slate-400"></i>
+                        <p class="text-sm font-bold text-slate-200" id="custom-model-file-label">Clique para enviar o manual/trabalho (.pdf, .docx, .txt)</p>
+                        <input type="file" id="custom-model-file-input" accept=".pdf,.docx,.txt,.md" class="hidden">
+                    </div>
+
+                    <div class="flex items-center gap-3 mb-4">
+                        <label class="flex-1 flex items-center justify-center gap-2 px-3 py-3 rounded-xl bg-slate-800 border border-slate-700 text-slate-300 text-sm font-semibold hover:bg-slate-750 cursor-pointer">
+                            <i data-lucide="image-plus" class="w-4 h-4"></i> <span id="custom-model-logo-label">Enviar logo da instituição (opcional)</span>
+                            <input type="file" id="custom-model-logo-input" accept="image/*" class="hidden" onchange="onCustomModelLogoPick(event)">
+                        </label>
+                        <img id="custom-model-logo-preview" class="hidden-state w-12 h-12 object-contain rounded-lg bg-white/10 p-1" alt="logo">
+                    </div>
+
+                    <button onclick="generateCustomModelFromFile()" id="btn-generate-custom-model" class="w-full py-3.5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white font-extrabold flex items-center justify-center gap-2 transition disabled:opacity-50">
+                        <i data-lucide="wand-2" class="w-4 h-4"></i> Criar meu modelo com IA
+                    </button>
+                    <p class="text-[11px] text-slate-500 mt-2 text-center">Custa 2 créditos. Depois você pode ajustar tudo na barra de ferramentas.</p>
+                </div>`;
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+
+            // Fiação do dropzone (clique + arrastar)
+            const dz = document.getElementById('custom-model-dropzone');
+            const fi = document.getElementById('custom-model-file-input');
+            if (dz && fi) {
+                dz.addEventListener('click', () => fi.click());
+                fi.addEventListener('change', () => {
+                    _customModelFile = fi.files && fi.files[0] ? fi.files[0] : null;
+                    const lbl = document.getElementById('custom-model-file-label');
+                    if (lbl && _customModelFile) lbl.textContent = `📄 ${_customModelFile.name}`;
+                });
+                dz.addEventListener('dragover', (e) => { e.preventDefault(); dz.classList.add('border-primary-500'); });
+                dz.addEventListener('dragleave', () => dz.classList.remove('border-primary-500'));
+                dz.addEventListener('drop', (e) => {
+                    e.preventDefault(); dz.classList.remove('border-primary-500');
+                    if (e.dataTransfer.files[0]) {
+                        const dt = new DataTransfer(); dt.items.add(e.dataTransfer.files[0]);
+                        fi.files = dt.files; fi.dispatchEvent(new Event('change'));
+                    }
+                });
+            }
+        }
+
+        function onCustomModelLogoPick(event) {
+            const file = event.target.files && event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                _customModelLogo = e.target.result;
+                const prev = document.getElementById('custom-model-logo-preview');
+                const lbl = document.getElementById('custom-model-logo-label');
+                if (prev) { prev.src = _customModelLogo; prev.classList.remove('hidden-state'); }
+                if (lbl) lbl.textContent = 'Logo carregada ✓';
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // Mapeia a estrutura detectada (lista de títulos) para o formato de seções que o gerador
+        // usa. Ids especiais (resumo/abstract/referencias) têm tratamento próprio no gerador.
+        function estruturaToSecoes(estrutura) {
+            const norm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+            return (estrutura || []).filter(Boolean).map(label => {
+                const low = norm(label);
+                let id = 'sec_' + low.replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 24) || 'sec_custom';
+                if (low.includes('abstract')) id = 'abstract';
+                else if (low.includes('resumo') || low.includes('resumen')) id = 'resumo';
+                else if (low.includes('refer') || low.includes('bibliograf')) id = 'referencias';
+                else if (low.includes('introduc')) id = 'introducao';
+                else if (low.includes('marco') || low.includes('teor') || low.includes('desarrollo') || low.includes('desenvolvimento') || low.includes('revis')) id = 'marco_teorico';
+                else if (low.includes('objetiv')) id = 'objetivos';
+                else if (low.includes('justific')) id = 'justificacao';
+                else if (low.includes('metod')) id = 'metodologia';
+                else if (low.includes('discus')) id = 'discussao';
+                else if (low.includes('conclus')) id = 'conclusao';
+                else if (low.includes('recomend')) id = 'recomendacoes';
+                const cleanLabel = String(label).slice(0, 80);
+                const instructions = (id === 'referencias' || id === 'abstract')
+                    ? null
+                    : `Redacta la sección "${cleanLabel}" de forma académica, clara y bien desarrollada, según corresponde a este tipo de sección dentro del trabajo. Usa subtítulos <h2> cuando ayude.`;
+                return { id, label: cleanLabel, instructions };
+            });
+        }
+
+        async function generateCustomModelFromFile() {
+            if (state.isDemo) { alert('Modo demonstração: IA desativada. Crie uma conta para usar.'); return; }
+            if (!state.profile) { alert('Aguarde o carregamento do seu perfil.'); return; }
+            if (!_customModelFile) { alert('Envie primeiro o manual ou um trabalho já formatado da sua instituição.'); return; }
+
+            const btn = document.getElementById('btn-generate-custom-model');
+            const orig = btn ? btn.innerHTML : '';
+            if (btn) { btn.disabled = true; btn.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Lendo e criando...`; if (window.lucide) lucide.createIcons(); }
+            try {
+                let text = await extractTextFromFile(_customModelFile);
+                if (!text || text.trim().length < 30) { throw new Error('não consegui ler texto suficiente desse arquivo.'); }
+                text = text.slice(0, 6000);
+
+                const prompt = `Eres experto en normas académicas. Analiza el documento de abajo (puede ser un MANUAL de normas de una universidad, o un TRABAJO ya formateado). Si es un manual, sigue las reglas que describe; si es un trabajo formateado, deduce el formato observándolo. Identifica las reglas de formato Y la estructura (secciones principales, en orden), y también los datos de portada de la institución si aparecen.
+
+Devuelve SOLO un objeto JSON puro (sin markdown), con este formato exacto:
+{"nome":"Nombre corto del modelo","fonte":"Times New Roman","tamanhoFonte":12,"espacamento":1.5,"recuoParagrafo":1.25,"margemSuperior":2.5,"margemInferior":2.5,"margemEsquerda":3.0,"margemDireita":2.5,"estiloCitacao":"APA","papel":"a4","universidade":"","faculdade":"","carreira":"","local":"","estrutura":["Introducción","Marco Teórico","Conclusiones","Bibliografía"]}
+
+Reglas: "estiloCitacao" debe ser uno de: APA, ABNT, Vancouver. "papel" debe ser "a4" o "carta". "espacamento" es un número (1, 1.5 o 2). Las margenes en centímetros. En "estrutura" lista los títulos de las secciones principales en orden. Si algún dato no aparece, usa "" o un valor académico estándar.
+
+DOCUMENTO:
+${text}`;
+                let raw = await callAI(prompt, 2, 'onboarding_custom_model');
+                raw = raw.replace(/```json/gi, '').replace(/```/g, '').trim();
+                const f1 = raw.indexOf('{'), l1 = raw.lastIndexOf('}');
+                if (f1 !== -1 && l1 !== -1) raw = raw.substring(f1, l1 + 1);
+                const p = JSON.parse(raw);
+
+                const num = (v, d) => { const n = parseFloat(v); return isNaN(n) ? d : n; };
+                const cit = String(p.estiloCitacao || 'APA').trim();
+                const secoes = estruturaToSecoes(p.estrutura);
+                const tpl = {
+                    id: 'custom-ia-' + Date.now(),
+                    nome: (p.nome && String(p.nome).slice(0, 40)) || 'Meu modelo (IA)',
+                    builtin: false,
+                    margens: { mt: num(p.margemSuperior, 2.5), mb: num(p.margemInferior, 2.5), ml: num(p.margemEsquerda, 3.0), mr: num(p.margemDireita, 2.5) },
+                    fonte: `'${(p.fonte || 'Times New Roman')}', 'Times New Roman', Times, serif`,
+                    tamanhoFonte: `${num(p.tamanhoFonte, 12)}pt`,
+                    espacamento: num(p.espacamento, 1.5),
+                    recuoParagrafo: num(p.recuoParagrafo, 1.25),
+                    papel: (String(p.papel || 'a4').toLowerCase().includes('cart') ? 'carta' : 'a4'),
+                    capaMoldura: false,
+                    capaAlinhamento: 'center',
+                    estiloCitacao: cit,
+                    secoes: secoes.length ? secoes : undefined,
+                    capaDados: { universidade: p.universidade || '', faculdade: p.faculdade || '', carreira: p.carreira || '', local: p.local || '' }
+                };
+
+                // Salva o modelo na lista pessoal (aparece na barra de ferramentas e em novos projetos).
+                state.customNormTemplates = state.customNormTemplates || [];
+                state.customNormTemplates.push(tpl);
+                localStorage.setItem('monografia_norm_templates', JSON.stringify(state.customNormTemplates));
+
+                applyNormTemplate(tpl);
+                if (_customModelLogo) { try { setCustomLogo(_customModelLogo); } catch (_) {} }
+                if (typeof populateQuickNormSelect === 'function') populateQuickNormSelect();
+                dismissNormOnboarding();
+                setTimeout(() => alert(`Modelo "${tpl.nome}" criado e aplicado! Você pode ajustar margens, fonte e estrutura na barra de ferramentas quando quiser.`), 300);
+            } catch (err) {
+                showError('Não consegui criar o modelo: ' + (err.message || err));
+                if (btn) { btn.disabled = false; btn.innerHTML = orig; if (window.lucide) lucide.createIcons(); }
+            }
         }
 
         function selectOnboardingTemplate(id) {
