@@ -7786,7 +7786,11 @@ Responda APENAS com o título, sem aspas, sem explicações, em uma única linha
             // Marca d'água: aplicada no Word exportado a menos que o usuário tenha pago para
             // removê-la (ou seja admin). É uma imagem flutuante atrás do texto, repetida na
             // diagonal, presente em todas as páginas (inclusive a capa).
-            const watermarkActive = !(state.profile && (state.profile.role === 'admin' || state.currentDocWatermarkRemoved));
+            // Só liga a marca d'água se a API de imagem flutuante do docx.js estiver
+            // disponível — assim, se a lib mudar, a exportação continua funcionando (sem marca)
+            // em vez de quebrar pra todo mundo.
+            const _docxFloatingOk = !!(docx.HorizontalPositionRelativeFrom && docx.VerticalPositionRelativeFrom && docx.TextWrappingType);
+            const watermarkActive = _docxFloatingOk && !(state.profile && (state.profile.role === 'admin' || state.currentDocWatermarkRemoved));
             const pageWpx = Math.round(pageWidthTwips / 15);   // 1 px = 15 twips a 96dpi
             const pageHpx = Math.round(pageHeightTwips / 15);
             const watermarkBytes = watermarkActive ? makeWordWatermarkBytes(pageWpx, pageHpx) : null;
