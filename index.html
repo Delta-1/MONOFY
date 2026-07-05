@@ -106,7 +106,7 @@
             { id: 'resumo', label: 'Resumo', instructions: `Redacta un RESUMEN/ABSTRACT breve (alrededor de 250 palabras) que sintetice el propósito u objetivo del trabajo, el problema, el método utilizado, las teorías de sustentación y una conclusión general, basado en las notas del usuario. Escríbelo en un solo párrafo, sin subtítulos.` },
             { id: 'abstract', label: 'Abstract', instructions: null },
             { id: 'introducao', label: 'Introdução', instructions: `Redacta la INTRODUCCIÓN: contextualiza el tema, presenta el problema, los objetivos y la justificación del trabajo. 2 a 4 párrafos.` },
-            { id: 'marco_teorico', label: 'Marco Teórico', instructions: `Redacta el MARCO TEÓRICO completo: desarrolla analíticamente los conceptos y argumentos de las notas y del material de referencia. Crea subtítulos con <h2> para cada subtema relevante. Esta es la sección más extensa y profunda del trabajo.` },
+            { id: 'marco_teorico', label: 'Marco Teórico', instructions: `Redacta el MARCO TEÓRICO completo y MUY EXTENSO: debe tener como mínimo el equivalente a 15 a 17 páginas (aproximadamente 6000-7500 palabras). Desarrolla analíticamente los conceptos y argumentos de las notas y del material de referencia, con MUCHOS subtítulos <h2> (y <h3> para sub-subtemas), cada uno con varios párrafos bien desarrollados. Esta es la sección más extensa y profunda del trabajo — no la resumas ni la acortes. Apóyate en DATOS CIENTÍFICOS REALES Y VERIFICABLES (estudios, estadísticas, autores reales); NO inventes datos ni fuentes.` },
             { id: 'conclusao', label: 'Conclusão', instructions: `Redacta la CONCLUSIÓN: sintetiza los hallazgos, retoma los objetivos planteados en la introducción y propone consideraciones finales. 2 a 3 párrafos.` },
             { id: 'referencias', label: 'Referências', instructions: null }
         ];
@@ -131,7 +131,7 @@
             { id: 'introducao', label: 'Introducción', instructions: `Redacta la INTRODUCCIÓN (equivalente a 1-2 páginas): contextualiza el tema, presenta el problema de investigación y la relevancia del trabajo. Redacción académica, impersonal, en varios párrafos bien desarrollados.` },
             { id: 'objetivos', label: 'Objetivos', instructions: `Redacta la sección OBJETIVOS. Usa <h2>Objetivo General</h2> con un único objetivo general claro (verbo en infinitivo). Luego <h2>Objetivos Específicos</h2> con una lista <ul><li> de 3 a 5 objetivos específicos, cada uno iniciando con un verbo en infinitivo.` },
             { id: 'justificacao', label: 'Justificación', instructions: `Redacta la JUSTIFICACIÓN: explica la importancia, pertinencia y utilidad del trabajo (académica, social y/o práctica). 2 a 4 párrafos.` },
-            { id: 'marco_teorico', label: 'Marco Teórico', instructions: `Redacta el MARCO TEÓRICO completo y extenso (equivalente a 10-15 páginas): desarrolla analíticamente los conceptos, teorías y argumentos a partir de las notas y del material de referencia. Crea subtítulos con <h2> (y <h3> para sub-subtemas) para cada subtema relevante. Es la sección más extensa y profunda del trabajo. Usa citas en formato Vancouver: numéralas entre paréntesis en el texto —(1), (2), (3)…— en el orden en que aparecen.` },
+            { id: 'marco_teorico', label: 'Marco Teórico', instructions: `Redacta el MARCO TEÓRICO completo y MUY EXTENSO: debe tener como mínimo el equivalente a 15 a 17 páginas (aproximadamente 6000-7500 palabras). Desarrolla analíticamente los conceptos, teorías y argumentos a partir de las notas y del material de referencia, con MUCHOS subtítulos <h2> (y <h3> para sub-subtemas), cada uno con varios párrafos bien desarrollados. Es la sección más extensa y profunda del trabajo — no la resumas ni la acortes. Apóyate en DATOS CIENTÍFICOS REALES Y VERIFICABLES (estudios, estadísticas, guías clínicas, autores reales); NO inventes datos ni fuentes. Usa citas en formato Vancouver: numéralas entre paréntesis en el texto —(1), (2), (3)…— en el orden en que aparecen.` },
             { id: 'discussao', label: 'Discusión', instructions: `Redacta la DISCUSIÓN (equivalente a 3-4 páginas): analiza e interpreta lo expuesto en el marco teórico, contrasta posturas de diferentes autores y relaciona los conceptos con el problema planteado. Argumentación crítica y académica.` },
             { id: 'conclusao', label: 'Conclusiones', instructions: `Redacta las CONCLUSIONES (equivalente a 1-2 páginas): sintetiza los hallazgos principales y retoma los objetivos planteados. Puedes usar una lista numerada de conclusiones.` },
             { id: 'recomendacoes', label: 'Recomendaciones', instructions: `Redacta las RECOMENDACIONES: sugerencias prácticas y concretas derivadas de las conclusiones. Puedes presentarlas como una lista <ul><li>.` },
@@ -990,6 +990,7 @@
                 <button onclick="aiSummarizeSection()" title="Resumir Seção Selecionada com IA" class="word-tool-btn text-emerald-400"><i data-lucide="minimize-2" class="w-4 h-4"></i></button>
                 <button onclick="aiExpandSection()" title="Expandir/Desenvolver Seleção com IA" class="word-tool-btn text-indigo-400"><i data-lucide="maximize-2" class="w-4 h-4"></i></button>
                 <button onclick="toggleMagicExpandTool()" id="btn-magic-expand" title="Aumentar Texto (varinha mágica): clique aqui, depois pinte o trecho que quer aumentar" class="word-tool-btn text-fuchsia-400"><i data-lucide="wand-2" class="w-4 h-4"></i></button>
+                <button onclick="aiHumanizeSelection()" id="btn-humanize" title="Humanizar: reescreve o texto pra soar natural e humano, menos 'de IA'. Seleção ou seção em foco." class="word-tool-btn text-teal-400"><i data-lucide="sparkles" class="w-4 h-4"></i></button>
             </div>
 
         </div>
@@ -3477,6 +3478,66 @@ ${original}`;
         }
 
         // ==========================================
+        // HUMANIZAR: reescreve o texto pra soar natural/humano, menos "de IA".
+        // Funciona com o trecho selecionado (texto puro) OU, se nada estiver selecionado,
+        // com a seção em foco (preservando a formatação/HTML). Custa AI_COST_REFINE.
+        // ==========================================
+        let _humanizeBusy = false;
+        async function aiHumanizeSelection() {
+            if (_humanizeBusy) return;
+            const sel = window.getSelection();
+            const selText = sel && sel.toString().trim();
+
+            let mode, sectionEl, sourceText;
+            if (selText && selText.length >= 4 && sel.rangeCount) {
+                mode = 'selection';
+                sourceText = selText;
+            } else {
+                // Sem seleção: humaniza a seção em foco inteira, mantendo o HTML.
+                const id = state.lastFocusedSectionId;
+                sectionEl = id ? document.querySelector(`.apa-content[data-section-id="${id}"]`) : null;
+                if (!sectionEl || !sectionEl.innerHTML.trim()) {
+                    alert('Selecione (pinte) o trecho que deseja humanizar, ou clique dentro de uma seção do documento primeiro.');
+                    return;
+                }
+                mode = 'section';
+                sourceText = sectionEl.innerHTML;
+            }
+
+            if (!await showConfirmModal('Humanizar texto', `A IA vai reescrever ${mode === 'selection' ? 'o trecho selecionado' : 'a seção em foco'} para soar mais natural e humano, mantendo o sentido, os dados e a formatação. Isso consome <b>${AI_COST_REFINE} créditos</b>. Continuar?`)) return;
+
+            _humanizeBusy = true;
+            const btn = document.getElementById('btn-humanize');
+            if (btn) btn.classList.add('opacity-50', 'pointer-events-none');
+            try {
+                const basePrompt = mode === 'selection'
+                    ? `Reescribe el siguiente texto académico para que suene más NATURAL y HUMANO (variando el ritmo y el vocabulario, evitando repeticiones y patrones típicos de IA), MANTENIENDO exactamente el mismo idioma, el mismo sentido, los datos y las citas. Devuelve ÚNICAMENTE el texto reescrito, sin comillas ni comentarios:\n\n${sourceText}`
+                    : `Reescribe el siguiente contenido HTML académico para que suene más NATURAL y HUMANO (variando el ritmo y el vocabulario, evitando repeticiones y patrones típicos de IA), MANTENIENDO exactamente el mismo idioma, el mismo sentido, los datos, las citas y TODAS las etiquetas HTML (<h2>, <h3>, <p>, listas, etc.) con la misma estructura. Devuelve ÚNICAMENTE el HTML reescrito, sin markdown, sin comentarios:\n\n${sourceText}`;
+                let result = await callAI(basePrompt, AI_COST_REFINE, 'ai_humanize');
+                result = result.replace(/```html/gi, '').replace(/```/g, '').trim();
+
+                if (mode === 'selection') {
+                    const range = sel.getRangeAt(0);
+                    range.deleteContents();
+                    range.insertNode(document.createTextNode(result));
+                    sel.removeAllRanges();
+                    const host = range.commonAncestorContainer.nodeType === 1 ? range.commonAncestorContainer : range.commonAncestorContainer.parentElement;
+                    const secEl = host && host.closest ? host.closest('.apa-content') : null;
+                    if (secEl && secEl.dataset.sectionId) scheduleSyncSection(secEl.dataset.sectionId);
+                } else {
+                    sectionEl.innerHTML = result;
+                    if (sectionEl.dataset.sectionId) scheduleSyncSection(sectionEl.dataset.sectionId);
+                    setTimeout(checkAllSectionsOverflow, 100);
+                }
+            } catch (err) {
+                showError('Não foi possível humanizar o texto: ' + err.message);
+            } finally {
+                _humanizeBusy = false;
+                if (btn) btn.classList.remove('opacity-50', 'pointer-events-none');
+            }
+        }
+
+        // ==========================================
         // BARRA DE FERRAMENTAS (norma rápida + inserir elementos)
         // ==========================================
         function populateQuickNormSelect() {
@@ -5828,6 +5889,8 @@ Responda APENAS com o título, sem aspas, sem explicações, em uma única linha
                     Estás redactando una monografía académica formal sección por sección. Esta llamada es SOLO para la sección "${plan.label}". Las demás secciones (${otherLabels}) ya serán redactadas en otras llamadas — NO las repitas ni las anticipes aquí.
 
                     PROHIBIDO: no te dirijas al lector ni a "los estudiantes", no saludes, no agregues comentarios, advertencias, notas explicativas, introducciones ni cierres sobre la tarea en sí (ej.: "Prezados estudantes...", "A continuación...", "Espero que esto ayude"). El campo "content" debe contener ÚNICAMENTE el contenido académico de la sección, listo para entregar, sin ningún meta-comentario.
+
+                    DATOS Y FUENTES: apóyate en información científica REAL, concreta y verificable (estudios, estadísticas, guías, autores y obras que existan de verdad). NO inventes datos, cifras, autores ni referencias. Si mencionas un dato o cita, que corresponda a una fuente real.
 
                     ${sectionInstructions}${plan.id === 'referencias' ? '' : depthNote}
 
