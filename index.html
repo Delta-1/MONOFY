@@ -2497,11 +2497,33 @@
             };
         }
 
+        // Rótulo do botão "Redigir" conforme o tipo de trabalho do modelo. Modelos podem
+        // definir tpl.tipoTrabalho ('informe', 'caso-clinico', 'monografia'...); o padrão é
+        // "Redigir Trabalho". Guardamos o rótulo em state para reusar depois de gerar.
+        const GENERATE_LABELS = {
+            'informe': 'Redigir Informe',
+            'caso-clinico': 'Redigir Caso Clínico',
+            'monografia': 'Redigir Monografia',
+            'trabalho': 'Redigir Trabalho'
+        };
+        function updateGenerateButtonLabel(tpl) {
+            const label = GENERATE_LABELS[(tpl && tpl.tipoTrabalho) || 'trabalho'] || 'Redigir Trabalho';
+            state.generateLabel = label;
+            const el = document.getElementById('text-generate');
+            const loadingIcon = document.getElementById('icon-loading');
+            // Só troca o texto se o botão não estiver no meio de uma geração
+            // (durante a geração o ícone de loading fica visível = sem 'hidden-state').
+            if (el && (!loadingIcon || loadingIcon.classList.contains('hidden-state'))) {
+                el.innerText = label;
+            }
+        }
+
         function applyNormTemplate(tpl) {
             state.activeNormTemplateId = tpl.id;
             // Normaliza para maiúsculas: as comparações de estilo (ABNT/VANCOUVER) e a geração
             // de referências usam a versão em maiúsculas.
             state.citationStyle = (tpl.estiloCitacao || 'APA').toUpperCase();
+            updateGenerateButtonLabel(tpl);
             localStorage.setItem('monografia_active_norm', tpl.id);
 
             state.margins = { ...tpl.margens };
@@ -5597,6 +5619,65 @@ O campo "body" deve ser texto simples curto (pode usar quebras de linha com \\n 
             }
         }
 
+        // Tipos de trabalho (tiers) e seus custos totais fixos em créditos. O custo é o mesmo
+        // para qualquer modelo/estrutura; a diferença entre básico e completo é a profundidade
+        // e a extensão do texto gerado em cada seção.
+        const MONO_TIERS = {
+            basico:   { total: 45,  label: 'Básico',   emoji: '📄', desc: 'Estrutura completa do modelo, texto direto e objetivo. Entrega mais rápida.' },
+            completo: { total: 100, label: 'Completo', emoji: '📚', desc: 'Mesma estrutura, porém com texto mais extenso, aprofundado e bem argumentado em cada seção.' }
+        };
+
+        // Distribui um custo total inteiro entre N seções, garantindo que cada parcela seja
+        // >= 1 (o servidor rejeita cobranças <= 0) e que a soma bata EXATAMENTE no total.
+        // Assim o preço final do trabalho é 45 (básico) ou 100 (completo), mas cada seção
+        // continua sendo cobrada individualmente só depois de gerada com sucesso.
+        function distributeCost(total, n) {
+            const base = Math.floor(total / n);
+            let rem = total - base * n;
+            const arr = [];
+            for (let i = 0; i < n; i++) { arr.push(base + (rem > 0 ? 1 : 0)); if (rem > 0) rem--; }
+            return arr;
+        }
+
+        // Mostra o seletor de tipo de trabalho (aba Básico/Completo) ao clicar em Redigir.
+        // Resolve com 'basico' | 'completo' | null (cancelou).
+        function chooseMonographTier(sectionLabels) {
+            return new Promise((resolve) => {
+                const overlay = document.createElement('div');
+                overlay.className = 'fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4';
+                const card = (key) => {
+                    const t = MONO_TIERS[key];
+                    return `<button data-tier="${key}" class="tier-card group text-left w-full rounded-2xl border-2 border-slate-200 dark:border-slate-700 hover:border-primary-500 dark:hover:border-primary-500 bg-white dark:bg-slate-800 p-5 transition-all hover:shadow-xl hover:-translate-y-0.5">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-2xl">${t.emoji}</span>
+                            <span class="text-sm font-extrabold text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/30 px-3 py-1 rounded-full">${t.total} créditos</span>
+                        </div>
+                        <div class="font-extrabold text-slate-900 dark:text-white text-lg mb-1">${t.label}</div>
+                        <div class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">${t.desc}</div>
+                    </button>`;
+                };
+                overlay.innerHTML = `
+                    <div class="bg-white dark:bg-slate-850 rounded-3xl shadow-2xl w-full max-w-md p-6 border border-slate-200 dark:border-slate-700">
+                        <div class="flex items-center justify-between mb-1">
+                            <h3 class="text-xl font-extrabold text-slate-900 dark:text-white">Escolha o tipo de trabalho</h3>
+                            <button data-tier="" class="p-1 text-slate-400 hover:text-slate-700 dark:hover:text-white rounded-full"><i data-lucide="x" class="w-5 h-5"></i></button>
+                        </div>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 mb-4">Seções: ${sectionLabels.join(' · ')}. Cada parte só é cobrada depois de gerada com sucesso.</p>
+                        <div class="space-y-3">${card('basico')}${card('completo')}</div>
+                    </div>`;
+                document.body.appendChild(overlay);
+                if (window.lucide) lucide.createIcons();
+                const done = (val) => { overlay.remove(); resolve(val); };
+                overlay.addEventListener('click', (e) => {
+                    if (e.target === overlay) return done(null);
+                    const btn = e.target.closest('[data-tier]');
+                    if (!btn) return;
+                    const tier = btn.getAttribute('data-tier');
+                    done(tier || null);
+                });
+            });
+        }
+
         // Recupera o conteúdo de uma resposta JSON truncada (seção longa que estourou o
         // limite de tokens da IA). Extrai o "title" e o máximo do "content" possível, em
         // vez de descartar a seção inteira.
@@ -5632,10 +5713,18 @@ O campo "body" deve ser texto simples curto (pode usar quebras de linha com \\n 
 
             const activeTpl = getActiveNormTemplate();
             const sectionPlan = (activeTpl.secoes && activeTpl.secoes.length) ? activeTpl.secoes : DOC_SECTION_PLAN;
-            const totalCost = AI_COST_PER_SECTION * sectionPlan.length + (titleNeedsAI ? AI_COST_TITLE_FROM_CHAT : 0);
+
+            // Seletor de tipo: Básico (45) ou Completo (100). O total escolhido é distribuído
+            // entre as seções; cada seção é cobrada individualmente só depois de gerada.
+            const tierKey = await chooseMonographTier(sectionPlan.map(s => s.label));
+            if (!tierKey) return;
+            const tier = MONO_TIERS[tierKey];
+            const costPlan = distributeCost(tier.total, sectionPlan.length);
+            const totalCost = tier.total + (titleNeedsAI ? AI_COST_TITLE_FROM_CHAT : 0);
+
             const confirmed = await showConfirmModal(
-                'Gerar trabalho com IA',
-                `A IA vai redigir o documento seção por seção (${sectionPlan.map(s => s.label).join(', ')})${titleNeedsAI ? ', e antes disso vai definir o título com base na sua conversa com o Assistente' : ''}. Isso consome até <b>${totalCost} créditos</b> no total — cada parte só é cobrada depois de gerada com sucesso — do seu saldo atual de <b>${state.profile.credits}</b>. Continuar?`
+                `Gerar trabalho (${tier.label})`,
+                `A IA vai redigir o documento seção por seção (${sectionPlan.map(s => s.label).join(', ')})${titleNeedsAI ? ', e antes disso vai definir o título com base na sua conversa com o Assistente' : ''}. Trabalho <b>${tier.label}</b>: <b>${tier.total} créditos</b>${titleNeedsAI ? ` + ${AI_COST_TITLE_FROM_CHAT} pelo título` : ''} (total até <b>${totalCost}</b>) — cada parte só é cobrada depois de gerada com sucesso — do seu saldo atual de <b>${state.profile.credits}</b>. Continuar?`
             );
             if (!confirmed) return;
 
@@ -5683,6 +5772,11 @@ Responda APENAS com o título, sem aspas, sem explicações, em uma única linha
             } else {
                 refRulesByStyle = `Genera una lista bibliográfica APA 7 válida. Formato: Autor, A. (Año). Título. Fuente/Editorial. Las citas en el texto deben ser (Autor, año).`;
             }
+
+            // No tipo "Completo", pede à IA texto mais extenso e aprofundado em cada seção.
+            const depthNote = tierKey === 'completo'
+                ? `\n\nNIVEL DE DESARROLLO: COMPLETO. Desarrolla esta sección de forma EXTENSA, PROFUNDA y bien argumentada, con la mayor cantidad de párrafos y detalle que el tema permita (sin relleno vacío ni repeticiones). Aprovecha al máximo el espacio.`
+                : `\n\nNIVEL DE DESARROLLO: BÁSICO. Desarrolla esta sección de forma clara, correcta y directa, sin extenderte más de lo necesario.`;
 
             const docTitle = titleEl.value;
             state.generatedSections = [];
@@ -5735,7 +5829,7 @@ Responda APENAS com o título, sem aspas, sem explicações, em uma única linha
 
                     PROHIBIDO: no te dirijas al lector ni a "los estudiantes", no saludes, no agregues comentarios, advertencias, notas explicativas, introducciones ni cierres sobre la tarea en sí (ej.: "Prezados estudantes...", "A continuación...", "Espero que esto ayude"). El campo "content" debe contener ÚNICAMENTE el contenido académico de la sección, listo para entregar, sin ningún meta-comentario.
 
-                    ${sectionInstructions}
+                    ${sectionInstructions}${plan.id === 'referencias' ? '' : depthNote}
 
                     JERARQUÍA DE TÍTULOS DENTRO DEL CONTENIDO: usa <h2> para subtítulos directos e <h3> para sub-subtítulos. Usa <p> para parágrafos. Quando o material do usuário já fornece títulos/subtítulos para esta seção, use-os exatamente (traduzidos ao idioma de saída) — não invente títulos genéricos se o material já define a estrutura.${outlineContext}
 
@@ -5751,7 +5845,7 @@ Responda APENAS com o título, sem aspas, sem explicações, em uma única linha
                 }
 
                 try {
-                    let jsonText = await callAI(sectionPrompt, AI_COST_PER_SECTION, `ai_section_${plan.id}`);
+                    let jsonText = await callAI(sectionPrompt, costPlan[i], `ai_section_${plan.id}`);
 
                     jsonText = jsonText.replace(/```json/gi, '').replace(/```html/gi, '').replace(/```/g, '').trim();
                     const firstBrace = jsonText.indexOf('{');
@@ -5811,7 +5905,7 @@ Responda APENAS com o título, sem aspas, sem explicações, em uma única linha
 
             document.getElementById('icon-generate').classList.remove('hidden-state');
             document.getElementById('icon-loading').classList.add('hidden-state');
-            textEl.innerText = 'Redigir Trabalho';
+            textEl.innerText = state.generateLabel || 'Redigir Trabalho';
             btnGenerate.disabled = false;
         }
 
