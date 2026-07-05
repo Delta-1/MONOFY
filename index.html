@@ -1375,10 +1375,6 @@
 
                     <div class="flex-1"></div>
 
-                    <button onclick="addSlide('content')" type="button" class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700">
-                        <i data-lucide="plus" class="w-3.5 h-3.5"></i> Slide
-                    </button>
-
                     <button onclick="generateSlidesWithAI()" id="btn-generate-slides-ai" type="button" class="flex items-center gap-1.5 px-4 py-1.5 text-xs font-bold rounded-full bg-indigo-600 hover:bg-indigo-700 text-white shadow">
                         <i data-lucide="sparkles" class="w-3.5 h-3.5"></i> Gerar com IA (<span id="slides-ai-cost-label">30</span> créditos)
                     </button>
@@ -1394,10 +1390,13 @@
                     </div>
                 </div>
 
+                <!-- Entrada de arquivo (oculta) para gerar slides a partir de um arquivo externo -->
+                <input type="file" id="slides-source-file" accept=".pdf,.docx,.txt,.md,.csv" class="hidden">
+
                 <div id="slides-empty-state" class="hidden-state text-center py-20 text-slate-400 dark:text-slate-500">
                     <i data-lucide="presentation" class="w-14 h-14 mx-auto mb-3 opacity-40"></i>
                     <p class="font-semibold">Ainda não há slides.</p>
-                    <p class="text-sm">Escreva a monografia e clique em "Gerar com IA" para criar a apresentação automaticamente, ou adicione slides manualmente.</p>
+                    <p class="text-sm">Clique em "Gerar com IA" para criar a apresentação a partir do seu projeto <b>ou de outro arquivo</b> (PDF, Word, texto), ou adicione slides manualmente.</p>
                 </div>
 
                 <div id="slides-editor-body" class="hidden-state flex flex-col lg:flex-row gap-4">
@@ -1407,13 +1406,38 @@
                     <!-- Canvas principal editável -->
                     <div class="flex-1 flex flex-col items-center gap-3">
                         <div id="slide-canvas-wrap" class="w-full max-w-3xl"></div>
-                        <div class="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-                            <button onclick="moveSlide(-1)" type="button" class="p-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700"><i data-lucide="arrow-up" class="w-3.5 h-3.5"></i></button>
-                            <button onclick="moveSlide(1)" type="button" class="p-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700"><i data-lucide="arrow-down" class="w-3.5 h-3.5"></i></button>
-                            <button onclick="duplicateSlide()" type="button" class="p-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700"><i data-lucide="copy" class="w-3.5 h-3.5"></i></button>
-                            <button onclick="deleteSlide()" type="button" class="p-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-red-50 dark:hover:bg-red-900/30 hover:text-red-500"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>
-                            <div class="w-px h-6 bg-slate-300 dark:bg-slate-600 mx-1"></div>
-                            <label title="Cor de fundo deste slide" class="p-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer flex items-center justify-center">
+
+                        <!-- Barra de ferramentas de edição do slide (abaixo do editor) -->
+                        <div class="w-full max-w-3xl bg-white/85 dark:bg-slate-850/85 backdrop-blur rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm px-2 py-2 flex flex-wrap items-center justify-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+                            <!-- Adicionar slide por tipo -->
+                            <div class="relative">
+                                <button onclick="document.getElementById('slide-add-menu').classList.toggle('hidden-state')" type="button" title="Adicionar slide" class="flex items-center gap-1 px-2.5 py-2 rounded-lg bg-indigo-600 text-white font-bold hover:bg-indigo-700"><i data-lucide="plus" class="w-3.5 h-3.5"></i> Slide <i data-lucide="chevron-down" class="w-3 h-3"></i></button>
+                                <div id="slide-add-menu" class="hidden-state absolute bottom-full left-0 mb-1 w-44 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 z-50 overflow-hidden">
+                                    <button onclick="addSlideFromMenu('cover')" class="w-full text-left px-3 py-2 hover:bg-slate-100 dark:hover:bg-slate-700 font-medium text-slate-700 dark:text-slate-200">Capa</button>
+                                    <button onclick="addSlideFromMenu('content')" class="w-full text-left px-3 py-2 hover:bg-slate-100 dark:hover:bg-slate-700 font-medium text-slate-700 dark:text-slate-200">Conteúdo</button>
+                                    <button onclick="addSlideFromMenu('conclusion')" class="w-full text-left px-3 py-2 hover:bg-slate-100 dark:hover:bg-slate-700 font-medium text-slate-700 dark:text-slate-200">Conclusão</button>
+                                    <button onclick="addSlideFromMenu('references')" class="w-full text-left px-3 py-2 hover:bg-slate-100 dark:hover:bg-slate-700 font-medium text-slate-700 dark:text-slate-200">Referências</button>
+                                    <button onclick="addSlideFromMenu('closing')" class="w-full text-left px-3 py-2 hover:bg-slate-100 dark:hover:bg-slate-700 font-medium text-slate-700 dark:text-slate-200">Encerramento</button>
+                                </div>
+                            </div>
+                            <div class="w-px h-6 bg-slate-300 dark:bg-slate-600 mx-0.5"></div>
+                            <button onclick="moveSlide(-1)" type="button" title="Mover para cima" class="p-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700"><i data-lucide="arrow-up" class="w-3.5 h-3.5"></i></button>
+                            <button onclick="moveSlide(1)" type="button" title="Mover para baixo" class="p-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700"><i data-lucide="arrow-down" class="w-3.5 h-3.5"></i></button>
+                            <button onclick="duplicateSlide()" type="button" title="Duplicar" class="p-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700"><i data-lucide="copy" class="w-3.5 h-3.5"></i></button>
+                            <button onclick="deleteSlide()" type="button" title="Apagar" class="p-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-red-50 dark:hover:bg-red-900/30 hover:text-red-500"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>
+                            <div class="w-px h-6 bg-slate-300 dark:bg-slate-600 mx-0.5"></div>
+                            <label class="flex items-center gap-1" title="Tipo deste slide">
+                                <i data-lucide="layout-template" class="w-3.5 h-3.5"></i>
+                                <select id="slide-type-select" onchange="changeSlideType(this.value)" class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-1.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 focus:outline-none">
+                                    <option value="cover">Capa</option>
+                                    <option value="content">Conteúdo</option>
+                                    <option value="conclusion">Conclusão</option>
+                                    <option value="references">Referências</option>
+                                    <option value="closing">Encerramento</option>
+                                </select>
+                            </label>
+                            <div class="w-px h-6 bg-slate-300 dark:bg-slate-600 mx-0.5"></div>
+                            <label title="Cor de fundo deste slide" class="p-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer flex items-center justify-center relative">
                                 <i data-lucide="palette" class="w-3.5 h-3.5"></i>
                                 <input type="color" id="slide-color-input" class="w-0 h-0 opacity-0 absolute" onchange="setSlideColor(this.value)">
                             </label>
@@ -1423,8 +1447,10 @@
                                 <input type="file" accept="image/*" class="hidden" onchange="uploadSlideImage(event)">
                             </label>
                             <button onclick="removeSlideImage()" title="Remover imagem deste slide" type="button" class="p-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-red-50 dark:hover:bg-red-900/30 hover:text-red-500"><i data-lucide="image-off" class="w-3.5 h-3.5"></i></button>
-                            <span class="ml-2">Clique no título ou no texto do slide para editar diretamente.</span>
+                            <div class="w-px h-6 bg-slate-300 dark:bg-slate-600 mx-0.5"></div>
+                            <button onclick="aiImproveSlide()" id="btn-improve-slide" type="button" title="Melhorar o texto deste slide com IA" class="flex items-center gap-1 px-2.5 py-2 rounded-lg bg-teal-50 dark:bg-teal-900/20 border border-teal-200 dark:border-teal-800 text-teal-700 dark:text-teal-300 font-bold hover:bg-teal-100 dark:hover:bg-teal-900/40"><i data-lucide="sparkles" class="w-3.5 h-3.5"></i> Melhorar</button>
                         </div>
+                        <p class="text-xs text-slate-500 dark:text-slate-400">Clique no título ou no texto do slide para editar diretamente.</p>
                     </div>
                 </div>
             </div>
@@ -4619,6 +4645,8 @@ ${original}`;
                     ${renderSlideMarkup(active, theme, true)}
                 </div>
             `;
+            const typeSelect = document.getElementById('slide-type-select');
+            if (typeSelect && active) typeSelect.value = active.type || 'content';
             const colorInput = document.getElementById('slide-color-input');
             if (colorInput) colorInput.value = (active && active.bgColor) || theme.bg;
             const logoTopSizeInput = document.getElementById('slide-logo-top-size');
@@ -4805,6 +4833,61 @@ ${original}`;
             renderSlidesTab();
         }
 
+        // Adiciona um slide pelo menu da barra inferior e fecha o menu.
+        function addSlideFromMenu(type) {
+            const menu = document.getElementById('slide-add-menu');
+            if (menu) menu.classList.add('hidden-state');
+            addSlide(type);
+        }
+
+        // Troca o tipo do slide ativo (capa/conteúdo/conclusão/referências/encerramento).
+        function changeSlideType(type) {
+            const active = state.slides.find(x => x.id === state.activeSlideId);
+            if (!active || !['cover', 'content', 'conclusion', 'references', 'closing'].includes(type)) return;
+            active.type = type;
+            saveSlidesState();
+            renderSlidesTab();
+        }
+
+        // Melhora o texto do slide ativo com IA: reescreve o corpo de forma clara, concisa e
+        // em tópicos, sem inventar conteúdo. Custa AI_COST_REFINE créditos.
+        async function aiImproveSlide() {
+            if (state.isDemo) { alert('Modo demonstração: IA desativada.'); return; }
+            if (!state.profile) { alert('Aguarde o carregamento do seu perfil.'); return; }
+            const active = state.slides.find(x => x.id === state.activeSlideId);
+            if (!active) { alert('Selecione um slide primeiro.'); return; }
+            const base = `${active.heading || ''}\n${active.body || ''}`.trim();
+            if (!base) { alert('Este slide não tem texto para melhorar.'); return; }
+            if (!await showConfirmModal('Melhorar slide com IA', `A IA vai reescrever o texto deste slide de forma mais clara e objetiva (em tópicos curtos), mantendo o sentido. Isso consome <b>${AI_COST_REFINE} créditos</b>. Continuar?`)) return;
+
+            const btn = document.getElementById('btn-improve-slide');
+            const orig = btn ? btn.innerHTML : '';
+            if (btn) { btn.disabled = true; btn.innerHTML = `<i data-lucide="loader-2" class="w-3.5 h-3.5 animate-spin"></i> Melhorando...`; lucide.createIcons(); }
+            try {
+                const prompt = `Mejora el texto de esta diapositiva de presentación en ${state.docLanguage}: hazlo más claro, conciso y directo, en forma de puntos cortos (bullets), sin inventar información nueva. Mantén el mismo idioma y sentido.
+
+TÍTULO ACTUAL: ${active.heading || ''}
+CUERPO ACTUAL: ${active.body || ''}
+
+Devuelve SOLO un objeto JSON puro, sin markdown: {"heading":"...","body":"..."}
+El "body" es texto simple (usa \\n para separar puntos), nunca HTML.`;
+                let jsonText = await callAI(prompt, AI_COST_REFINE, 'ai_improve_slide');
+                jsonText = jsonText.replace(/```json/gi, '').replace(/```/g, '').trim();
+                const fb = jsonText.indexOf('{'), lb = jsonText.lastIndexOf('}');
+                if (fb !== -1 && lb !== -1) jsonText = jsonText.substring(fb, lb + 1);
+                let parsed;
+                try { parsed = JSON.parse(jsonText); } catch (e) { parsed = JSON.parse(sanitizeJsonControlChars(jsonText)); }
+                if (parsed.heading) active.heading = parsed.heading;
+                if (parsed.body !== undefined) active.body = parsed.body;
+                saveSlidesState();
+                renderSlidesTab();
+            } catch (err) {
+                showError('Não foi possível melhorar o slide: ' + (err.message || err));
+            } finally {
+                if (btn) { btn.disabled = false; btn.innerHTML = orig; lucide.createIcons(); }
+            }
+        }
+
         function addSlide(type) {
             // Toda apresentação tem que nascer com uma capa, igual ao padrão gerado pela IA —
             // se o usuário monta o primeiro slide manualmente, garantimos a capa antes dele.
@@ -4952,19 +5035,115 @@ ${original}`;
             return lines.length ? '\n\n' + lines.join('\n') : '';
         }
 
+        // Pergunta a origem dos slides: o projeto atual (monografia do editor) ou outro
+        // arquivo enviado. Resolve com 'project' | 'file' | null (cancelou).
+        function chooseSlideSource() {
+            return new Promise((resolve) => {
+                const hasProject = state.generatedSections && state.generatedSections.length > 0;
+                const overlay = document.createElement('div');
+                overlay.className = 'fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4';
+                overlay.innerHTML = `
+                    <div class="bg-white dark:bg-slate-850 rounded-3xl shadow-2xl w-full max-w-md p-6 border border-slate-200 dark:border-slate-700">
+                        <div class="flex items-center justify-between mb-1">
+                            <h3 class="text-xl font-extrabold text-slate-900 dark:text-white">Gerar slides a partir de…</h3>
+                            <button data-src="" class="p-1 text-slate-400 hover:text-slate-700 dark:hover:text-white rounded-full"><i data-lucide="x" class="w-5 h-5"></i></button>
+                        </div>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 mb-4">A IA identifica o conteúdo e monta os slides automaticamente.</p>
+                        <div class="space-y-3">
+                            <button data-src="project" ${hasProject ? '' : 'disabled'} class="src-card w-full text-left rounded-2xl border-2 ${hasProject ? 'border-slate-200 dark:border-slate-700 hover:border-indigo-500 dark:hover:border-indigo-500 hover:-translate-y-0.5' : 'border-slate-100 dark:border-slate-800 opacity-50 cursor-not-allowed'} bg-white dark:bg-slate-800 p-4 transition-all hover:shadow-xl">
+                                <div class="flex items-center gap-3">
+                                    <span class="text-2xl">📝</span>
+                                    <div>
+                                        <div class="font-extrabold text-slate-900 dark:text-white">Meu projeto (monografia)</div>
+                                        <div class="text-xs text-slate-500 dark:text-slate-400">${hasProject ? 'Usa o trabalho que você escreveu no editor.' : 'Nenhum trabalho gerado ainda no editor.'}</div>
+                                    </div>
+                                </div>
+                            </button>
+                            <button data-src="file" class="src-card w-full text-left rounded-2xl border-2 border-slate-200 dark:border-slate-700 hover:border-indigo-500 dark:hover:border-indigo-500 bg-white dark:bg-slate-800 p-4 transition-all hover:shadow-xl hover:-translate-y-0.5">
+                                <div class="flex items-center gap-3">
+                                    <span class="text-2xl">📎</span>
+                                    <div>
+                                        <div class="font-extrabold text-slate-900 dark:text-white">Outro arquivo</div>
+                                        <div class="text-xs text-slate-500 dark:text-slate-400">Envie um PDF, Word (.docx) ou texto — a IA lê e cria os slides do conteúdo dele.</div>
+                                    </div>
+                                </div>
+                            </button>
+                        </div>
+                    </div>`;
+                document.body.appendChild(overlay);
+                if (window.lucide) lucide.createIcons();
+                const done = (val) => { overlay.remove(); resolve(val); };
+                overlay.addEventListener('click', (e) => {
+                    if (e.target === overlay) return done(null);
+                    const btn = e.target.closest('[data-src]');
+                    if (!btn || btn.disabled) return;
+                    done(btn.getAttribute('data-src') || null);
+                });
+            });
+        }
+
+        // Abre o seletor de arquivo e resolve com o File escolhido (ou null).
+        function pickSlideSourceFile() {
+            return new Promise((resolve) => {
+                const input = document.getElementById('slides-source-file');
+                if (!input) return resolve(null);
+                input.value = '';
+                const onChange = () => { input.removeEventListener('change', onChange); resolve(input.files && input.files[0] ? input.files[0] : null); };
+                input.addEventListener('change', onChange);
+                input.click();
+            });
+        }
+
         async function generateSlidesWithAI() {
             if (state.isDemo) { alert('Modo demonstração: geração com IA desativada. Crie uma conta para usar de verdade.'); return; }
             if (!state.profile) { alert('Aguarde o carregamento do seu perfil.'); return; }
-            if (!state.generatedSections || state.generatedSections.length === 0) {
-                alert('Escreva (ou gere) a monografia no Estúdio primeiro — os slides são criados a partir do conteúdo já redigido.');
-                return;
+
+            const source = await chooseSlideSource();
+            if (!source) return;
+
+            let docTitle, sourceText;
+            if (source === 'project') {
+                if (!state.generatedSections || state.generatedSections.length === 0) {
+                    alert('Escreva (ou gere) a monografia no Estúdio primeiro — os slides são criados a partir do conteúdo já redigido.');
+                    return;
+                }
+                docTitle = (document.getElementById('in-title') && document.getElementById('in-title').value) || 'Apresentação';
+                sourceText = state.generatedSections.map(s => `### ${s.title}\n${stripHtmlToText(s.content)}`).join('\n\n');
+            } else {
+                const file = await pickSlideSourceFile();
+                if (!file) return;
+                const btn = document.getElementById('btn-generate-slides-ai');
+                const original = btn.innerHTML;
+                btn.disabled = true;
+                btn.innerHTML = `<i data-lucide="loader-2" class="w-3.5 h-3.5 animate-spin"></i> Lendo arquivo...`;
+                lucide.createIcons();
+                try {
+                    sourceText = await extractTextFromFile(file);
+                } catch (err) {
+                    console.error(err);
+                    showError('Não consegui ler esse arquivo. Tente um PDF, Word (.docx) ou texto.');
+                    btn.disabled = false; btn.innerHTML = original; lucide.createIcons();
+                    return;
+                }
+                btn.disabled = false; btn.innerHTML = original; lucide.createIcons();
+                if (!sourceText || sourceText.trim().length < 30) {
+                    showError('Esse arquivo não tem texto suficiente para gerar slides (pode ser um PDF só de imagens/digitalizado).');
+                    return;
+                }
+                docTitle = file.name.replace(/\.[^.]+$/, '');
             }
+
             const confirmed = await showConfirmModal(
                 'Gerar slides com IA',
-                `A IA vai ler a monografia já escrita e montar uma apresentação completa (capa, tópicos, conclusão, referências e encerramento). Isso consome <b>${AI_COST_SLIDES} créditos</b> do seu saldo atual de <b>${state.profile.credits}</b>. ${state.slides.length > 0 ? 'Os slides atuais serão substituídos. ' : ''}Continuar?`
+                `A IA vai ler ${source === 'project' ? 'a monografia já escrita' : 'o arquivo enviado'} e montar uma apresentação completa (capa, tópicos, conclusão e encerramento). Isso consome <b>${AI_COST_SLIDES} créditos</b> do seu saldo atual de <b>${state.profile.credits}</b>. ${state.slides.length > 0 ? 'Os slides atuais serão substituídos. ' : ''}Continuar?`
             );
             if (!confirmed) return;
 
+            await runSlideGeneration(docTitle, sourceText, source);
+        }
+
+        // Núcleo da geração de slides — reaproveitado pelo projeto e por arquivo externo.
+        async function runSlideGeneration(docTitle, sourceText, source) {
             const btn = document.getElementById('btn-generate-slides-ai');
             const originalHtml = btn.innerHTML;
             btn.disabled = true;
@@ -4972,21 +5151,18 @@ ${original}`;
             lucide.createIcons();
 
             try {
-                const docTitle = (document.getElementById('in-title') && document.getElementById('in-title').value) || 'Apresentação';
-                const sectionsText = state.generatedSections.map(s => `### ${s.title}\n${stripHtmlToText(s.content)}`).join('\n\n');
+                const prompt = `Actúa como diseñador de presentaciones académicas. A partir del contenido de abajo, identifica el tema y los puntos principales y crea la estructura de una presentación de diapositivas en ${state.docLanguage}.
 
-                const prompt = `Atúa como designer de apresentações académicas. A partir do conteúdo da monografia abaixo, crie a estrutura de uma apresentação de slides em ${state.docLanguage}.
+TÍTULO/ARCHIVO: ${docTitle}
 
-TÍTULO DO TRABALHO: ${docTitle}
+CONTENIDO:
+${sourceText.slice(0, 14000)}
 
-CONTEÚDO DA MONOGRAFIA:
-${sectionsText.slice(0, 12000)}
+Genera entre 6 y 12 diapositivas en total, en este orden: 1 diapositiva de portada (type "cover"), de 4 a 9 diapositivas de contenido (type "content", una por tema/punto principal identificado en el contenido, con texto corto y directo tipo bullets, máximo 60 palabras cada una), 1 diapositiva de conclusión (type "conclusion") y 1 diapositiva de cierre/agradecimiento (type "closing"). Si el contenido cita fuentes/referencias, agrega también 1 diapositiva de referencias (type "references"). Basa TODO estrictamente en el contenido proporcionado; no inventes temas que no estén ahí.
 
-Gere entre 6 e 10 slides no total, seguindo esta ordem: 1 slide de capa (type "cover"), de 3 a 6 slides de conteúdo (type "content", um por tópico/seção principal, com texto curto e direto, tipo tópicos, no máximo 60 palavras cada), 1 slide de conclusão (type "conclusion"), 1 slide de referências (type "references", resumindo as principais referências em poucas linhas) e 1 slide de encerramento/agradecimento (type "closing").
-
-FORMATO DE SAÍDA ESTRITO: devolve APENAS um array JSON puro, sem markdown, no formato:
+FORMATO DE SALIDA ESTRICTO: devuelve SOLO un array JSON puro, sin markdown, con el formato:
 [{"type":"cover","heading":"...","students":"","professor":""}, {"type":"content","heading":"...","body":"..."}, ..., {"type":"closing","heading":"..."}]
-O campo "body" deve ser texto simples curto (pode usar quebras de linha com \\n para separar pontos), nunca HTML.`;
+El campo "body" debe ser texto simple corto (puedes usar saltos de línea con \\n para separar puntos), nunca HTML.`;
 
                 let jsonText = await callAI(prompt, AI_COST_SLIDES, 'ai_generate_slides');
                 jsonText = jsonText.replace(/```json/gi, '').replace(/```/g, '').trim();
@@ -5635,6 +5811,22 @@ O campo "body" deve ser texto simples curto (pode usar quebras de linha com \\n 
                 fullText += pageText + "\n";
             }
             return fullText;
+        }
+
+        // Extrator de texto genérico reaproveitável: PDF (pdf.js), DOCX (mammoth) e
+        // TXT/MD/qualquer texto simples. Usado na geração de slides a partir de um arquivo.
+        async function extractTextFromFile(file) {
+            const ext = (file.name.split('.').pop() || '').toLowerCase();
+            if (ext === 'pdf' || file.type === 'application/pdf') {
+                return await extractTextFromPDF(file);
+            }
+            if (ext === 'docx' && typeof mammoth !== 'undefined') {
+                const arrayBuffer = await file.arrayBuffer();
+                const result = await mammoth.convertToHtml({ arrayBuffer });
+                return result.value.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+            }
+            // txt, md, csv, e afins
+            return await file.text();
         }
 
         // ==========================================
