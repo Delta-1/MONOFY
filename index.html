@@ -73,7 +73,7 @@
             { id: 'pack_150', credits: 150, price: 'R$ 95,00' },
             { id: 'pack_500', credits: 500, price: 'R$ 400,00' }
         ];
-        const CREDITS_PER_EXPORT = 10; // remover marca d'água
+        const CREDITS_PER_EXPORT = 5; // remover marca d'água
         const AI_COST_CHAT = 2;           // conversar com o Assistente IA
         const AI_COST_REFINE = 3;         // usar IA pra refinar 1 página
         const AI_COST_TITLE_FROM_CHAT = 4; // IA define o título com base na conversa com o Assistente
@@ -5445,6 +5445,23 @@ O campo "body" deve ser texto simples curto (pode usar quebras de linha com \\n 
             }
         }
 
+        // Recupera o conteúdo de uma resposta JSON truncada (seção longa que estourou o
+        // limite de tokens da IA). Extrai o "title" e o máximo do "content" possível, em
+        // vez de descartar a seção inteira.
+        function salvageSectionContent(jsonText) {
+            try {
+                const tMatch = jsonText.match(/"title"\s*:\s*"((?:\\.|[^"\\])*)"/);
+                const title = tMatch ? tMatch[1].replace(/\\"/g, '"') : '';
+                const cMatch = jsonText.match(/"content"\s*:\s*"/);
+                if (!cMatch) return null;
+                let content = jsonText.slice(cMatch.index + cMatch[0].length);
+                content = content.replace(/"\s*\}?\s*$/, ''); // tira fechamento de JSON no fim
+                content = content.replace(/\\n/g, ' ').replace(/\\t/g, ' ').replace(/\\"/g, '"').replace(/\\\//g, '/').replace(/\\\\/g, '\\');
+                if (/<p[\s>]/i.test(content) && !/<\/p>\s*$/i.test(content)) content += '</p>';
+                return content.trim() ? { title, content } : null;
+            } catch (e) { return null; }
+        }
+
         async function generateDocument() {
             const rawText = document.getElementById('raw-text').value.trim();
             const hasChatContent = state.assistantChatMessages.some(m => m.role !== 'error');
@@ -5520,7 +5537,7 @@ Responda APENAS com o título, sem aspas, sem explicações, em uma única linha
                 ? `\n\nCONTEXTO ADICIONAL CONVERSADO COM O USUÁRIO NO ASSISTENTE (leve isto em conta, tem prioridade sobre suposições genéricas):\n${state.assistantChatMessages.filter(m => m.role !== 'error').map(m => `${m.role === 'user' ? 'Usuário' : 'Assistente'}: ${m.text}`).join('\n')}`
                 : '';
 
-            let failedSection = null;
+            const failedSections = [];
 
             for (let i = 0; i < sectionPlan.length; i++) {
                 const plan = sectionPlan[i];
@@ -5585,7 +5602,17 @@ Responda APENAS com o título, sem aspas, sem explicações, em uma única linha
                     if (firstBrace !== -1 && lastBrace !== -1) {
                         jsonText = jsonText.substring(firstBrace, lastBrace + 1);
                     }
-                    const parsed = JSON.parse(jsonText);
+                    let parsed;
+                    try {
+                        parsed = JSON.parse(jsonText);
+                    } catch (parseErr) {
+                        // Resposta possivelmente truncada (seções longas como o Marco
+                        // Teórico podem estourar o limite de tokens da IA). Em vez de perder
+                        // a seção inteira, tentamos salvar o conteúdo já recebido.
+                        const salvaged = salvageSectionContent(jsonText);
+                        if (salvaged && salvaged.content) parsed = salvaged;
+                        else throw parseErr;
+                    }
                     const sectionContent = plan.id === 'referencias'
                         ? sanitizeReferencesContent(parsed.content || '')
                         : (parsed.content || '');
@@ -5602,9 +5629,11 @@ Responda APENAS com o título, sem aspas, sem explicações, em uma única linha
                     document.getElementById('btn-export-pdf').disabled = false;
                     document.getElementById('btn-export-txt').disabled = false;
                 } catch (err) {
-                    console.error(err);
-                    failedSection = plan.label;
-                    break;
+                    console.error('Falha na seção', plan.label, err);
+                    failedSections.push(plan.label);
+                    // NÃO interrompe o resto: antes um único erro (ex.: Marco Teórico)
+                    // dava break e matava Conclusão + Referências. Agora segue em frente.
+                    continue;
                 }
             }
 
@@ -5619,8 +5648,8 @@ Responda APENAS com o título, sem aspas, sem explicações, em uma única linha
                 }
             }
 
-            if (failedSection) {
-                showError(`A seção "${failedSection}" falhou e a geração foi interrompida (nenhum crédito foi cobrado por ela). As seções já geradas com sucesso continuam no documento — você pode exportá-las ou completá-las manualmente, ou clicar em "Redigir Trabalho" de novo para gerar tudo desde o início.`);
+            if (failedSections.length) {
+                showError(`Estas seções falharam e ficaram vazias (nenhum crédito foi cobrado por elas): ${failedSections.join(', ')}. As demais foram geradas normalmente. Você pode gerar só as que faltam clicando em "Redigir Trabalho" de novo, ou escrevê-las manualmente.`);
             }
 
             document.getElementById('icon-generate').classList.remove('hidden-state');
