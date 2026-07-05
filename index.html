@@ -123,6 +123,21 @@
             { id: 'referencias', label: '5. Bibliografía', instructions: null }
         ];
 
+        // Estrutura (secoes) do modelo UPDS "Trabajo de Investigación 4" — variação do
+        // modelo UPDS com estrutura própria (Introducción → Objetivos → Justificación →
+        // Marco teórico → Discusión → Conclusiones → Recomendaciones → Bibliografía Vancouver).
+        // O Índice/Portada são gerados automaticamente pela exportação (não entram aqui).
+        const UPDS_INV4_SECOES = [
+            { id: 'introducao', label: 'Introducción', instructions: `Redacta la INTRODUCCIÓN (equivalente a 1-2 páginas): contextualiza el tema, presenta el problema de investigación y la relevancia del trabajo. Redacción académica, impersonal, en varios párrafos bien desarrollados.` },
+            { id: 'objetivos', label: 'Objetivos', instructions: `Redacta la sección OBJETIVOS. Usa <h2>Objetivo General</h2> con un único objetivo general claro (verbo en infinitivo). Luego <h2>Objetivos Específicos</h2> con una lista <ul><li> de 3 a 5 objetivos específicos, cada uno iniciando con un verbo en infinitivo.` },
+            { id: 'justificacao', label: 'Justificación', instructions: `Redacta la JUSTIFICACIÓN: explica la importancia, pertinencia y utilidad del trabajo (académica, social y/o práctica). 2 a 4 párrafos.` },
+            { id: 'marco_teorico', label: 'Marco Teórico', instructions: `Redacta el MARCO TEÓRICO completo y extenso (equivalente a 10-15 páginas): desarrolla analíticamente los conceptos, teorías y argumentos a partir de las notas y del material de referencia. Crea subtítulos con <h2> (y <h3> para sub-subtemas) para cada subtema relevante. Es la sección más extensa y profunda del trabajo. Usa citas en formato Vancouver: numéralas entre paréntesis en el texto —(1), (2), (3)…— en el orden en que aparecen.` },
+            { id: 'discussao', label: 'Discusión', instructions: `Redacta la DISCUSIÓN (equivalente a 3-4 páginas): analiza e interpreta lo expuesto en el marco teórico, contrasta posturas de diferentes autores y relaciona los conceptos con el problema planteado. Argumentación crítica y académica.` },
+            { id: 'conclusao', label: 'Conclusiones', instructions: `Redacta las CONCLUSIONES (equivalente a 1-2 páginas): sintetiza los hallazgos principales y retoma los objetivos planteados. Puedes usar una lista numerada de conclusiones.` },
+            { id: 'recomendacoes', label: 'Recomendaciones', instructions: `Redacta las RECOMENDACIONES: sugerencias prácticas y concretas derivadas de las conclusiones. Puedes presentarlas como una lista <ul><li>.` },
+            { id: 'referencias', label: 'Bibliografía', instructions: null }
+        ];
+
         // Modelos de norma embutidos. Margens em cm. recuoParagrafo em cm.
         // capaDados preenche automaticamente os campos da capa (universidade/faculdade/
         // carreira/cidade) ao aplicar o modelo. A pessoa pode editar depois manualmente.
@@ -133,6 +148,16 @@
                 fonte: "'Tinos', 'Times New Roman', Times, serif", tamanhoFonte: '12pt',
                 espacamento: 1.5, recuoParagrafo: 1.27, papel: 'carta',
                 capaMoldura: true, capaAlinhamento: 'center', estiloCitacao: 'APA',
+                logoKeys: ['upds', 'domingo', 'savio'],
+                capaDados: { universidade: 'UNIVERSIDAD PRIVADA DOMINGO SAVIO', faculdade: 'FACULTAD DE CIENCIA DE LA SALUD', carreira: 'CARRERA DE MEDICINA', local: 'Cobija-Pando-Bolivia' }
+            },
+            {
+                id: 'upds-inv4', nome: 'UPDS — Trabajo de Investigación 4', builtin: true,
+                margens: { mt: 2.5, mb: 2.5, ml: 3.0, mr: 2.5 },
+                fonte: "'Tinos', 'Times New Roman', Times, serif", tamanhoFonte: '12pt',
+                espacamento: 1.5, recuoParagrafo: 1.25, papel: 'carta',
+                capaMoldura: true, capaAlinhamento: 'center', estiloCitacao: 'Vancouver',
+                secoes: UPDS_INV4_SECOES,
                 logoKeys: ['upds', 'domingo', 'savio'],
                 capaDados: { universidade: 'UNIVERSIDAD PRIVADA DOMINGO SAVIO', faculdade: 'FACULTAD DE CIENCIA DE LA SALUD', carreira: 'CARRERA DE MEDICINA', local: 'Cobija-Pando-Bolivia' }
             },
@@ -474,6 +499,29 @@
             #word-toolbar .toolbar-tab-panel.hidden { display: none !important; }
             /* Toolbar desliza por cima do canvas; sem padding-left permanente */
         }
+
+        /* Ferramenta "Aumentar texto" (varinha mágica): quando ativa, o cursor vira uma
+           varinha sobre o conteúdo gerado e o trecho selecionado é expandido pela IA. */
+        body.magic-expand-active #generated-content .apa-content,
+        body.magic-expand-active #generated-content .apa-content * {
+            cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='30' height='30' viewBox='0 0 30 30'%3E%3Cline x1='7' y1='23' x2='19' y2='11' stroke='%23a21caf' stroke-width='2.4' stroke-linecap='round'/%3E%3Cpath d='M22 3l1.3 3L26.5 7l-3.2 1L22 11l-1.3-3L17.5 7l3.2-1z' fill='%23d946ef'/%3E%3C/svg%3E") 6 24, crosshair !important;
+        }
+        #btn-magic-expand.magic-on { background-color: rgba(217,70,239,0.22) !important; color: #f0abfc !important; box-shadow: 0 0 0 1px rgba(217,70,239,0.55) inset; }
+        .magic-expand-loading {
+            position: fixed; z-index: 9999; background: #a21caf; color: #fff;
+            font-size: 12px; font-weight: 600; padding: 6px 12px; border-radius: 9999px;
+            display: flex; align-items: center; gap: 7px; box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+            pointer-events: none; white-space: nowrap;
+        }
+        .magic-expand-loading .me-spin { width: 12px; height: 12px; border: 2px solid rgba(255,255,255,0.4); border-top-color: #fff; border-radius: 50%; animation: meSpin 0.7s linear infinite; }
+        @keyframes meSpin { to { transform: rotate(360deg); } }
+        .magic-expand-hint {
+            position: fixed; z-index: 9999; left: 50%; transform: translateX(-50%);
+            bottom: 24px; background: #7e22ce; color: #fff; font-size: 13px; font-weight: 600;
+            padding: 10px 18px; border-radius: 9999px; box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+            display: flex; align-items: center; gap: 8px; animation: meHintIn 0.25s ease-out;
+        }
+        @keyframes meHintIn { from { opacity: 0; transform: translate(-50%, 10px); } to { opacity: 1; transform: translate(-50%, 0); } }
 
         /* Marca d'água MONOFY por página (some apenas se 1 crédito for consumido na exportação) */
         .watermark-stamp {
@@ -941,6 +989,7 @@
                 <button onclick="openFindReplace()" title="Encontrar e Substituir" class="word-tool-btn text-amber-400"><i data-lucide="replace" class="w-4 h-4"></i></button>
                 <button onclick="aiSummarizeSection()" title="Resumir Seção Selecionada com IA" class="word-tool-btn text-emerald-400"><i data-lucide="minimize-2" class="w-4 h-4"></i></button>
                 <button onclick="aiExpandSection()" title="Expandir/Desenvolver Seleção com IA" class="word-tool-btn text-indigo-400"><i data-lucide="maximize-2" class="w-4 h-4"></i></button>
+                <button onclick="toggleMagicExpandTool()" id="btn-magic-expand" title="Aumentar Texto (varinha mágica): clique aqui, depois pinte o trecho que quer aumentar" class="word-tool-btn text-fuchsia-400"><i data-lucide="wand-2" class="w-4 h-4"></i></button>
             </div>
 
         </div>
@@ -1389,7 +1438,7 @@
                 <div class="bg-amber-500 dark:bg-amber-700/60 rounded-[2rem] p-8 md:p-10 text-white shadow-xl overflow-hidden relative border border-amber-400/50">
                     <div class="relative z-10">
                         <h2 class="text-3xl font-extrabold mb-3">Créditos Monofy</h2>
-                        <p class="text-amber-50 max-w-lg text-sm leading-relaxed">Cada exportação em PDF sai com a marca d'água "MONOFY". Use 10 créditos para remover a marca d'água de uma exportação (cada pacote de 10 créditos = 1 exportação sem marca). Saldo atual: <strong id="credits-balance-big">0</strong>.</p>
+                        <p class="text-amber-50 max-w-lg text-sm leading-relaxed">As exportações em PDF e Word saem com a marca d'água "MONOFY". Use 5 créditos para remover a marca d'água de um trabalho. Saldo atual: <strong id="credits-balance-big">0</strong>.</p>
                     </div>
                     <i data-lucide="coins" class="absolute -right-4 -bottom-4 w-48 h-48 text-white opacity-10"></i>
                 </div>
@@ -2450,7 +2499,9 @@
 
         function applyNormTemplate(tpl) {
             state.activeNormTemplateId = tpl.id;
-            state.citationStyle = tpl.estiloCitacao || 'APA';
+            // Normaliza para maiúsculas: as comparações de estilo (ABNT/VANCOUVER) e a geração
+            // de referências usam a versão em maiúsculas.
+            state.citationStyle = (tpl.estiloCitacao || 'APA').toUpperCase();
             localStorage.setItem('monografia_active_norm', tpl.id);
 
             state.margins = { ...tpl.margens };
@@ -3322,6 +3373,88 @@ ${original}`;
         }
 
         // ==========================================
+        // FERRAMENTA "AUMENTAR TEXTO" (VARINHA MÁGICA)
+        // A pessoa clica na varinha, o cursor vira uma varinha sobre o documento, ela pinta
+        // o trecho, aparece um "carregando" e a IA expande só aquele trecho. Estilo Photoshop.
+        // Por segurança de créditos (cada uso custa AI_COST_REFINE), a ferramenta se desativa
+        // sozinha depois de cada expansão bem-sucedida.
+        // ==========================================
+        let _magicExpandBound = false;
+        let _magicExpandBusy = false;
+        let _magicHintEl = null;
+
+        function setMagicExpandActive(on) {
+            state.magicExpandActive = on;
+            const btn = document.getElementById('btn-magic-expand');
+            document.body.classList.toggle('magic-expand-active', on);
+            if (btn) btn.classList.toggle('magic-on', on);
+            if (_magicHintEl) { _magicHintEl.remove(); _magicHintEl = null; }
+            if (on) {
+                _magicHintEl = document.createElement('div');
+                _magicHintEl.className = 'magic-expand-hint';
+                _magicHintEl.innerHTML = '🪄 Pinte com o mouse o trecho que você quer aumentar';
+                document.body.appendChild(_magicHintEl);
+            }
+        }
+
+        function toggleMagicExpandTool() {
+            if (!state.generatedSections || !state.generatedSections.length) {
+                alert('Gere o trabalho primeiro. Depois use a varinha para aumentar qualquer trecho.');
+                return;
+            }
+            setMagicExpandActive(!state.magicExpandActive);
+            if (state.magicExpandActive) {
+                const container = document.getElementById('generated-content');
+                if (container && !_magicExpandBound) {
+                    _magicExpandBound = true;
+                    container.addEventListener('mouseup', handleMagicExpandMouseup);
+                }
+            }
+        }
+
+        async function handleMagicExpandMouseup() {
+            if (!state.magicExpandActive || _magicExpandBusy) return;
+            const sel = window.getSelection();
+            const text = sel && sel.toString().trim();
+            if (!text || text.length < 4 || !sel.rangeCount) return;
+
+            const range = sel.getRangeAt(0);
+            const host = range.commonAncestorContainer.nodeType === 1
+                ? range.commonAncestorContainer
+                : range.commonAncestorContainer.parentElement;
+            const sectionEl = host && host.closest ? host.closest('.apa-content') : null;
+            if (!sectionEl) return; // só dentro do conteúdo editável do trabalho
+
+            _magicExpandBusy = true;
+            if (_magicHintEl) { _magicHintEl.remove(); _magicHintEl = null; }
+            const rect = range.getBoundingClientRect();
+            const loader = document.createElement('div');
+            loader.className = 'magic-expand-loading';
+            loader.innerHTML = '<span class="me-spin"></span> Aumentando o texto...';
+            loader.style.left = Math.min(window.innerWidth - 190, Math.max(8, rect.left)) + 'px';
+            loader.style.top = Math.max(8, rect.top - 40) + 'px';
+            document.body.appendChild(loader);
+
+            try {
+                const activeTpl = getActiveNormTemplate();
+                const result = await callAI(
+                    `Expanda e desenvolva o trecho acadêmico abaixo com mais detalhes, argumentos e profundidade, mantendo EXATAMENTE o mesmo idioma, tom e estilo do original. Norma ${activeTpl.estiloCitacao}. Retorne APENAS o texto expandido, sem comentários nem aspas:\n\n${text}`,
+                    AI_COST_REFINE, 'ai_expand'
+                );
+                range.deleteContents();
+                range.insertNode(document.createTextNode(result.trim()));
+                sel.removeAllRanges();
+                if (sectionEl.dataset.sectionId) scheduleSyncSection(sectionEl.dataset.sectionId);
+            } catch (err) {
+                showError('Não foi possível aumentar o texto: ' + err.message);
+            } finally {
+                loader.remove();
+                _magicExpandBusy = false;
+                setMagicExpandActive(false); // desativa após um uso (evita cobranças acidentais)
+            }
+        }
+
+        // ==========================================
         // BARRA DE FERRAMENTAS (norma rápida + inserir elementos)
         // ==========================================
         function populateQuickNormSelect() {
@@ -3620,6 +3753,20 @@ ${original}`;
             if (error) showAuthError(error.message);
         }
 
+        // Remove do localStorage todo o conteúdo do trabalho (tema/tópico, seções geradas,
+        // referências, slides, conversa com o assistente). NÃO mexe nas preferências de
+        // formatação nem nos dados de conta. Chamada no logout.
+        function clearLocalDocumentData() {
+            const docKeys = [
+                'monografia_history',
+                'monografia_slides', 'monografia_slide_theme', 'monografia_slide_logo',
+                'monografia_slide_logo_top', 'monografia_slide_logo_size',
+                'monografia_slide_logo_top_size', 'monografia_slide_text_scale',
+                'monografia_assistant_suggestions', 'monografia_assistant_mode'
+            ];
+            docKeys.forEach(k => { try { localStorage.removeItem(k); } catch (_) {} });
+        }
+
         async function signOut() {
             // supabaseClient.auth.signOut() pode rejeitar (sessão já expirada, erro de rede
             // etc.) — sem o try/catch, esse erro interrompia a função antes de esconder o
@@ -3639,6 +3786,11 @@ ${original}`;
                 console.error('Erro ao encerrar sessão:', err);
             }
             try { stopDriveAutosave(); } catch (_) {}
+            // Ao sair, NÃO deixamos o tema/tópico e o conteúdo do trabalho salvos no aparelho.
+            // A conta guarda só os dados de perfil (nome etc., no Supabase). Assim, se outra
+            // pessoa usar o mesmo navegador, não vê a monografia de quem saiu. Preferências de
+            // formatação (margens, norma, fonte, idioma, tema) são mantidas.
+            try { clearLocalDocumentData(); } catch (_) {}
             // Recarrega a página para voltar a uma tela de login 100% limpa e clicável.
             // Acontece SEMPRE, mesmo se o passo acima falhar/travar.
             window.location.reload();
@@ -5041,7 +5193,7 @@ O campo "body" deve ser texto simples curto (pode usar quebras de linha com \\n 
             { target: '#dock-toggle-assistant', title: 'Chat da IA', before: () => { switchTab('generator'); ensurePanelOpenForTour('panel-right'); }, text: 'Toque aqui para abrir o chat com a IA. Converse sobre seu tema antes de gerar — a conversa entra como contexto extra na hora de redigir.' },
             { target: '#btn-generate', title: 'Gerar com IA', before: () => switchTab('generator'), text: 'Com um clique a IA redige todas as seções (Introdução, Conclusão, Referências…) a partir das suas notas. Cada seção gerada consome créditos.' },
             { title: 'Editar o documento', text: 'Clique (ou toque) em qualquer parágrafo para editar. Um menu flutuante aparece com formatação, citação e botão para a IA melhorar o trecho selecionado.' },
-            { target: '#dock-toggle-export', title: 'Exportar', before: () => { switchTab('generator'); ensurePanelOpenForTour('panel-export'); }, text: 'Toque para abrir Exportar. Salve em Word, PDF ou Texto. Exportar remove a marca d\'água e consome 1 crédito.' },
+            { target: '#dock-toggle-export', title: 'Exportar', before: () => { switchTab('generator'); ensurePanelOpenForTour('panel-export'); }, text: 'Toque para abrir Exportar. Salve em Word, PDF ou Texto. Os arquivos saem com a marca d\'água "MONOFY" — remova-a de um trabalho por 5 créditos.' },
             { target: '#dock-tab-slides', title: 'Slides', before: () => switchTab('generator'), text: 'Gere uma apresentação de slides a partir da sua monografia pronta. Exporte como PPTX para apresentar.' },
             { target: '#dock-tab-profile', title: 'Arquivo', before: () => switchTab('generator'), text: 'Todos os seus documentos ficam salvos aqui. Toque para abrir e continuar de onde parou.' },
             { target: '#dock-tab-network', title: 'Network', before: () => switchTab('generator'), text: 'Baixe modelos prontos de universidades — com logo, margens e fonte configurados. Aplique e seu documento muda de estilo na hora.' },
@@ -5523,9 +5675,14 @@ Responda APENAS com o título, sem aspas, sem explicações, em uma única linha
             }
 
             const citStyle = state.citationStyle;
-            const refRulesByStyle = citStyle === 'ABNT'
-                ? `Genera una lista bibliográfica en NORMAS ABNT (NBR 6023). Formato: SOBRENOME, Nome. Título: subtítulo. Edición. Local: Editora, Año. Las citas en el texto deben ser (SOBRENOME, año).`
-                : `Genera una lista bibliográfica APA 7 válida. Formato: Autor, A. (Año). Título. Fuente/Editorial. Las citas en el texto deben ser (Autor, año).`;
+            let refRulesByStyle;
+            if (citStyle === 'ABNT') {
+                refRulesByStyle = `Genera una lista bibliográfica en NORMAS ABNT (NBR 6023). Formato: SOBRENOME, Nome. Título: subtítulo. Edición. Local: Editora, Año. Las citas en el texto deben ser (SOBRENOME, año).`;
+            } else if (citStyle === 'VANCOUVER') {
+                refRulesByStyle = `Genera una BIBLIOGRAFÍA en formato VANCOUVER, con un MÍNIMO de 20 referencias, NUMERADAS en el orden en que fueron citadas en el texto. Formato de cada entrada: "N. Apellido AA. Título del artículo o libro. Nombre de la revista/Editorial. Año;Volumen(Número):páginas." (ej.: "1. Guyton AC, Hall JE. Tratado de fisiología médica. 13ª ed. Barcelona: Elsevier; 2016."). Las citas dentro del texto deben aparecer como números entre paréntesis (1), (2), (3) según el orden de aparición.`;
+            } else {
+                refRulesByStyle = `Genera una lista bibliográfica APA 7 válida. Formato: Autor, A. (Año). Título. Fuente/Editorial. Las citas en el texto deben ser (Autor, año).`;
+            }
 
             const docTitle = titleEl.value;
             state.generatedSections = [];
@@ -7480,6 +7637,30 @@ Responda APENAS com o título, sem aspas, sem explicações, em uma única linha
 
         // Extraído de exportWord pra poder ser reaproveitado pelo autosave do Google
         // Drive (que precisa do mesmo .docx, só que sem disparar o download local).
+        // Gera uma imagem PNG (bytes) com o texto "MONOFY" repetido na diagonal, em cinza
+        // bem claro, para servir de marca d'água de fundo no Word exportado. Só é usada quando
+        // o usuário NÃO pagou para remover a marca d'água.
+        function makeWordWatermarkBytes(wPx, hPx) {
+            const canvas = document.createElement('canvas');
+            canvas.width = wPx; canvas.height = hPx;
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, wPx, hPx);
+            ctx.translate(wPx / 2, hPx / 2);
+            ctx.rotate(-Math.PI / 6);
+            ctx.globalAlpha = 0.10;
+            ctx.fillStyle = '#64748b';
+            ctx.font = 'bold 46px Arial, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            const stepX = 340, stepY = 200;
+            for (let y = -hPx; y < hPx; y += stepY) {
+                for (let x = -wPx; x < wPx; x += stepX) {
+                    ctx.fillText('MONOFY', x, y);
+                }
+            }
+            return base64ToUint8Array(canvas.toDataURL('image/png').split(',')[1]);
+        }
+
         async function buildWordBlob() {
             if (typeof docx === 'undefined') {
                 throw new Error('Biblioteca docx.js não carregada.');
@@ -7508,11 +7689,36 @@ Responda APENAS com o título, sem aspas, sem explicações, em uma única linha
                 size: { width: pageWidthTwips, height: pageHeightTwips },
                 margin: { top: marginTop, right: marginRight, bottom: marginBottom, left: marginLeft }
             };
+            // Marca d'água: aplicada no Word exportado a menos que o usuário tenha pago para
+            // removê-la (ou seja admin). É uma imagem flutuante atrás do texto, repetida na
+            // diagonal, presente em todas as páginas (inclusive a capa).
+            const watermarkActive = !(state.profile && (state.profile.role === 'admin' || state.currentDocWatermarkRemoved));
+            const pageWpx = Math.round(pageWidthTwips / 15);   // 1 px = 15 twips a 96dpi
+            const pageHpx = Math.round(pageHeightTwips / 15);
+            const watermarkBytes = watermarkActive ? makeWordWatermarkBytes(pageWpx, pageHpx) : null;
+            const watermarkRun = () => new docx.ImageRun({
+                data: watermarkBytes,
+                type: 'png',
+                transformation: { width: pageWpx, height: pageHpx },
+                floating: {
+                    horizontalPosition: { relative: docx.HorizontalPositionRelativeFrom.PAGE, offset: 0 },
+                    verticalPosition: { relative: docx.VerticalPositionRelativeFrom.PAGE, offset: 0 },
+                    behindDocument: true,
+                    wrap: { type: docx.TextWrappingType.NONE }
+                }
+            });
             const pageNumberHeader = () => new docx.Header({
                 children: [new docx.Paragraph({
                     alignment: docx.AlignmentType.RIGHT,
-                    children: [new docx.TextRun({ children: [docx.PageNumber.CURRENT], size: fontHalfPt })]
+                    children: [
+                        ...(watermarkActive ? [watermarkRun()] : []),
+                        new docx.TextRun({ children: [docx.PageNumber.CURRENT], size: fontHalfPt })
+                    ]
                 })]
+            });
+            // Header só com a marca d'água (usado na capa, que não tem numeração de página).
+            const watermarkOnlyHeader = () => new docx.Header({
+                children: [new docx.Paragraph({ children: [watermarkRun()] })]
             });
 
             // Seção 1: Capa — sem numeração. A borda (quando ativada) é uma Borda de Página
@@ -7618,6 +7824,7 @@ Responda APENAS com o título, sem aspas, sem explicações, em uma única linha
                 sections: [
                     {
                         properties: { page: coverPageSetup },
+                        ...(watermarkActive ? { headers: { default: watermarkOnlyHeader() } } : {}),
                         children: coverChildren
                     },
                     {
