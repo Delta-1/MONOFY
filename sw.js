@@ -1,4 +1,4 @@
-const CACHE_NAME = 'monofy-cache-v28';
+const CACHE_NAME = 'monofy-cache-v29';
 const ASSETS = [
   'index.html',
   'manifest.json',
