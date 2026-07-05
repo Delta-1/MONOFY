@@ -3915,6 +3915,7 @@ ${original}`;
                 document.getElementById('login-screen').classList.add('hidden-state');
                 document.getElementById('app-screen').classList.remove('opacity-0', 'pointer-events-none');
                 updateCoverPage();
+                maybeStartOnboardingFlow(session);
             }, 400);
             // Segundo plano — nunca bloqueiam a abertura do app nem podem quebrar o login:
             loadProfile().catch(e => console.warn('loadProfile error:', e));
@@ -7779,6 +7780,17 @@ Responda APENAS com o título, sem aspas, sem explicações, em uma única linha
         let _onboardingTemplates = [];
         let _onboardingSelectedId = null;
 
+        // Chave por CONTA (não por navegador): garante que toda conta nova veja a tela de
+        // modelo + o tutorial, mesmo que outra conta já tenha visto neste navegador.
+        let _pendingTourUserKey = null;
+        function maybeStartOnboardingFlow(session) {
+            const uid = (session && session.user && session.user.id) || 'anon';
+            const key = 'monofy_onboarded_' + uid;
+            if (localStorage.getItem(key)) return; // esta conta já passou pelo fluxo
+            _pendingTourUserKey = key;
+            showNormOnboarding();
+        }
+
         function showNormOnboarding() {
             const screen = document.getElementById('onboarding-screen');
             if (!screen) return;
@@ -7910,6 +7922,12 @@ Responda APENAS com o título, sem aspas, sem explicações, em uma única linha
             localStorage.setItem('monografia_norm_chosen', '1');
             document.getElementById('onboarding-screen')?.classList.add('hidden-state');
             _onboardingSelectedId = null;
+            // Se veio do fluxo de conta nova (login), marca a conta e inicia o tutorial.
+            if (_pendingTourUserKey) {
+                localStorage.setItem(_pendingTourUserKey, '1');
+                _pendingTourUserKey = null;
+                setTimeout(() => { try { startTour(); } catch (_) {} }, 450);
+            }
         }
 
         /* BOTÃO DE INSTALAÇÃO DO PWA */
