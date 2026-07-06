@@ -643,6 +643,8 @@
     <style id="dynamic-page-size"></style>
     <!-- Estilos do módulo da tela inicial (hub) — arquivo separado -->
     <link rel="stylesheet" href="hub.css">
+    <!-- Estilos do módulo Editor de Imagem/Logos — arquivo separado -->
+    <link rel="stylesheet" href="image-editor.css">
 </head>
 <body class="bg-[#e2e8f0] dark:bg-[#0f172a] text-slate-800 dark:text-slate-100 h-[100dvh] w-screen overflow-hidden transition-colors duration-300 selection:bg-primary-500 selection:text-white">
 
@@ -730,6 +732,9 @@
 
     <!-- TELA INICIAL (HUB estilo Canva) — conteúdo renderizado por hub.js (módulo separado) -->
     <div id="hub-screen" class="hidden-state opacity-0 pointer-events-none"></div>
+
+    <!-- EDITOR DE IMAGEM/LOGOS — conteúdo renderizado por image-editor.js (módulo separado) -->
+    <div id="image-editor-screen" class="hidden-state opacity-0 pointer-events-none"></div>
 
     <!-- MAIN APP WRAPPER -->
     <div id="app-screen" class="relative h-full w-full opacity-0 pointer-events-none transition-opacity duration-500">
@@ -8782,5 +8787,6 @@ ${text}`;
     <!-- MODULOS SEPARADOS (regra: cada modulo novo em seu proprio arquivo).
          Carregado como script classico = mesmo escopo global do app acima (sem type module). -->
     <script src="hub.js"></script>
+    <script src="image-editor.js"></script>
 </body>
 </html>
