@@ -1,0 +1,83 @@
+/* MONOFY — estilos do Editor de Imagem / Logos (módulo separado). */
+
+#image-editor-screen {
+    position: absolute;
+    inset: 0;
+    z-index: 160; /* acima do hub (150), abaixo do onboarding (180) e login (200) */
+    transition: opacity 0.45s ease;
+    overflow: hidden;
+}
+
+/* Xadrez de transparência atrás do canvas (o PNG exportado continua transparente,
+   porque o xadrez é só CSS do elemento, não pintado no canvas). */
+.imged-canvas {
+    background-color: #fff;
+    background-image:
+        linear-gradient(45deg, #e2e8f0 25%, transparent 25%, transparent 75%, #e2e8f0 75%),
+        linear-gradient(45deg, #e2e8f0 25%, transparent 25%, transparent 75%, #e2e8f0 75%);
+    background-size: 24px 24px;
+    background-position: 0 0, 12px 12px;
+    cursor: grab;
+}
+.imged-canvas:active { cursor: grabbing; }
+.dark .imged-canvas {
+    background-color: #1e293b;
+    background-image:
+        linear-gradient(45deg, #334155 25%, transparent 25%, transparent 75%, #334155 75%),
+        linear-gradient(45deg, #334155 25%, transparent 25%, transparent 75%, #334155 75%);
+}
+
+/* Botões de ferramenta (adicionar texto/forma/imagem) */
+.imged-tool {
+    width: 2.25rem; height: 2.25rem;
+    display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 0.6rem;
+    background: #f1f5f9; color: #475569;
+    border: 1px solid #e2e8f0;
+    transition: background-color .15s, color .15s, transform .1s;
+    flex-shrink: 0;
+}
+.imged-tool:hover { background: #e0e7ff; color: #4f46e5; }
+.imged-tool:active { transform: scale(0.94); }
+.dark .imged-tool { background: #1e293b; color: #cbd5e1; border-color: #334155; }
+.dark .imged-tool:hover { background: #312e81; color: #c7d2fe; }
+
+/* Botões pequenos (modelos rápidos, ações) */
+.imged-tpl {
+    padding: 0.4rem 0.5rem;
+    border-radius: 0.6rem;
+    background: #f1f5f9; color: #475569;
+    border: 1px solid #e2e8f0;
+    font-size: 11px; font-weight: 700;
+    transition: background-color .15s;
+    text-align: center;
+}
+.imged-tpl:hover { background: #e2e8f0; }
+.dark .imged-tpl { background: #1e293b; color: #cbd5e1; border-color: #334155; }
+.dark .imged-tpl:hover { background: #334155; }
+
+/* Rótulos de seção nos painéis */
+.imged-label {
+    font-size: 10px; font-weight: 800; letter-spacing: 0.08em;
+    text-transform: uppercase; color: #94a3b8;
+    margin-bottom: 0.4rem;
+}
+
+/* Sliders com rótulo */
+.imged-slider {
+    display: flex; align-items: center; gap: 0.5rem;
+    font-size: 11px; font-weight: 700; color: #64748b;
+    margin-bottom: 0.4rem;
+}
+.dark .imged-slider { color: #94a3b8; }
+.imged-slider input[type="range"] { flex: 1; accent-color: #6366f1; }
+
+/* Spinner do botão remover fundo */
+.imged-spin {
+    width: 12px; height: 12px;
+    border: 2px solid rgba(255,255,255,.4); border-top-color: #fff;
+    border-radius: 50%;
+    display: inline-block;
+    animation: imgedSpin .7s linear infinite;
+}
+@keyframes imgedSpin { to { transform: rotate(360deg); } }

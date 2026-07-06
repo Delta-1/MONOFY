@@ -1,8 +1,10 @@
-const CACHE_NAME = 'monofy-cache-v35';
+const CACHE_NAME = 'monofy-cache-v36';
 const ASSETS = [
   'index.html',
   'hub.js',
   'hub.css',
+  'image-editor.js',
+  'image-editor.css',
   'manifest.json',
   'https://cdn.tailwindcss.com',
   'https://unpkg.com/lucide@latest',

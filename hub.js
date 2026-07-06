@@ -80,9 +80,13 @@
         }, 380);
     };
 
-    // Card "Editor de imagem / Logos": ainda não construído (próxima fase).
+    // Card "Editor de imagem / Logos": abre o módulo image-editor.js.
     window.hubOpenImageEditor = function hubOpenImageEditor() {
-        alert('🎨 O Editor de Imagem / Logos está chegando na próxima fase! Você poderá criar e editar logos, remover fundo e exportar PNG transparente.');
+        if (typeof window.openImageEditor === 'function') {
+            window.openImageEditor();
+        } else {
+            alert('O Editor de Imagem ainda está carregando. Tente de novo em alguns segundos.');
+        }
     };
 
     // Abre um projeto do histórico direto do hub.
@@ -162,7 +166,7 @@
                 '<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 mb-12">' +
                     hubMainCard('hubOpenEditor()', 'file-text', 'from-indigo-500 to-violet-600', 'Editor de trabalhos', 'Escreva e formate monografias, informes e trabalhos com IA — e monte os slides.') +
                     hubMainCard('hubCreateSlides()', 'presentation', 'from-sky-500 to-cyan-600', 'Criar slides de um arquivo', 'Envie um PDF, Word ou texto e a IA monta a apresentação pronta — ou faça manualmente.') +
-                    hubMainCardSoon('hubOpenImageEditor()', 'image', 'from-fuchsia-500 to-pink-600', 'Editor de imagem / Logos', 'Crie e edite logos, remova o fundo e exporte PNG transparente.') +
+                    hubMainCard('hubOpenImageEditor()', 'image', 'from-fuchsia-500 to-pink-600', 'Editor de imagem / Logos', 'Crie e edite logos, remova o fundo com IA e exporte PNG transparente.') +
                 '</div>' +
 
                 // Histórico
