@@ -7156,6 +7156,7 @@ Responda APENAS com o título, sem aspas, sem explicações, em uma única linha
                 state.history[0].cover = captureCoverFields();
                 Object.assign(state.history[0], slideBundleForSave()); // slides junto do projeto
                 localStorage.setItem('monografia_history', JSON.stringify(state.history));
+                try { if (window.driveSaveProject) driveSaveProject(state.history[0]); } catch (_) {}
             } else {
                 saveDocumentToHistory(title, state.generatedSections, state.references);
                 persistCurrentDocMeta();
@@ -7647,6 +7648,8 @@ Responda APENAS com o título, sem aspas, sem explicações, em uma única linha
             });
             localStorage.setItem('monografia_history', JSON.stringify(state.history));
             renderHistory();
+            // Espelha no Google Drive (se conectado) — fire-and-forget, nunca trava o app.
+            try { if (window.driveSaveProject) driveSaveProject(state.history[0]); } catch (_) {}
         }
 
         function renderHistory() {
@@ -8416,6 +8419,8 @@ Responda APENAS com o título, sem aspas, sem explicações, em uma única linha
                 const text = document.getElementById('drive-save-status-text');
                 if (box) box.classList.remove('hidden-state');
                 if (text) text.innerText = `Última cópia salva às ${new Date().toLocaleTimeString()}.`;
+                // Além do .docx, salva também o PROJETO em JSON (para reabrir do hub em qualquer aparelho).
+                try { if (window.driveSaveProject && state.history && state.history[0]) driveSaveProject(state.history[0]); } catch (_) {}
             } catch (err) {
                 console.warn('Falha ao salvar no Google Drive (o token do Google pode ter expirado):', err);
                 if (String(err.message).includes('401')) stopDriveAutosave();
@@ -8823,5 +8828,6 @@ ${text}`;
          Carregado como script classico = mesmo escopo global do app acima (sem type module). -->
     <script src="hub.js"></script>
     <script src="image-editor.js"></script>
+    <script src="drive-sync.js"></script>
 </body>
 </html>
