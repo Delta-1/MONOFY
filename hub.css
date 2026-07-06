@@ -18,3 +18,30 @@
 }
 
 .hub-main-card:active { transform: translateY(0) scale(0.99); }
+
+/* ---- Modo foco: abre uma aba (Perfil/Slides/Créditos) como página própria,
+   escondendo o dock e a moldura do editor. ---- */
+body.hub-focus #main-dock-zone,
+body.hub-focus #floating-controls,
+body.hub-focus #user-badge,
+body.hub-focus #word-toolbar,
+body.hub-focus #pwa-install-btn { display: none !important; }
+
+#hub-focus-back { display: none; }
+body.hub-focus #hub-focus-back {
+    display: inline-flex; align-items: center; gap: 6px;
+    position: fixed; top: 14px; left: 14px; z-index: 70;
+    padding: 8px 14px; border-radius: 9999px;
+    background: rgba(255, 255, 255, 0.92); color: #334155;
+    font-size: 13px; font-weight: 800;
+    border: 1px solid rgba(148, 163, 184, 0.35);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+    backdrop-filter: blur(8px);
+    cursor: pointer; transition: background-color .15s, transform .1s;
+}
+body.hub-focus #hub-focus-back:hover { background: #fff; }
+body.hub-focus #hub-focus-back:active { transform: scale(0.96); }
+.dark body.hub-focus #hub-focus-back {
+    background: rgba(30, 41, 59, 0.92); color: #e2e8f0;
+    border-color: rgba(71, 85, 105, 0.5);
+}
