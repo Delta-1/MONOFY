@@ -36,6 +36,9 @@
 
     // Volta ao hub a partir do editor (botão "Início").
     window.goToHub = function goToHub() {
+        exitFocus();
+        var imed = el('image-editor-screen');
+        if (imed) { imed.classList.add('opacity-0', 'pointer-events-none'); setTimeout(function () { imed.classList.add('hidden-state'); }, 350); }
         const app = el('app-screen');
         const hub = el('hub-screen');
         if (app) app.classList.add('opacity-0', 'pointer-events-none');
@@ -53,11 +56,39 @@
         if (typeof updateCoverPage === 'function') { try { updateCoverPage(); } catch (_) {} }
     }
 
+    // ---- Modo foco: abre UMA aba (Perfil, Slides, Créditos) como página própria,
+    // escondendo o dock e a "moldura" do editor. Um botão flutuante "Início" volta ao hub.
+    function ensureBackBtn() {
+        var b = el('hub-focus-back');
+        if (b) return b;
+        b = document.createElement('button');
+        b.id = 'hub-focus-back';
+        b.className = 'hub-focus-back';
+        b.innerHTML = '<i data-lucide="arrow-left" class="w-4 h-4"></i> Início';
+        b.onclick = function () { window.goToHub(); };
+        document.body.appendChild(b);
+        if (window.lucide && lucide.createIcons) { try { lucide.createIcons(); } catch (_) {} }
+        return b;
+    }
+    function exitFocus() { document.body.classList.remove('hub-focus'); }
+
+    // Abre uma aba do app em modo foco (página própria, sem o dock/editor por trás).
+    window.enterAppFocus = function enterAppFocus(tab) {
+        hideHubShowApp();
+        document.body.classList.add('hub-focus');
+        ensureBackBtn();
+        setTimeout(function () {
+            try { if (typeof switchTab === 'function') switchTab(tab); } catch (_) {}
+        }, 380);
+    };
+
     // Card "Editor de trabalhos": abre o editor com o trabalho atual/último.
     // Se for conta nova (sem modelo escolhido ainda), dispara o seletor de modelo.
     window.hubOpenEditor = function hubOpenEditor() {
+        exitFocus(); // editor completo = com dock e tudo
         hideHubShowApp();
         try {
+            if (typeof switchTab === 'function') switchTab('generator');
             if (window.state && state.session && typeof maybeStartOnboardingFlow === 'function') {
                 maybeStartOnboardingFlow(state.session);
             }
@@ -70,14 +101,11 @@
         setTimeout(() => { try { if (typeof startNewBlankProject === 'function') startNewBlankProject(); } catch (_) {} }, 380);
     };
 
-    // Card "Criar slides de um arquivo": abre o editor na aba Slides e já dispara
-    // o fluxo de gerar slides (que pergunta: projeto ou outro arquivo).
+    // Card "Criar slides": abre os Slides como PÁGINA PRÓPRIA (modo foco, sem o
+    // editor de trabalhos por trás) e já abre o seletor (arquivo / monografia / manual).
     window.hubCreateSlides = function hubCreateSlides() {
-        hideHubShowApp();
-        setTimeout(() => {
-            try { if (typeof switchTab === 'function') switchTab('slides'); } catch (_) {}
-            setTimeout(() => { try { if (typeof generateSlidesWithAI === 'function') generateSlidesWithAI(); } catch (_) {} }, 250);
-        }, 380);
+        window.enterAppFocus('slides');
+        setTimeout(() => { try { if (typeof generateSlidesWithAI === 'function') generateSlidesWithAI(); } catch (_) {} }, 700);
     };
 
     // Card "Editor de imagem / Logos": abre o módulo image-editor.js.
@@ -89,8 +117,9 @@
         }
     };
 
-    // Abre um projeto do histórico direto do hub.
+    // Abre um projeto do histórico direto do hub (editor completo).
     window.hubOpenProject = function hubOpenProject(id) {
+        exitFocus();
         hideHubShowApp();
         setTimeout(() => { try { if (typeof loadFromHistory === 'function') loadFromHistory(id); } catch (_) {} }, 380);
     };
@@ -147,12 +176,12 @@
             '<header class="sticky top-0 z-10 backdrop-blur bg-white/70 dark:bg-slate-900/70 border-b border-slate-200/60 dark:border-slate-800/60">' +
                 '<div class="max-w-6xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-3">' +
                     '<div class="flex items-center gap-2 select-none">' +
-                        '<div class="w-9 h-9 rounded-xl bg-gradient-to-br from-primary-500 to-indigo-600 flex items-center justify-center shadow-md"><i data-lucide="graduation-cap" class="w-5 h-5 text-white"></i></div>' +
+                        '<img src="icon/icon.png" alt="Monofy" class="w-9 h-9 rounded-xl object-contain shadow-md">' +
                         '<span class="font-black tracking-tight text-lg text-slate-800 dark:text-white">MONOFY</span>' +
                     '</div>' +
                     '<div class="flex items-center gap-2">' +
-                        '<button onclick="hubGoTab(\'credits\')" class="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 text-xs font-bold hover:bg-amber-100 dark:hover:bg-amber-900/40 transition"><i data-lucide="coins" class="w-4 h-4"></i> ' + credits + '</button>' +
-                        '<button onclick="hubGoTab(\'myprofile\')" title="Meu perfil" class="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition"><i data-lucide="user-circle" class="w-4 h-4"></i></button>' +
+                        '<button onclick="enterAppFocus(\'credits\')" class="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 text-xs font-bold hover:bg-amber-100 dark:hover:bg-amber-900/40 transition"><i data-lucide="coins" class="w-4 h-4"></i> ' + credits + '</button>' +
+                        '<button onclick="enterAppFocus(\'myprofile\')" title="Meu perfil" class="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition"><i data-lucide="user-circle" class="w-4 h-4"></i></button>' +
                         '<button onclick="signOut()" title="Sair" class="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition"><i data-lucide="log-out" class="w-4 h-4"></i></button>' +
                     '</div>' +
                 '</div>' +

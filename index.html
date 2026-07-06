@@ -78,7 +78,8 @@
         const AI_COST_REFINE = 3;         // usar IA pra refinar 1 página
         const AI_COST_TITLE_FROM_CHAT = 4; // IA define o título com base na conversa com o Assistente
         const AI_COST_PER_SECTION = 6;    // gerar 1 seção da monografia com IA (6 seções = 36 + título 4 = 40, igual ao custo fixo da monografia completa)
-        const AI_COST_SLIDES = 20;        // gerar/atualizar a apresentação inteira com IA a partir da monografia
+        const AI_COST_SLIDES = 20;        // gerar slides a partir da monografia do projeto (mais caro: conteúdo maior)
+        const AI_COST_SLIDES_FILE = 5;    // gerar slides a partir de um arquivo enviado (mais barato)
 
         const SLIDE_THEMES = {
             azul:   { name: 'Azul Acadêmico',     accent: '#16215c', bar: '#0f2a6b', bg: '#eef2f9', text: '#0f172a', light: '#ffffff' },
@@ -746,7 +747,7 @@
 
         <!-- BADGE DE UTILIZADOR + SALDO DE CRÉDITOS -->
         <!-- Mobile: left-[60px] clears the 52px toolbar; desktop: bottom-6 left-10 -->
-        <div class="fixed top-2 left-[60px] lg:top-auto lg:bottom-6 lg:left-10 z-[40] hide-on-print">
+        <div id="user-badge" class="fixed top-2 left-[60px] lg:top-auto lg:bottom-6 lg:left-10 z-[40] hide-on-print">
             <div class="bg-white/90 dark:bg-slate-850/90 backdrop-blur-md shadow-xl rounded-2xl border border-slate-200/50 dark:border-slate-700/50 flex items-center gap-2 lg:gap-3 px-3 lg:px-4 py-2 lg:py-2.5">
                 <button onclick="goToHub()" title="Início" class="p-1 lg:p-1.5 text-slate-400 hover:text-primary-600 rounded-full hover:bg-primary-50 dark:hover:bg-primary-900/20 transition shrink-0">
                     <i data-lucide="home" class="w-4 h-4 lg:w-4 lg:h-4"></i>
@@ -1143,7 +1144,7 @@
         </div>
 
         <!-- PAINEL DE EXPORTAÇÃO: Salvar, remover marca d'água e exportar o documento final -->
-        <div id="panel-export" class="fixed lg:absolute left-4 right-4 lg:left-auto lg:right-4 top-4 lg:top-24 bottom-28 lg:bottom-auto lg:h-[78vh] lg:max-h-[85vh] lg:w-[300px] bg-white/95 dark:bg-slate-850/95 backdrop-blur-sm shadow-2xl rounded-3xl border border-white/40 dark:border-slate-700/50 flex flex-col z-30 transition-transform duration-300 mobile-hidden lg:!transform-none lg:!opacity-100 lg:!pointer-events-auto lg:overflow-hidden lg:min-w-[280px] lg:max-w-[40vw] lg:min-h-[400px]">
+        <div id="panel-export" class="fixed lg:absolute left-4 right-4 lg:left-auto lg:right-4 top-4 lg:top-24 bottom-28 lg:bottom-auto lg:h-[78vh] lg:max-h-[85vh] lg:w-[300px] bg-white/95 dark:bg-slate-850/95 backdrop-blur-sm shadow-2xl rounded-3xl border border-white/40 dark:border-slate-700/50 flex flex-col z-[45] transition-transform duration-300 mobile-hidden lg:!transform-none lg:!opacity-100 lg:!pointer-events-auto lg:overflow-hidden lg:min-w-[280px] lg:max-w-[40vw] lg:min-h-[400px]">
 
             <div id="panel-export-header" class="p-5 border-b border-slate-200/50 dark:border-slate-800/50 flex justify-between items-center cursor-move lg:hover:bg-slate-50/50 dark:hover:bg-slate-800/50 rounded-t-3xl transition-colors">
                 <h3 class="font-extrabold flex items-center gap-2 text-slate-800 dark:text-white"><i data-lucide="file-down" class="w-5 h-5 text-emerald-500"></i> Exportar</h3>
@@ -1389,7 +1390,7 @@
                     <div class="flex-1"></div>
 
                     <button onclick="generateSlidesWithAI()" id="btn-generate-slides-ai" type="button" class="flex items-center gap-1.5 px-4 py-1.5 text-xs font-bold rounded-full bg-indigo-600 hover:bg-indigo-700 text-white shadow">
-                        <i data-lucide="sparkles" class="w-3.5 h-3.5"></i> Gerar com IA (<span id="slides-ai-cost-label">30</span> créditos)
+                        <i data-lucide="sparkles" class="w-3.5 h-3.5"></i> Gerar com IA (<span id="slides-ai-cost-label">5–20</span> créditos)
                     </button>
 
                     <div class="relative" id="slides-export-wrap">
@@ -1515,6 +1516,14 @@
                         </div>
                     </div>
                     <button onclick="saveMyProfile()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 rounded-xl transition-all">Salvar Alterações</button>
+                </div>
+
+                <div class="bg-white/80 dark:bg-slate-850/80 backdrop-blur p-8 rounded-3xl shadow-xl border border-white/40 dark:border-slate-700 space-y-4">
+                    <h3 class="font-extrabold text-slate-800 dark:text-white flex items-center gap-2"><i data-lucide="palette" class="w-5 h-5 text-emerald-600"></i> Aparência</h3>
+                    <button onclick="toggleDarkMode()" class="w-full flex items-center justify-between gap-2 px-5 py-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 rounded-2xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-all font-bold text-sm">
+                        <span class="flex items-center gap-2"><i data-lucide="moon" class="w-4 h-4"></i> Tema escuro / claro</span>
+                        <span id="myprofile-theme-state" class="text-xs font-bold px-3 py-1 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300">alternar</span>
+                    </button>
                 </div>
 
                 <div class="bg-white/80 dark:bg-slate-850/80 backdrop-blur p-8 rounded-3xl shadow-xl border border-white/40 dark:border-slate-700 space-y-4">
@@ -4663,7 +4672,7 @@ ${original}`;
         function renderSlidesTab() {
             renderSlideThemePicker();
             const costLabel = document.getElementById('slides-ai-cost-label');
-            if (costLabel) costLabel.textContent = AI_COST_SLIDES;
+            if (costLabel) costLabel.textContent = `${AI_COST_SLIDES_FILE}–${AI_COST_SLIDES}`;
 
             const hasSlides = state.slides.length > 0;
             document.getElementById('slides-empty-state').classList.toggle('hidden-state', hasSlides);
@@ -5106,23 +5115,32 @@ El "body" es texto simple (usa \\n para separar puntos), nunca HTML.`;
                             <h3 class="text-xl font-extrabold text-slate-900 dark:text-white">Gerar slides a partir de…</h3>
                             <button data-src="" class="p-1 text-slate-400 hover:text-slate-700 dark:hover:text-white rounded-full"><i data-lucide="x" class="w-5 h-5"></i></button>
                         </div>
-                        <p class="text-xs text-slate-500 dark:text-slate-400 mb-4">A IA identifica o conteúdo e monta os slides automaticamente.</p>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 mb-4">A IA identifica o conteúdo e monta os slides — ou comece do zero manualmente.</p>
                         <div class="space-y-3">
+                            <button data-src="file" class="src-card w-full text-left rounded-2xl border-2 border-slate-200 dark:border-slate-700 hover:border-indigo-500 dark:hover:border-indigo-500 bg-white dark:bg-slate-800 p-4 transition-all hover:shadow-xl hover:-translate-y-0.5">
+                                <div class="flex items-center gap-3">
+                                    <span class="text-2xl">📎</span>
+                                    <div class="flex-1">
+                                        <div class="font-extrabold text-slate-900 dark:text-white flex items-center gap-2">Enviar um arquivo <span class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 font-bold">${AI_COST_SLIDES_FILE} créditos</span></div>
+                                        <div class="text-xs text-slate-500 dark:text-slate-400">PDF, Word (.docx) ou texto — a IA lê e cria os slides do conteúdo dele.</div>
+                                    </div>
+                                </div>
+                            </button>
                             <button data-src="project" ${hasProject ? '' : 'disabled'} class="src-card w-full text-left rounded-2xl border-2 ${hasProject ? 'border-slate-200 dark:border-slate-700 hover:border-indigo-500 dark:hover:border-indigo-500 hover:-translate-y-0.5' : 'border-slate-100 dark:border-slate-800 opacity-50 cursor-not-allowed'} bg-white dark:bg-slate-800 p-4 transition-all hover:shadow-xl">
                                 <div class="flex items-center gap-3">
                                     <span class="text-2xl">📝</span>
-                                    <div>
-                                        <div class="font-extrabold text-slate-900 dark:text-white">Meu projeto (monografia)</div>
+                                    <div class="flex-1">
+                                        <div class="font-extrabold text-slate-900 dark:text-white flex items-center gap-2">Minha monografia <span class="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 font-bold">${AI_COST_SLIDES} créditos</span></div>
                                         <div class="text-xs text-slate-500 dark:text-slate-400">${hasProject ? 'Usa o trabalho que você escreveu no editor.' : 'Nenhum trabalho gerado ainda no editor.'}</div>
                                     </div>
                                 </div>
                             </button>
-                            <button data-src="file" class="src-card w-full text-left rounded-2xl border-2 border-slate-200 dark:border-slate-700 hover:border-indigo-500 dark:hover:border-indigo-500 bg-white dark:bg-slate-800 p-4 transition-all hover:shadow-xl hover:-translate-y-0.5">
+                            <button data-src="manual" class="src-card w-full text-left rounded-2xl border-2 border-slate-200 dark:border-slate-700 hover:border-indigo-500 dark:hover:border-indigo-500 bg-white dark:bg-slate-800 p-4 transition-all hover:shadow-xl hover:-translate-y-0.5">
                                 <div class="flex items-center gap-3">
-                                    <span class="text-2xl">📎</span>
-                                    <div>
-                                        <div class="font-extrabold text-slate-900 dark:text-white">Outro arquivo</div>
-                                        <div class="text-xs text-slate-500 dark:text-slate-400">Envie um PDF, Word (.docx) ou texto — a IA lê e cria os slides do conteúdo dele.</div>
+                                    <span class="text-2xl">✍️</span>
+                                    <div class="flex-1">
+                                        <div class="font-extrabold text-slate-900 dark:text-white flex items-center gap-2">Começar manualmente <span class="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 font-bold">grátis</span></div>
+                                        <div class="text-xs text-slate-500 dark:text-slate-400">Crie e edite os slides você mesmo, sem IA.</div>
                                     </div>
                                 </div>
                             </button>
@@ -5159,6 +5177,19 @@ El "body" es texto simple (usa \\n para separar puntos), nunca HTML.`;
             const source = await chooseSlideSource();
             if (!source) return;
 
+            // Manual: garante ao menos um slide de capa e deixa a pessoa editar (sem IA, grátis).
+            if (source === 'manual') {
+                if (!state.slides || state.slides.length === 0) {
+                    state.slides = [newSlideObj('cover')];
+                    state.activeSlideId = state.slides[0].id;
+                    saveSlidesState();
+                    renderSlidesTab();
+                }
+                return;
+            }
+
+            const slideCost = source === 'project' ? AI_COST_SLIDES : AI_COST_SLIDES_FILE;
+
             let docTitle, sourceText;
             if (source === 'project') {
                 if (!state.generatedSections || state.generatedSections.length === 0) {
@@ -5193,15 +5224,16 @@ El "body" es texto simple (usa \\n para separar puntos), nunca HTML.`;
 
             const confirmed = await showConfirmModal(
                 'Gerar slides com IA',
-                `A IA vai ler ${source === 'project' ? 'a monografia já escrita' : 'o arquivo enviado'} e montar uma apresentação completa (capa, tópicos, conclusão e encerramento). Isso consome <b>${AI_COST_SLIDES} créditos</b> do seu saldo atual de <b>${state.profile.credits}</b>. ${state.slides.length > 0 ? 'Os slides atuais serão substituídos. ' : ''}Continuar?`
+                `A IA vai ler ${source === 'project' ? 'a monografia já escrita' : 'o arquivo enviado'} e montar uma apresentação completa (capa, tópicos, conclusão e encerramento). Isso consome <b>${slideCost} créditos</b> do seu saldo atual de <b>${state.profile.credits}</b>. ${state.slides.length > 0 ? 'Os slides atuais serão substituídos. ' : ''}Continuar?`
             );
             if (!confirmed) return;
 
-            await runSlideGeneration(docTitle, sourceText, source);
+            await runSlideGeneration(docTitle, sourceText, source, slideCost);
         }
 
         // Núcleo da geração de slides — reaproveitado pelo projeto e por arquivo externo.
-        async function runSlideGeneration(docTitle, sourceText, source) {
+        async function runSlideGeneration(docTitle, sourceText, source, slideCost) {
+            slideCost = slideCost || AI_COST_SLIDES;
             const btn = document.getElementById('btn-generate-slides-ai');
             const originalHtml = btn.innerHTML;
             btn.disabled = true;
@@ -5222,7 +5254,7 @@ FORMATO DE SALIDA ESTRICTO: devuelve SOLO un array JSON puro, sin markdown, con 
 [{"type":"cover","heading":"...","students":"","professor":""}, {"type":"content","heading":"...","body":"..."}, ..., {"type":"closing","heading":"..."}]
 El campo "body" debe ser texto simple corto (puedes usar saltos de línea con \\n para separar puntos), nunca HTML.`;
 
-                let jsonText = await callAI(prompt, AI_COST_SLIDES, 'ai_generate_slides');
+                let jsonText = await callAI(prompt, slideCost, 'ai_generate_slides');
                 jsonText = jsonText.replace(/```json/gi, '').replace(/```/g, '').trim();
                 const firstBracket = jsonText.indexOf('[');
                 const lastBracket = jsonText.lastIndexOf(']');
