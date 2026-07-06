@@ -1,0 +1,20 @@
+/* MONOFY — estilos da tela inicial (hub). Mantido separado do index.html. */
+
+#hub-screen {
+    position: absolute;
+    inset: 0;
+    z-index: 150;
+    transition: opacity 0.45s ease;
+    overflow: hidden;
+}
+
+/* Garante o recorte de linhas mesmo se o plugin line-clamp do Tailwind não estiver ativo */
+.hub-proj-card .line-clamp-2,
+.hub-main-card .line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.hub-main-card:active { transform: translateY(0) scale(0.99); }

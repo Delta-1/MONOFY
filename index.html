@@ -641,6 +641,8 @@
         .typing-dot:nth-child(3) { animation-delay: 0.3s; }
     </style>
     <style id="dynamic-page-size"></style>
+    <!-- Estilos do módulo da tela inicial (hub) — arquivo separado -->
+    <link rel="stylesheet" href="hub.css">
 </head>
 <body class="bg-[#e2e8f0] dark:bg-[#0f172a] text-slate-800 dark:text-slate-100 h-[100dvh] w-screen overflow-hidden transition-colors duration-300 selection:bg-primary-500 selection:text-white">
 
@@ -726,6 +728,9 @@
         </div>
     </div>
 
+    <!-- TELA INICIAL (HUB estilo Canva) — conteúdo renderizado por hub.js (módulo separado) -->
+    <div id="hub-screen" class="hidden-state opacity-0 pointer-events-none"></div>
+
     <!-- MAIN APP WRAPPER -->
     <div id="app-screen" class="relative h-full w-full opacity-0 pointer-events-none transition-opacity duration-500">
 
@@ -738,6 +743,9 @@
         <!-- Mobile: left-[60px] clears the 52px toolbar; desktop: bottom-6 left-10 -->
         <div class="fixed top-2 left-[60px] lg:top-auto lg:bottom-6 lg:left-10 z-[40] hide-on-print">
             <div class="bg-white/90 dark:bg-slate-850/90 backdrop-blur-md shadow-xl rounded-2xl border border-slate-200/50 dark:border-slate-700/50 flex items-center gap-2 lg:gap-3 px-3 lg:px-4 py-2 lg:py-2.5">
+                <button onclick="goToHub()" title="Início" class="p-1 lg:p-1.5 text-slate-400 hover:text-primary-600 rounded-full hover:bg-primary-50 dark:hover:bg-primary-900/20 transition shrink-0">
+                    <i data-lucide="home" class="w-4 h-4 lg:w-4 lg:h-4"></i>
+                </button>
                 <button onclick="switchTab('myprofile')" title="Meu Perfil" class="flex items-center gap-1.5 lg:gap-2 hover:opacity-75 active:scale-95 transition min-w-0">
                     <img id="user-avatar" src="" class="w-6 h-6 lg:w-7 lg:h-7 rounded-full hidden-state object-cover shrink-0">
                     <i data-lucide="user-circle" id="user-avatar-fallback" class="w-5 h-5 lg:w-6 lg:h-6 text-slate-400 shrink-0"></i>
@@ -3911,13 +3919,16 @@ ${original}`;
             document.getElementById('user-credits-display').innerText = '0';
             document.getElementById('btn-export-pdf').title = 'Exportação desativada no modo demonstração';
             document.getElementById('btn-export-txt').title = 'Exportação desativada no modo demonstração';
-            document.getElementById('login-screen').classList.add('opacity-0', 'pointer-events-none');
-            setTimeout(() => {
-                document.getElementById('login-screen').classList.add('hidden-state');
-                document.getElementById('app-screen').classList.remove('opacity-0', 'pointer-events-none');
-                updateCoverPage();
-                // maybeStartTour(); // tutorial desativado por hora (ainda disponível manualmente em Ajustes)
-            }, 400);
+            if (typeof enterHub === 'function') {
+                enterHub();
+            } else {
+                document.getElementById('login-screen').classList.add('opacity-0', 'pointer-events-none');
+                setTimeout(() => {
+                    document.getElementById('login-screen').classList.add('hidden-state');
+                    document.getElementById('app-screen').classList.remove('opacity-0', 'pointer-events-none');
+                    updateCoverPage();
+                }, 400);
+            }
         }
 
         async function loadProfile() {
@@ -4171,13 +4182,20 @@ ${original}`;
             if (session.provider_token) {
                 state.driveAccessToken = session.provider_token;
             }
-            document.getElementById('login-screen').classList.add('opacity-0', 'pointer-events-none');
-            setTimeout(() => {
-                document.getElementById('login-screen').classList.add('hidden-state');
-                document.getElementById('app-screen').classList.remove('opacity-0', 'pointer-events-none');
-                updateCoverPage();
-                maybeStartOnboardingFlow(session);
-            }, 400);
+            // Depois do login, a pessoa cai na TELA INICIAL (hub estilo Canva). O seletor de
+            // modelo (onboarding) passa a ser disparado quando ela entra no editor pelo hub.
+            if (typeof enterHub === 'function') {
+                enterHub();
+            } else {
+                // Fallback (caso hub.js não tenha carregado): abre o editor direto, como antes.
+                document.getElementById('login-screen').classList.add('opacity-0', 'pointer-events-none');
+                setTimeout(() => {
+                    document.getElementById('login-screen').classList.add('hidden-state');
+                    document.getElementById('app-screen').classList.remove('opacity-0', 'pointer-events-none');
+                    updateCoverPage();
+                    maybeStartOnboardingFlow(session);
+                }, 400);
+            }
             // Segundo plano — nunca bloqueiam a abertura do app nem podem quebrar o login:
             loadProfile().catch(e => console.warn('loadProfile error:', e));
             try { if (session.provider_token) startDriveAutosave(); } catch (e) { console.warn('startDriveAutosave error:', e); }
@@ -8760,5 +8778,9 @@ ${text}`;
             _setPWABtnsVisible(false);
         }
     </script>
+
+    <!-- MODULOS SEPARADOS (regra: cada modulo novo em seu proprio arquivo).
+         Carregado como script classico = mesmo escopo global do app acima (sem type module). -->
+    <script src="hub.js"></script>
 </body>
 </html>
