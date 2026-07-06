@@ -1341,7 +1341,7 @@
                      então sem um z-index explícito aqui o menu "Exportar" (z-50, mas só dentro
                      desse contexto) acabava pintado atrás do canvas do slide, que vem depois no
                      HTML e também não tinha z-index. -->
-                <div class="relative z-20 bg-white/80 dark:bg-slate-850/80 backdrop-blur rounded-2xl shadow border border-white/40 dark:border-slate-700 p-3 lg:p-4 mb-4 flex flex-wrap items-center gap-3">
+                <div class="relative z-40 bg-white/80 dark:bg-slate-850/80 backdrop-blur rounded-2xl shadow border border-white/40 dark:border-slate-700 p-3 lg:p-4 mb-4 flex flex-wrap items-center gap-3">
                     <div class="flex items-center gap-2">
                         <i data-lucide="presentation" class="w-5 h-5 text-indigo-600 dark:text-indigo-400"></i>
                         <h2 class="font-extrabold text-slate-800 dark:text-white text-sm lg:text-base">Slides da Apresentação</h2>
@@ -1353,7 +1353,7 @@
                         <button onclick="document.getElementById('slides-style-menu').classList.toggle('hidden-state')" type="button" class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700">
                             <i data-lucide="image-up" class="w-3.5 h-3.5"></i> Logo &amp; Texto
                         </button>
-                        <div id="slides-style-menu" class="hidden-state absolute left-0 mt-1 w-72 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 z-50 p-4 space-y-4">
+                        <div id="slides-style-menu" class="hidden-state absolute left-0 mt-1 w-72 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 z-[60] p-4 space-y-4">
                             <div>
                                 <p class="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">Logo do topo (só na capa)</p>
                                 <div class="flex items-center gap-2">
@@ -1397,7 +1397,7 @@
                         <button onclick="document.getElementById('slides-export-menu').classList.toggle('hidden-state')" type="button" class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-full bg-slate-800 hover:bg-slate-900 text-white">
                             <i data-lucide="download" class="w-3.5 h-3.5"></i> Exportar
                         </button>
-                        <div id="slides-export-menu" class="hidden-state absolute right-0 mt-1 w-48 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 z-50 overflow-hidden">
+                        <div id="slides-export-menu" class="hidden-state absolute right-0 mt-1 w-48 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 z-[60] overflow-hidden">
                             <button onclick="exportSlidesPptx()" class="w-full text-left px-4 py-2.5 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center gap-2"><i data-lucide="file-text" class="w-3.5 h-3.5"></i> PowerPoint (.pptx)</button>
                             <button onclick="exportSlidesPdf()" class="w-full text-left px-4 py-2.5 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center gap-2"><i data-lucide="file-down" class="w-3.5 h-3.5"></i> PDF</button>
                         </div>
@@ -1421,12 +1421,15 @@
                     <div class="flex-1 flex flex-col items-center gap-3">
                         <div id="slide-canvas-wrap" class="w-full max-w-3xl"></div>
 
-                        <!-- Barra de ferramentas de edição do slide (abaixo do editor) -->
-                        <div class="w-full max-w-3xl bg-white/85 dark:bg-slate-850/85 backdrop-blur rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm px-2 py-2 flex flex-wrap items-center justify-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+                        <!-- Barra de ferramentas de edição do slide (abaixo do editor).
+                             relative z-30: sem z-index, o backdrop-blur criava um stacking context
+                             próprio e o menu "+ Slide" (que abre pra cima, sobre o canvas) ficava
+                             pintado atrás do conteúdo do slide. -->
+                        <div class="relative z-30 w-full max-w-3xl bg-white/85 dark:bg-slate-850/85 backdrop-blur rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm px-2 py-2 flex flex-wrap items-center justify-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
                             <!-- Adicionar slide por tipo -->
                             <div class="relative">
                                 <button onclick="document.getElementById('slide-add-menu').classList.toggle('hidden-state')" type="button" title="Adicionar slide" class="flex items-center gap-1 px-2.5 py-2 rounded-lg bg-indigo-600 text-white font-bold hover:bg-indigo-700"><i data-lucide="plus" class="w-3.5 h-3.5"></i> Slide <i data-lucide="chevron-down" class="w-3 h-3"></i></button>
-                                <div id="slide-add-menu" class="hidden-state absolute bottom-full left-0 mb-1 w-44 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 z-50 overflow-hidden">
+                                <div id="slide-add-menu" class="hidden-state absolute bottom-full left-0 mb-1 w-44 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 z-[60] overflow-hidden">
                                     <button onclick="addSlideFromMenu('cover')" class="w-full text-left px-3 py-2 hover:bg-slate-100 dark:hover:bg-slate-700 font-medium text-slate-700 dark:text-slate-200">Capa</button>
                                     <button onclick="addSlideFromMenu('content')" class="w-full text-left px-3 py-2 hover:bg-slate-100 dark:hover:bg-slate-700 font-medium text-slate-700 dark:text-slate-200">Conteúdo</button>
                                     <button onclick="addSlideFromMenu('conclusion')" class="w-full text-left px-3 py-2 hover:bg-slate-100 dark:hover:bg-slate-700 font-medium text-slate-700 dark:text-slate-200">Conclusão</button>
