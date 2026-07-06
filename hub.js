@@ -130,6 +130,32 @@
         setTimeout(() => { try { if (typeof switchTab === 'function') switchTab(tab); } catch (_) {} }, 380);
     };
 
+    var _autoPulled = false;
+
+    function driveOn() { return typeof window.driveIsConnected === 'function' && window.driveIsConnected(); }
+
+    function driveStatusHtml() {
+        if (driveOn()) {
+            return '<div class="flex items-center gap-2">' +
+                '<span id="hub-drive-status-text" class="text-[11px] text-slate-400 hidden sm:inline"></span>' +
+                '<button onclick="hubSyncDrive()" id="hub-drive-sync-btn" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 text-xs font-bold hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition"><i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i> Sincronizar</button>' +
+                '</div>';
+        }
+        return '<span class="text-[11px] text-slate-400 flex items-center gap-1"><i data-lucide="cloud-off" class="w-3.5 h-3.5"></i> Drive não conectado</span>';
+    }
+
+    // Puxa manualmente os projetos do Drive e re-renderiza o hub.
+    window.hubSyncDrive = async function () {
+        if (!driveOn()) return;
+        var btn = el('hub-drive-sync-btn');
+        var orig = btn ? btn.innerHTML : '';
+        if (btn) { btn.disabled = true; btn.innerHTML = '<i data-lucide="loader-2" class="w-3.5 h-3.5 animate-spin"></i> Sincronizando...'; if (window.lucide) lucide.createIcons(); }
+        var n = 0;
+        try { n = await window.drivePullProjects(true); } catch (_) {}
+        renderHub();
+        if (window.driveStatusMark) driveStatusMark(n > 0 ? (n + ' projeto(s) trazido(s) do Drive') : 'Tudo sincronizado ✓');
+    };
+
     function historyCardsHtml() {
         var hist = (window.state && Array.isArray(state.history)) ? state.history : [];
         var cards = '';
@@ -144,9 +170,15 @@
             var date = (doc.date || '').replace(/</g, '&lt;');
             var nSlides = (doc.slides && doc.slides.length) ? doc.slides.length : 0;
             var nSec = (doc.sections && doc.sections.length) ? doc.sections.length : 0;
+            var driveBadge = doc.driveId
+                ? '<span title="Salvo no Google Drive" class="shrink-0 text-emerald-500"><i data-lucide="cloud" class="w-4 h-4"></i></span>'
+                : '';
             cards += '' +
                 '<div class="hub-proj-card group rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm hover:shadow-xl hover:-translate-y-0.5 transition-all p-5 flex flex-col min-h-[150px]">' +
-                '<div class="w-11 h-11 rounded-xl bg-primary-50 dark:bg-primary-900/30 flex items-center justify-center mb-3 text-primary-600 dark:text-primary-400"><i data-lucide="book-open" class="w-5 h-5"></i></div>' +
+                '<div class="flex items-center justify-between mb-3">' +
+                    '<div class="w-11 h-11 rounded-xl bg-primary-50 dark:bg-primary-900/30 flex items-center justify-center text-primary-600 dark:text-primary-400"><i data-lucide="book-open" class="w-5 h-5"></i></div>' +
+                    driveBadge +
+                '</div>' +
                 '<h4 class="font-extrabold text-slate-800 dark:text-white text-sm leading-tight mb-1 line-clamp-2" title="' + title + '">' + title + '</h4>' +
                 '<p class="text-[11px] text-slate-400 mb-3 flex items-center gap-1"><i data-lucide="clock" class="w-3 h-3"></i> ' + date + '</p>' +
                 '<div class="text-[11px] text-slate-500 dark:text-slate-400 mb-3 flex items-center gap-3">' +
@@ -194,21 +226,31 @@
                 // Cards principais (estilo Canva)
                 '<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 mb-12">' +
                     hubMainCard('hubOpenEditor()', 'file-text', 'from-indigo-500 to-violet-600', 'Editor de trabalhos', 'Escreva e formate monografias, informes e trabalhos com IA — e monte os slides.') +
-                    hubMainCard('hubCreateSlides()', 'presentation', 'from-sky-500 to-cyan-600', 'Criar slides de um arquivo', 'Envie um PDF, Word ou texto e a IA monta a apresentação pronta — ou faça manualmente.') +
+                    hubMainCard('hubCreateSlides()', 'presentation', 'from-sky-500 to-cyan-600', 'Criar slides', 'Envie um arquivo e a IA monta a apresentação, use sua monografia, ou faça manualmente.') +
                     hubMainCard('hubOpenImageEditor()', 'image', 'from-fuchsia-500 to-pink-600', 'Editor de imagem / Logos', 'Crie e edite logos, remova o fundo com IA e exporte PNG transparente.') +
                 '</div>' +
 
                 // Histórico
-                '<div class="flex items-center justify-between mb-4">' +
+                '<div class="flex items-center justify-between mb-4 gap-3 flex-wrap">' +
                     '<h2 class="text-lg font-extrabold text-slate-800 dark:text-white flex items-center gap-2"><i data-lucide="folder" class="w-5 h-5 text-primary-500"></i> Seus projetos</h2>' +
+                    driveStatusHtml() +
                 '</div>' +
                 '<div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">' + historyCardsHtml() + '</div>' +
 
-                '<p class="text-center text-[11px] text-slate-400 mt-10">Seus projetos ficam salvos neste aparelho' + '. Em breve, sincronização com o Google Drive.</p>' +
+                '<p class="text-center text-[11px] text-slate-400 mt-10">' + (driveOn()
+                    ? 'Seus projetos são salvos neste aparelho e sincronizados na pasta "Monofy" do seu Google Drive.'
+                    : 'Seus projetos ficam salvos neste aparelho. Entre com o Google para sincronizar na nuvem.') + '</p>' +
             '</main>' +
         '</div>';
 
         if (window.lucide && typeof lucide.createIcons === 'function') { try { lucide.createIcons(); } catch (_) {} }
+
+        // Primeira vez que o hub abre com o Drive conectado: puxa os projetos da nuvem
+        // em segundo plano e re-renderiza se algo novo chegou (não trava a tela).
+        if (driveOn() && !_autoPulled && typeof window.drivePullProjects === 'function') {
+            _autoPulled = true;
+            window.drivePullProjects(false).then(function (n) { if (n > 0) renderHub(); }).catch(function () {});
+        }
     }
 
     function hubMainCard(onclick, icon, grad, title, desc) {
