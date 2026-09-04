@@ -1,7 +1,7 @@
-const CACHE_NAME = 'monofy-cache-v42';
+const CACHE_NAME = 'monofy-cache-v43';
 const ASSETS = [
   'index.html',
-  'hub.js',
+  'hub.js?v=43',
   'hub.css',
   'drive-sync.js',
   'manifest.json',

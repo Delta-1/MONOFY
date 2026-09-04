@@ -8581,7 +8581,7 @@ Responda APENAS com o título, sem aspas, sem explicações, em uma única linha
                 window.location.reload();
             });
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('sw.js')
+                navigator.serviceWorker.register('sw.js?v=43')
                     .then(reg => {
                         // Procura ativamente por uma versão mais nova a cada carga.
                         reg.update().catch(() => {});
@@ -8947,7 +8947,7 @@ ${text}`;
 
     <!-- MODULOS SEPARADOS (regra: cada modulo novo em seu proprio arquivo).
          Carregado como script classico = mesmo escopo global do app acima (sem type module). -->
-    <script src="hub.js"></script>
+    <script src="hub.js?v=43"></script>
     <script src="drive-sync.js"></script>
 </body>
 </html>
