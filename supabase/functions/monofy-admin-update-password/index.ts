@@ -43,7 +43,7 @@ Deno.serve(async (req: Request) => {
     // Só quem chama com o próprio JWT de admin pode trocar a senha de outra pessoa —
     // sem essa checagem, qualquer usuário autenticado poderia trocar a senha de qualquer um.
     const { data: callerProfile, error: callerError } = await supabaseAdmin
-      .from("profiles")
+      .from("monofy_profiles")
       .select("role")
       .eq("id", userData.user.id)
       .single();

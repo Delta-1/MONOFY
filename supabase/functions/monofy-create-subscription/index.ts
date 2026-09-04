@@ -8,10 +8,19 @@ const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
+const PERSONAL_MODE = true;
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
+  }
+
+  // Modo pessoal: novas assinaturas foram desativadas sem apagar o fluxo antigo.
+  if (PERSONAL_MODE) {
+    return new Response(JSON.stringify({ error: "Assinaturas desativadas no modo pessoal" }), {
+      status: 410,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 
   try {
@@ -33,8 +42,14 @@ Deno.serve(async (req: Request) => {
 
     const { successUrl, cancelUrl } = await req.json();
 
-    const mpAccessToken = Deno.env.get("MP_ACCESS_TOKEN")!;
-    const notificationUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/subscription-webhook`;
+    const mpAccessToken = Deno.env.get("MP_ACCESS_TOKEN");
+    if (!mpAccessToken) {
+      return new Response(JSON.stringify({ error: "Pagamento ainda não configurado" }), {
+        status: 503,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const notificationUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/monofy-subscription-webhook`;
 
     const mpRes = await fetch("https://api.mercadopago.com/preapproval", {
       method: "POST",
@@ -70,7 +85,7 @@ Deno.serve(async (req: Request) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
-    await supabaseAdmin.from("subscriptions").upsert({
+    await supabaseAdmin.from("monofy_subscriptions").upsert({
       user_id: user.id,
       mp_preapproval_id: preapproval.id,
       status: "pending",

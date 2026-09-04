@@ -7,16 +7,26 @@ const CREDIT_PACKS: Record<string, { title: string; price: number; credits: numb
   pack_25: { title: "Monofy - 25 créditos", price: 22.0, credits: 25 },
   pack_60: { title: "Monofy - 60 créditos", price: 45.0, credits: 60 },
   pack_150: { title: "Monofy - 150 créditos", price: 95.0, credits: 150 },
+  pack_500: { title: "Monofy - 500 créditos", price: 400.0, credits: 500 },
 };
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
+const PERSONAL_MODE = true;
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
+  }
+
+  // Modo pessoal: o checkout foi desativado sem remover a implementação anterior.
+  if (PERSONAL_MODE) {
+    return new Response(JSON.stringify({ error: "Pagamentos desativados no modo pessoal" }), {
+      status: 410,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 
   try {
@@ -45,8 +55,14 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    const mpAccessToken = Deno.env.get("MP_ACCESS_TOKEN")!;
-    const notificationUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/payment-webhook`;
+    const mpAccessToken = Deno.env.get("MP_ACCESS_TOKEN");
+    if (!mpAccessToken) {
+      return new Response(JSON.stringify({ error: "Pagamento ainda não configurado" }), {
+        status: 503,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const notificationUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/monofy-payment-webhook`;
 
     const mpRes = await fetch("https://api.mercadopago.com/checkout/preferences", {
       method: "POST",

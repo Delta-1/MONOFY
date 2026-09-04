@@ -1,2 +1,0 @@
--- Fixed infinite recursion in admin RLS policies.
--- Applied via Supabase dashboard before repo migration tracking was set up.

@@ -21,7 +21,13 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    const mpAccessToken = Deno.env.get("MP_ACCESS_TOKEN")!;
+    const mpAccessToken = Deno.env.get("MP_ACCESS_TOKEN");
+    if (!mpAccessToken) {
+      return new Response(JSON.stringify({ error: "Pagamento não configurado" }), {
+        status: 503,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
     const paymentRes = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
       headers: { Authorization: `Bearer ${mpAccessToken}` },
     });
@@ -37,31 +43,13 @@ Deno.serve(async (req: Request) => {
     const credits = parseInt(payment.metadata?.credits ?? "0", 10);
 
     if (userId && credits > 0) {
-      const { data: existing } = await supabaseAdmin
-        .from("credit_transactions")
-        .select("id")
-        .eq("payment_ref", String(paymentId))
-        .maybeSingle();
-
-      if (!existing) {
-        const { data: profile } = await supabaseAdmin
-          .from("profiles")
-          .select("credits")
-          .eq("id", userId)
-          .single();
-
-        await supabaseAdmin
-          .from("profiles")
-          .update({ credits: (profile?.credits ?? 0) + credits })
-          .eq("id", userId);
-
-        await supabaseAdmin.from("credit_transactions").insert({
-          user_id: userId,
-          amount: credits,
-          reason: "purchase",
-          payment_ref: String(paymentId),
-        });
-      }
+      const { error } = await supabaseAdmin.rpc("monofy_apply_credit_payment", {
+        p_user_id: userId,
+        p_amount: credits,
+        p_reason: "purchase",
+        p_payment_ref: String(paymentId),
+      });
+      if (error) throw error;
     }
 
     return new Response(JSON.stringify({ received: true }), {

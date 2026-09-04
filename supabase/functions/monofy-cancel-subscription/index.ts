@@ -34,7 +34,7 @@ Deno.serve(async (req: Request) => {
     );
 
     const { data: sub } = await supabaseAdmin
-      .from("subscriptions")
+      .from("monofy_subscriptions")
       .select("mp_preapproval_id")
       .eq("user_id", user.id)
       .maybeSingle();
@@ -46,7 +46,13 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    const mpAccessToken = Deno.env.get("MP_ACCESS_TOKEN")!;
+    const mpAccessToken = Deno.env.get("MP_ACCESS_TOKEN");
+    if (!mpAccessToken) {
+      return new Response(JSON.stringify({ error: "Pagamento ainda não configurado" }), {
+        status: 503,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
     const mpRes = await fetch(`https://api.mercadopago.com/preapproval/${sub.mp_preapproval_id}`, {
       method: "PUT",
       headers: {
@@ -65,7 +71,7 @@ Deno.serve(async (req: Request) => {
     }
 
     await supabaseAdmin
-      .from("subscriptions")
+      .from("monofy_subscriptions")
       .update({ status: "cancelled", updated_at: new Date().toISOString() })
       .eq("user_id", user.id);
 

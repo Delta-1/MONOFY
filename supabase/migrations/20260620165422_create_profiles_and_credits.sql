@@ -1,2 +1,0 @@
--- Initial schema: profiles table, credits system, transactions
--- Applied via Supabase dashboard before repo migration tracking was set up.

@@ -1,2 +1,0 @@
--- Created network_templates table for shared norm/template previews.
--- Applied via Supabase dashboard.

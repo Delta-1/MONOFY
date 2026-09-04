@@ -10,7 +10,13 @@ Deno.serve(async (req: Request) => {
   try {
     const url = new URL(req.url);
     const body = await req.json().catch(() => ({}));
-    const mpAccessToken = Deno.env.get("MP_ACCESS_TOKEN")!;
+    const mpAccessToken = Deno.env.get("MP_ACCESS_TOKEN");
+    if (!mpAccessToken) {
+      return new Response(JSON.stringify({ error: "Pagamento não configurado" }), {
+        status: 503,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
 
     const topic = url.searchParams.get("topic") || url.searchParams.get("type") || body?.type;
     const id = url.searchParams.get("id") || url.searchParams.get("data.id") || body?.data?.id || body?.id;
@@ -29,7 +35,7 @@ Deno.serve(async (req: Request) => {
       const preapproval = await preRes.json();
       if (preRes.ok && preapproval.id) {
         await supabaseAdmin
-          .from("subscriptions")
+          .from("monofy_subscriptions")
           .update({ status: preapproval.status, updated_at: new Date().toISOString() })
           .eq("mp_preapproval_id", preapproval.id);
       }
@@ -47,43 +53,25 @@ Deno.serve(async (req: Request) => {
 
       if (payRes.ok && payment.status === "approved" && payment.preapproval_id) {
         const paymentRef = `sub_${id}`;
-        const { data: existing } = await supabaseAdmin
-          .from("credit_transactions")
-          .select("id")
-          .eq("payment_ref", paymentRef)
+        const { data: sub } = await supabaseAdmin
+          .from("monofy_subscriptions")
+          .select("user_id, credits_per_cycle")
+          .eq("mp_preapproval_id", payment.preapproval_id)
           .maybeSingle();
 
-        if (!existing) {
-          const { data: sub } = await supabaseAdmin
-            .from("subscriptions")
-            .select("user_id, credits_per_cycle")
-            .eq("mp_preapproval_id", payment.preapproval_id)
-            .maybeSingle();
+        if (sub) {
+          const { error } = await supabaseAdmin.rpc("monofy_apply_credit_payment", {
+            p_user_id: sub.user_id,
+            p_amount: sub.credits_per_cycle,
+            p_reason: "subscription_renewal",
+            p_payment_ref: paymentRef,
+          });
+          if (error) throw error;
 
-          if (sub) {
-            const { data: profile } = await supabaseAdmin
-              .from("profiles")
-              .select("credits")
-              .eq("id", sub.user_id)
-              .single();
-
-            await supabaseAdmin
-              .from("profiles")
-              .update({ credits: (profile?.credits ?? 0) + sub.credits_per_cycle })
-              .eq("id", sub.user_id);
-
-            await supabaseAdmin.from("credit_transactions").insert({
-              user_id: sub.user_id,
-              amount: sub.credits_per_cycle,
-              reason: "subscription_renewal",
-              payment_ref: paymentRef,
-            });
-
-            await supabaseAdmin
-              .from("subscriptions")
-              .update({ status: "authorized", updated_at: new Date().toISOString() })
-              .eq("mp_preapproval_id", payment.preapproval_id);
-          }
+          await supabaseAdmin
+            .from("monofy_subscriptions")
+            .update({ status: "authorized", updated_at: new Date().toISOString() })
+            .eq("mp_preapproval_id", payment.preapproval_id);
         }
       }
 

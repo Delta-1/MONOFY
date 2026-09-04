@@ -13,7 +13,7 @@
 (function () {
     'use strict';
 
-    var AI_COST_REMOVE_BG = 5; // créditos por remoção de fundo com IA
+    var AI_COST_REMOVE_BG = 0; // modo pessoal: sem cobrança
 
     var VIRTUAL = 1024; // resolução interna do canvas (px)
     var FONTS = ['Arial', 'Times New Roman', 'Georgia', 'Verdana', 'Impact', 'Courier New', 'Trebuchet MS', 'Tinos'];
@@ -240,14 +240,14 @@
         var l = sel();
         if (!l || l.type !== 'image') { alert('Selecione uma camada de IMAGEM para remover o fundo.'); return; }
         if (ed.busy) return;
-        if (window.state && state.isDemo) { alert('Modo demonstração: IA desativada.'); return; }
-        if (!window.state || !state.session) { alert('Faça login para usar a IA.'); return; }
+        var apiKey = typeof getGeminiApiKey === 'function' ? getGeminiApiKey() : '';
+        if (!apiKey) { alert('Configure sua chave do Gemini em Ajustes antes de usar a IA.'); return; }
 
         var ok;
         if (typeof showConfirmModal === 'function') {
-            ok = await showConfirmModal('Remover fundo com IA', 'A IA vai remover o fundo desta imagem, deixando-o transparente. Isso consome <b>' + AI_COST_REMOVE_BG + ' créditos</b>. Continuar?');
+            ok = await showConfirmModal('Remover fundo com IA', 'A IA vai remover o fundo desta imagem e manter apenas o elemento principal. Continuar?');
         } else {
-            ok = confirm('Remover o fundo desta imagem com IA? Custa ' + AI_COST_REMOVE_BG + ' créditos.');
+            ok = confirm('Remover o fundo desta imagem com IA?');
         }
         if (!ok) return;
 
@@ -259,28 +259,22 @@
         try {
             var m = String(l.src).match(/^data:(image\/[\w.+-]+);base64,(.+)$/);
             if (!m) throw new Error('Formato de imagem não suportado.');
-            var res = await fetch(SUPABASE_URL + '/functions/v1/ai-image', {
+            var res = await fetch(SUPABASE_URL + '/functions/v1/monofy-ai-image', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + state.session.access_token },
+                headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY },
                 body: JSON.stringify({
                     image: m[2], mime: m[1],
                     instruction: 'Remove the background of this image completely. Keep ONLY the main subject, unchanged, on a fully transparent background. Output a PNG with alpha transparency. Do not add anything, do not restyle the subject.',
-                    cost: AI_COST_REMOVE_BG, reason: 'ai_remove_bg'
+                    apiKey: apiKey, reason: 'ai_remove_bg'
                 })
             });
             var data = await res.json();
             if (!res.ok || data.error) {
-                if (res.status === 402 || data.error === 'insufficient_credits') throw new Error('Créditos insuficientes (precisa de ' + AI_COST_REMOVE_BG + '). Compre créditos na aba Créditos.');
                 throw new Error(data.error || 'Erro ao processar a imagem.');
             }
             pushUndo();
             l.src = 'data:' + (data.mime || 'image/png') + ';base64,' + data.image;
             rebuildImg(l);
-            if (state.profile && state.profile.role !== 'admin') {
-                state.profile.credits -= AI_COST_REMOVE_BG;
-                var disp = document.getElementById('user-credits-display');
-                if (disp) disp.innerText = state.profile.credits;
-            }
             saveDesign();
         } catch (err) {
             if (typeof showError === 'function') showError('Remover fundo: ' + (err.message || err));
@@ -613,7 +607,7 @@
         } else if (l.type === 'image') {
             specific =
                 '<button id="imged-removebg-btn" onclick="imgEdRemoveBg()" class="w-full mb-2 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl bg-gradient-to-r from-fuchsia-600 to-pink-600 text-white text-xs font-extrabold shadow hover:opacity-90 transition disabled:opacity-50">' +
-                    '<i data-lucide="wand-2" class="w-4 h-4"></i> Remover fundo (IA · ' + AI_COST_REMOVE_BG + ' créditos)' +
+                    '<i data-lucide="wand-2" class="w-4 h-4"></i> Remover fundo com IA' +
                 '</button>';
         }
 

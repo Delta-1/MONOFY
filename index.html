@@ -32,24 +32,27 @@
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
 
-    <!-- Supabase (Auth + Banco de Dados de Créditos) -->
+    <!-- Supabase (dados públicos e Edge Functions; Auth/planos preservados, porém inativos) -->
     <script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
     <script>
-        const SUPABASE_URL = 'https://yfqzoukrjatcgmyshtpz.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlmcXpvdWtyamF0Y2dteXNodHB6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE5NTgyMjMsImV4cCI6MjA5NzUzNDIyM30.GBbEwI-1AnrJ6kllFrXkjTc1Bf76bGz8d8TGnaiYoAw';
+        // Modo pessoal: a entrada é local e os planos/creditos ficam desativados.
+        // A estrutura antiga permanece no projeto para poder ser reativada no futuro.
+        const PERSONAL_MODE = true;
+        const PERSONAL_USERNAME = 'admin';
+        const PERSONAL_PASSWORD = '12345678';
+        const PERSONAL_SESSION_KEY = 'monofy_personal_session';
+        const GEMINI_KEY_STORAGE = 'monofy_gemini_api_key';
+        const SUPABASE_URL = 'https://qaiqflcxfxygynumapyp.supabase.co';
+        const SUPABASE_ANON_KEY = 'sb_publishable_jWYB2iF5sGzqmSEai4MtPw_3T-hvUwE';
         let supabaseClient;
         try {
-            // detectSessionInUrl: false → a troca do ?code= por sessão é feita
-            // manualmente (ver handleOAuthCallback), com erro visível na tela. Com o
-            // padrão (true) a troca era automática e silenciosa: se falhasse, o app
-            // voltava pro login sem avisar. flowType pkce é o fluxo usado no botão do
-            // Google (signInWithOAuth). persistSession/autoRefreshToken mantêm o login.
+            // O cliente existe apenas para dados públicos e Edge Functions. O modo
+            // pessoal não inicia, persiste nem renova sessões do Supabase Auth.
             supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
                 auth: {
-                    flowType: 'pkce',
                     detectSessionInUrl: false,
-                    persistSession: true,
-                    autoRefreshToken: true
+                    persistSession: false,
+                    autoRefreshToken: false
                 }
             });
         } catch(e) {
@@ -62,10 +65,10 @@
                 }
             });
         }
-        const EDGE_FN_CHECKOUT = `${SUPABASE_URL}/functions/v1/create-payment-preference`;
-        const EDGE_FN_AI = `${SUPABASE_URL}/functions/v1/ai-generate`;
-        const EDGE_FN_SUBSCRIBE = `${SUPABASE_URL}/functions/v1/create-subscription`;
-        const EDGE_FN_CANCEL_SUBSCRIPTION = `${SUPABASE_URL}/functions/v1/cancel-subscription`;
+        const EDGE_FN_CHECKOUT = `${SUPABASE_URL}/functions/v1/monofy-create-payment-preference`;
+        const EDGE_FN_AI = `${SUPABASE_URL}/functions/v1/monofy-ai-generate`;
+        const EDGE_FN_SUBSCRIBE = `${SUPABASE_URL}/functions/v1/monofy-create-subscription`;
+        const EDGE_FN_CANCEL_SUBSCRIPTION = `${SUPABASE_URL}/functions/v1/monofy-cancel-subscription`;
         const CREDIT_PACKS_UI = [
             { id: 'pack_10', credits: 10, price: 'R$ 10,00' },
             { id: 'pack_25', credits: 25, price: 'R$ 22,00' },
@@ -73,7 +76,7 @@
             { id: 'pack_150', credits: 150, price: 'R$ 95,00' },
             { id: 'pack_500', credits: 500, price: 'R$ 400,00' }
         ];
-        const CREDITS_PER_EXPORT = 5; // remover marca d'água
+        const CREDITS_PER_EXPORT = 0; // modo pessoal: recursos liberados
         const AI_COST_CHAT = 2;           // conversar com o Assistente IA
         const AI_COST_REFINE = 3;         // usar IA pra refinar 1 página
         const AI_COST_TITLE_FROM_CHAT = 4; // IA define o título com base na conversa com o Assistente
@@ -671,42 +674,23 @@
             <div>
                 <h1 class="text-4xl font-extrabold text-slate-800 dark:text-white mb-3 tracking-tight">Monofy</h1>
                 <p class="text-slate-500 dark:text-slate-400 text-sm leading-relaxed">
-                    Entre para guardar o seu trabalho e gerir os seus créditos de exportação sem marca d'água.
+                    Acesso pessoal ao seu estúdio de criação.
                 </p>
             </div>
 
             <div id="auth-error" class="hidden-state p-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-xl text-sm font-medium text-left"></div>
 
-            <form id="email-auth-form" class="space-y-3" onsubmit="return false;">
-                <input type="email" id="auth-email" placeholder="O seu email" class="w-full text-sm p-3.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 focus:border-primary-500 rounded-xl outline-none">
+            <form id="email-auth-form" class="space-y-3" onsubmit="signInPersonal(); return false;">
+                <input type="text" id="auth-email" value="admin" autocomplete="username" placeholder="Usuário" class="w-full text-sm p-3.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 focus:border-primary-500 rounded-xl outline-none">
                 <div class="relative">
-                    <input type="password" id="auth-password" placeholder="Senha (mín. 6 caracteres)" class="w-full text-sm p-3.5 pr-11 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 focus:border-primary-500 rounded-xl outline-none">
+                    <input type="password" id="auth-password" autocomplete="current-password" placeholder="Senha" class="w-full text-sm p-3.5 pr-11 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 focus:border-primary-500 rounded-xl outline-none">
                     <button type="button" onclick="toggleAuthPasswordVisibility()" id="auth-password-toggle" title="Mostrar senha" class="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition">
                         <i data-lucide="eye" class="w-4 h-4"></i>
                     </button>
                 </div>
-                <div class="flex gap-2">
-                    <button type="button" onclick="signInWithEmail()" class="w-1/2 bg-slate-900 dark:bg-primary-600 hover:bg-slate-800 dark:hover:bg-primary-700 text-white font-bold py-3 rounded-xl transition-all text-sm">Entrar</button>
-                    <button type="button" onclick="signUpWithEmail()" class="w-1/2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold py-3 rounded-xl transition-all text-sm">Criar Conta</button>
-                </div>
+                <button type="submit" class="w-full bg-slate-900 dark:bg-primary-600 hover:bg-slate-800 dark:hover:bg-primary-700 text-white font-bold py-3 rounded-xl transition-all text-sm">Entrar</button>
             </form>
-
-            <div class="flex items-center gap-3 text-xs text-slate-400 dark:text-slate-500">
-                <div class="flex-1 h-px bg-slate-200 dark:bg-slate-700"></div>
-                <span>ou</span>
-                <div class="flex-1 h-px bg-slate-200 dark:bg-slate-700"></div>
-            </div>
-
-            <button type="button" onclick="signInWithGoogle()" class="w-full flex items-center justify-center gap-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold py-3 rounded-xl transition-all text-sm">
-                <svg class="w-4 h-4" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"/><path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"/><path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"/><path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571c0.001-0.001,0.002-0.001,0.003-0.002l6.19,5.238C39.205,36.71,44,30.84,44,24C44,22.659,43.862,21.35,43.611,20.083z"/></svg>
-                Entrar com Google
-            </button>
-
-            <button type="button" onclick="enterDemoMode()" class="w-full text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 font-medium text-xs underline">Ver demonstração sem criar conta</button>
-
-            <a href="https://wa.me/5519989765398?text=Ol%C3%A1%2C%20gostaria%20de%20tirar%20uma%20d%C3%BAvida%20sobre%20o%20Monofy." target="_blank" rel="noopener" class="w-full flex items-center justify-center gap-2 text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 font-bold text-xs">
-                <i data-lucide="message-circle" class="w-4 h-4"></i> Falar no WhatsApp
-            </a>
+            <p class="text-xs text-slate-400">Modo pessoal · sem cadastro e sem planos</p>
         </div>
     </div>
 
@@ -757,7 +741,7 @@
                     <i data-lucide="user-circle" id="user-avatar-fallback" class="w-5 h-5 lg:w-6 lg:h-6 text-slate-400 shrink-0"></i>
                     <div id="user-email-display" class="hidden sm:block text-xs font-bold text-slate-700 dark:text-slate-200 max-w-[90px] lg:max-w-[120px] truncate">...</div>
                 </button>
-                <button onclick="switchTab('credits')" class="font-bold text-amber-600 dark:text-amber-400 flex items-center gap-1 hover:underline shrink-0 text-xs">
+                <button onclick="switchTab('credits')" class="hidden-state font-bold text-amber-600 dark:text-amber-400 flex items-center gap-1 hover:underline shrink-0 text-xs" aria-hidden="true">
                     <i data-lucide="coins" class="w-3 h-3"></i> <span id="user-credits-display">0</span>
                 </button>
                 <button onclick="signOut()" title="Sair" class="p-1 lg:p-1.5 text-slate-400 hover:text-red-500 rounded-full hover:bg-red-50 dark:hover:bg-red-900/20 transition shrink-0">
@@ -1130,7 +1114,7 @@
                         <textarea id="assistant-chat-input" rows="1" placeholder="Conte pra IA o que você quer (tema, foco, tom...)" class="flex-1 resize-none p-3 text-sm border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 rounded-xl outline-none focus:ring-2 focus:ring-purple-400"></textarea>
                         <button id="assistant-chat-send" onclick="sendAssistantChatMessage()" type="button" class="p-3 bg-purple-600 hover:bg-purple-700 text-white rounded-xl shadow shrink-0"><i data-lucide="send" class="w-4 h-4"></i></button>
                     </div>
-                    <p class="text-[11px] text-slate-400">Cada mensagem consome <span class="font-bold"><span id="assistant-chat-cost"></span></span> créditos. A conversa entra como contexto extra ao clicar em "Redigir".</p>
+                    <p class="text-[11px] text-slate-400">A conversa entra como contexto extra ao clicar em "Redigir".</p>
                 </div>
 
                 <div class="p-5 pt-3 space-y-3 shrink-0 border-t border-slate-100 dark:border-slate-800 overflow-y-auto custom-scrollbar max-h-[40%]">
@@ -1160,7 +1144,7 @@
                 </button>
 
                 <button onclick="removeWatermarkForCurrentDoc()" id="btn-remove-watermark-doc" class="w-full flex items-center justify-center gap-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-900/30 text-amber-700 dark:text-amber-400 font-bold py-3.5 rounded-xl transition-all shadow-sm hover:shadow-md disabled:opacity-60">
-                    <i data-lucide="droplet-off" class="w-4 h-4"></i> Remover Marca d'Água (10 créditos)
+                    <i data-lucide="check-circle" class="w-4 h-4"></i> Exportação sem marca d'água
                 </button>
 
                 <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest text-center pt-2">Exportar Formato</h4>
@@ -1261,7 +1245,7 @@
                     <span class="dock-tooltip">Ajustes</span>
                 </button>
 
-                <button onclick="switchTab('credits')" class="dock-btn relative flex items-center justify-center w-12 h-12 lg:w-14 lg:h-14 rounded-full text-amber-500 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/30 transition-all active:scale-95 bg-transparent" id="dock-tab-credits">
+                <button onclick="switchTab('credits')" class="dock-btn hidden-state relative flex items-center justify-center w-12 h-12 lg:w-14 lg:h-14 rounded-full text-amber-500 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/30 transition-all active:scale-95 bg-transparent" id="dock-tab-credits" aria-hidden="true">
                     <i data-lucide="coins" class="dock-icon w-5 h-5 lg:w-6 lg:h-6"></i>
                     <span class="dock-tooltip">Créditos</span>
                 </button>
@@ -1390,7 +1374,7 @@
                     <div class="flex-1"></div>
 
                     <button onclick="generateSlidesWithAI()" id="btn-generate-slides-ai" type="button" class="flex items-center gap-1.5 px-4 py-1.5 text-xs font-bold rounded-full bg-indigo-600 hover:bg-indigo-700 text-white shadow">
-                        <i data-lucide="sparkles" class="w-3.5 h-3.5"></i> Gerar com IA (<span id="slides-ai-cost-label">5–20</span> créditos)
+                        <i data-lucide="sparkles" class="w-3.5 h-3.5"></i> Gerar com IA
                     </button>
 
                     <div class="relative" id="slides-export-wrap">
@@ -1649,7 +1633,7 @@
                         <div class="bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800/50 rounded-2xl p-5">
                             <h4 class="font-bold text-sm text-purple-800 dark:text-purple-300 mb-1 flex items-center gap-2">
                                 <i data-lucide="sparkles" class="w-4 h-4"></i>
-                                Analisar arquivo com IA <span class="font-normal text-xs text-purple-500">(opcional · 2 créditos)</span>
+                                Analisar arquivo com IA <span class="font-normal text-xs text-purple-500">(opcional)</span>
                             </h4>
                             <p class="text-xs text-purple-600 dark:text-purple-400 mb-3">Envie uma monografia ou trabalho acadêmico (.pdf, .docx ou .txt). A IA identifica as regras de formatação e preenche os campos abaixo, e o logo da universidade é extraído automaticamente do arquivo.</p>
                             <div id="net-analyze-dropzone" class="border-2 border-dashed border-purple-300 dark:border-purple-700 rounded-xl p-5 text-center cursor-pointer hover:bg-purple-100 dark:hover:bg-purple-900/20 transition">
@@ -1810,15 +1794,22 @@
                     </div>
 
                     <div>
-                        <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-3 flex items-center gap-2">
-                            <i data-lucide="life-buoy" class="w-5 h-5 text-amber-500"></i> Suporte
+                        <label for="gemini-api-key" class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-3 flex items-center gap-2">
+                            <i data-lucide="key-round" class="w-5 h-5 text-amber-500"></i> Chave da API do Gemini
                         </label>
-                        <div class="p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-900/50 rounded-xl">
-                            <p class="text-sm text-amber-800 dark:text-amber-200">A IA já está pronta para uso e é cobrada diretamente dos seus créditos — não é preciso configurar nenhuma chave.</p>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 mb-3">A chave fica salva somente neste dispositivo e é enviada à função de IA apenas durante cada solicitação.</p>
+                        <div class="relative">
+                            <input id="gemini-api-key" type="password" autocomplete="off" spellcheck="false" placeholder="Cole sua chave do Google AI Studio" class="w-full p-4 pr-12 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none font-mono text-sm shadow-sm focus:border-primary-500">
+                            <button type="button" onclick="toggleGeminiKeyVisibility()" id="gemini-key-toggle" title="Mostrar chave" class="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition">
+                                <i data-lucide="eye" class="w-4 h-4"></i>
+                            </button>
                         </div>
-                        <a href="https://wa.me/5519989765398?text=Ol%C3%A1!%20Estou%20com%20um%20problema%20no%20site%20e%20preciso%20de%20suporte" target="_blank" class="mt-3 flex items-center justify-center gap-2 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-900/40 text-green-700 dark:text-green-400 rounded-xl hover:bg-green-100 transition-all font-bold text-sm">
-                            <i data-lucide="message-circle" class="w-4 h-4"></i> Teve algum problema? Fale com o Suporte
-                        </a>
+                        <div class="flex flex-wrap gap-2 mt-3">
+                            <button type="button" onclick="saveGeminiApiKey()" class="px-4 py-2.5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-bold">Salvar chave</button>
+                            <button type="button" onclick="testGeminiApiKey()" id="gemini-test-btn" class="px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-sm font-bold hover:bg-slate-200 dark:hover:bg-slate-700">Testar</button>
+                            <button type="button" onclick="deleteGeminiApiKey()" class="px-4 py-2.5 rounded-xl text-red-600 dark:text-red-400 text-sm font-bold hover:bg-red-50 dark:hover:bg-red-900/20">Excluir</button>
+                        </div>
+                        <p id="gemini-key-status" class="mt-3 text-xs text-slate-500 dark:text-slate-400">Nenhuma chave configurada.</p>
                     </div>
 
                     <div class="pt-6 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center">
@@ -1933,7 +1924,7 @@
             <div id="refine-chat-messages" class="flex-1 overflow-y-auto px-5 py-4 space-y-4 custom-scrollbar"></div>
 
             <div class="border-t border-slate-100 dark:border-slate-800 p-4 space-y-2">
-                <p class="text-xs text-slate-400">Cada mensagem enviada consome <span id="refine-chat-cost" class="font-bold"></span> créditos.</p>
+                <p class="text-xs text-slate-400">Use a IA para revisar e melhorar o conteúdo.</p>
                 <div class="flex items-end gap-2">
                     <textarea id="refine-chat-input" rows="1" placeholder="Ex: deixe mais formal, expanda com mais detalhes..." class="flex-1 resize-none p-3 text-sm border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 rounded-xl outline-none focus:ring-2 focus:ring-purple-400"></textarea>
                     <button id="refine-chat-send" onclick="sendRefineChatMessage()" type="button" class="shrink-0 w-11 h-11 flex items-center justify-center bg-purple-600 hover:bg-purple-700 text-white rounded-xl shadow disabled:opacity-50">
@@ -2919,7 +2910,7 @@
         let _networkPreviewId = null;
 
         async function renderNetworkTab() {
-            const isAdmin = !!(state.profile && state.profile.role === 'admin');
+            const isAdmin = !PERSONAL_MODE && !!(state.profile && state.profile.role === 'admin');
             const adminSec = document.getElementById('network-admin-section');
             if (adminSec) adminSec.classList.toggle('hidden-state', !isAdmin);
             // Carrega os logos da galeria antes, pra os modelos oficiais mostrarem o logo
@@ -2939,7 +2930,7 @@
             grid.innerHTML = '<div class="col-span-full text-center py-12 text-slate-400"><p class="text-sm animate-pulse">Carregando modelos da rede...</p></div>';
             try {
                 const { data, error } = await supabaseClient
-                    .from('public_templates')
+                    .from('monofy_public_templates')
                     .select('*')
                     .order('downloads', { ascending: false });
                 if (error) throw error;
@@ -2985,7 +2976,7 @@
                 lucide.createIcons();
                 return;
             }
-            const isAdmin = state.profile && state.profile.role === 'admin';
+            const isAdmin = !PERSONAL_MODE && state.profile && state.profile.role === 'admin';
             const officialCards = officials.map(t => `
                 <div onclick="useBuiltinModel('${t.id}')" class="group bg-white dark:bg-slate-800 rounded-2xl border-2 border-teal-300 dark:border-teal-600 hover:border-teal-500 p-4 flex flex-col gap-3 shadow-sm hover:shadow-xl transition-all cursor-pointer active:scale-[.98]">
                     <div class="flex items-center gap-3">
@@ -3048,7 +3039,9 @@
             localStorage.setItem('monografia_norm_templates', JSON.stringify(state.customNormTemplates));
             applyNormTemplate(tplData);
             try {
-                await supabaseClient.rpc('increment_template_downloads', { template_id: id });
+                await supabaseClient.functions.invoke('monofy-increment-template-downloads', {
+                    body: { template_id: id }
+                });
                 t.downloads++;
                 renderNetworkGrid();
             } catch (_) {}
@@ -3058,7 +3051,7 @@
         async function deleteNetworkTemplate(id) {
             if (!confirm('Remover este modelo da rede?')) return;
             try {
-                const { error } = await supabaseClient.from('public_templates').delete().eq('id', id);
+                const { error } = await supabaseClient.from('monofy_public_templates').delete().eq('id', id);
                 if (error) throw error;
                 networkTemplates = networkTemplates.filter(t => t.id !== id);
                 renderNetworkGrid();
@@ -3200,7 +3193,7 @@
                 secoes: buildSecoesFromLabDraft()
             };
             try {
-                const { error } = await supabaseClient.from('public_templates').insert({
+                const { error } = await supabaseClient.from('monofy_public_templates').insert({
                     publisher_id: state.profile.id,
                     publisher_name: state.profile.name || 'Admin',
                     university_name: university,
@@ -3555,7 +3548,7 @@ ${original}`;
                 sourceText = sectionEl.innerHTML;
             }
 
-            if (!await showConfirmModal('Humanizar texto', `A IA vai reescrever ${mode === 'selection' ? 'o trecho selecionado' : 'a seção em foco'} para soar mais natural e humano, mantendo o sentido, os dados e a formatação. Isso consome <b>${AI_COST_REFINE} créditos</b>. Continuar?`)) return;
+            if (!await showConfirmModal('Humanizar texto', `A IA vai reescrever ${mode === 'selection' ? 'o trecho selecionado' : 'a seção em foco'} para soar mais natural e humano, mantendo o sentido, os dados e a formatação. Continuar?`)) return;
 
             _humanizeBusy = true;
             const btn = document.getElementById('btn-humanize');
@@ -3817,6 +3810,46 @@ ${original}`;
             lucide.createIcons();
         }
 
+        function buildPersonalProfile() {
+            return {
+                id: 'local-admin',
+                email: PERSONAL_USERNAME,
+                full_name: localStorage.getItem('monofy_personal_name') || 'Administrador',
+                avatar_url: localStorage.getItem('monofy_personal_avatar') || '',
+                credits: 0,
+                role: 'admin',
+                region: 'local'
+            };
+        }
+
+        function activatePersonalSession() {
+            state.isDemo = false;
+            state.session = { user: { id: 'local-admin', email: PERSONAL_USERNAME }, access_token: null };
+            state.profile = buildPersonalProfile();
+            const nameEl = document.getElementById('user-email-display');
+            if (nameEl) nameEl.innerText = state.profile.full_name;
+            if (state.profile.avatar_url) {
+                const avatar = document.getElementById('user-avatar');
+                if (avatar) { avatar.src = state.profile.avatar_url; avatar.classList.remove('hidden-state'); }
+                document.getElementById('user-avatar-fallback')?.classList.add('hidden-state');
+            }
+            updateWatermarkButtonUI();
+            syncWatermarkRemovedClass();
+            if (typeof enterHub === 'function') enterHub();
+            else startApp();
+        }
+
+        function signInPersonal() {
+            const username = document.getElementById('auth-email').value.trim();
+            const password = document.getElementById('auth-password').value;
+            if (username !== PERSONAL_USERNAME || password !== PERSONAL_PASSWORD) {
+                showAuthError('Usuário ou senha incorretos.');
+                return;
+            }
+            sessionStorage.setItem(PERSONAL_SESSION_KEY, '1');
+            activatePersonalSession();
+        }
+
         // Traduz erros de rede (a requisição nem chegou ao servidor) numa mensagem
         // acionável. "Load failed" (WebKit/Safari) e "Failed to fetch" (Chrome) são
         // falhas de conexão — normalmente VPN, Relay Privado do iPhone, DNS privado,
@@ -3859,11 +3892,47 @@ ${original}`;
             if (btn) { btn.disabled = true; btn.textContent = 'Criando…'; }
             let error;
             try {
-                ({ error } = await supabaseClient.auth.signUp({ email, password }));
+                ({ error } = await supabaseClient.auth.signUp({
+                    email,
+                    password,
+                    options: { emailRedirectTo: window.location.origin + window.location.pathname }
+                }));
             } catch (e) { error = e; }
             if (btn) { btn.disabled = false; btn.textContent = 'Criar Conta'; }
             if (error) showAuthError(friendlyAuthError(error.message));
             else showAuthSuccess('Conta criada! Verifique o seu email para confirmar (ou faça login se a confirmação estiver desativada).');
+        }
+
+        async function requestPasswordReset() {
+            const email = document.getElementById('auth-email').value.trim();
+            if (!email) { showAuthError('Digite o seu email para recuperar a senha.'); return; }
+            try {
+                const redirectTo = window.location.origin + window.location.pathname;
+                const { error } = await supabaseClient.auth.resetPasswordForEmail(email, { redirectTo });
+                if (error) throw error;
+                localStorage.setItem('monofy_password_recovery', '1');
+                showAuthSuccess('Enviamos o link de recuperação. Verifique o seu email.');
+            } catch (error) {
+                showAuthError(friendlyAuthError(error?.message || error));
+            }
+        }
+
+        async function completePasswordRecovery() {
+            if (localStorage.getItem('monofy_password_recovery') !== '1') return false;
+            const newPassword = window.prompt('Digite a sua nova senha (mínimo de 6 caracteres):');
+            if (!newPassword) return true;
+            if (newPassword.length < 6) {
+                showAuthError('A nova senha precisa ter no mínimo 6 caracteres. Abra novamente o link recebido.');
+                return true;
+            }
+            const { error } = await supabaseClient.auth.updateUser({ password: newPassword });
+            if (error) {
+                showAuthError(friendlyAuthError(error.message));
+                return true;
+            }
+            localStorage.removeItem('monofy_password_recovery');
+            showAuthSuccess('Senha atualizada. Você já está conectado.');
+            return false;
         }
 
         async function signInWithGoogle() {
@@ -3902,6 +3971,11 @@ ${original}`;
         }
 
         async function signOut() {
+            if (PERSONAL_MODE) {
+                sessionStorage.removeItem(PERSONAL_SESSION_KEY);
+                window.location.reload();
+                return;
+            }
             // supabaseClient.auth.signOut() pode rejeitar (sessão já expirada, erro de rede
             // etc.) — sem o try/catch, esse erro interrompia a função antes de esconder o
             // app-screen e mostrar o login-screen, deixando o botão "Sair" parecendo travado.
@@ -3957,7 +4031,7 @@ ${original}`;
             let data, error;
             try {
                 ({ data, error } = await supabaseClient
-                    .from('profiles')
+                    .from('monofy_profiles')
                     .select('credits, email, full_name, avatar_url, role, region, cpf')
                     .eq('id', state.session.user.id)
                     .abortSignal(_ctrl.signal)
@@ -3987,7 +4061,7 @@ ${original}`;
                 if (!data.region) {
                     try {
                         const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
-                        if (tz) await supabaseClient.from('profiles').update({ region: tz }).eq('id', state.session.user.id);
+                        if (tz) await supabaseClient.from('monofy_profiles').update({ region: tz }).eq('id', state.session.user.id);
                     } catch (e) { /* não crítico */ }
                 }
             }
@@ -4024,8 +4098,13 @@ ${original}`;
             const updates = { full_name: fullName };
             if (state.profile._pendingAvatar) updates.avatar_url = state.profile._pendingAvatar;
 
-            const { error } = await supabaseClient.from('profiles').update(updates).eq('id', state.session.user.id);
-            if (error) { alert('Erro ao salvar perfil.'); return; }
+            if (PERSONAL_MODE) {
+                localStorage.setItem('monofy_personal_name', fullName || 'Administrador');
+                if (updates.avatar_url) localStorage.setItem('monofy_personal_avatar', updates.avatar_url);
+            } else {
+                const { error } = await supabaseClient.from('monofy_profiles').update(updates).eq('id', state.session.user.id);
+                if (error) { alert('Erro ao salvar perfil.'); return; }
+            }
 
             Object.assign(state.profile, updates);
             document.getElementById('user-email-display').innerText = fullName || state.profile.email;
@@ -4045,14 +4124,14 @@ ${original}`;
                 title: 'Política de Privacidade',
                 icon: 'lock',
                 paragraphs: [
-                    'Última atualização: 29 de junho de 2026.',
+                    'Última atualização: 4 de setembro de 2026.',
                     'Esta Política de Privacidade descreve como o Monofy ("nós", "nosso aplicativo") coleta, usa e protege os dados pessoais de quem utiliza a plataforma.',
-                    '1. Dados que coletamos: nome, e-mail e foto de perfil (fornecidos diretamente por você ou via login com Google); conteúdo dos documentos e apresentações que você cria no Monofy; informações técnicas básicas como fuso horário, usadas apenas para fins estatísticos no painel administrativo; dados de pagamento processados por provedor terceiro (Mercado Pago) — não armazenamos números de cartão de crédito em nossos servidores.',
-                    '2. Login com Google e Google Drive: se você optar por entrar com sua conta Google, utilizamos apenas as informações básicas de perfil (nome, e-mail, foto) para criar sua conta no Monofy. Caso você autorize o salvamento automático no Google Drive, usamos exclusivamente o escopo "drive.file", que dá acesso apenas aos arquivos criados pelo próprio Monofy na sua conta do Drive — nunca a outros arquivos ou pastas suas.',
-                    '3. Como usamos seus dados: para fornecer e manter as funcionalidades do Monofy (geração e edição de monografias e apresentações, exportação para Word/PowerPoint/PDF, salvamento automático); para autenticação e segurança da sua conta; para suporte ao usuário via WhatsApp, quando você optar por entrar em contato; para processar pagamentos de licenças e créditos.',
-                    '4. Compartilhamento de dados: não vendemos seus dados pessoais. Compartilhamos informações apenas com prestadores de serviço essenciais ao funcionamento do app (ex.: Supabase para hospedagem e banco de dados, Google para autenticação/Drive, Mercado Pago para pagamentos), que tratam os dados sob suas próprias políticas de privacidade e segurança.',
-                    '5. Armazenamento e segurança: os dados são armazenados em servidores do Supabase com controles de acesso e criptografia em trânsito. Tomamos medidas razoáveis para proteger seus dados, mas nenhum sistema é 100% livre de riscos.',
-                    '6. Seus direitos: você pode, a qualquer momento, solicitar a atualização ou exclusão da sua conta e dos seus dados pessoais entrando em contato pelo suporte via WhatsApp disponível na tela de Perfil.',
+                    '1. Dados armazenados: no modo pessoal, documentos, preferências, nome, avatar e chave do Gemini ficam no armazenamento local do navegador usado por você.',
+                    '2. Google Drive: se você conectar o Drive, o Monofy usa o escopo "drive.file", limitado aos arquivos criados pelo próprio aplicativo.',
+                    '3. Inteligência artificial: a chave configurada é enviada à função de IA somente quando você solicita uma geração e não é gravada no banco do Monofy.',
+                    '4. Pagamentos e contas públicas estão desativados no modo pessoal.',
+                    '5. Segurança: proteja o dispositivo e o perfil do navegador onde a chave estiver salva. Nenhum sistema é 100% livre de riscos.',
+                    '6. Você pode apagar os dados locais pelas configurações do navegador e excluir a chave diretamente na tela de Ajustes.',
                     '7. Alterações nesta política: podemos atualizar esta Política de Privacidade periodicamente. Mudanças relevantes serão comunicadas dentro do próprio aplicativo.',
                     '8. Contato: em caso de dúvidas sobre esta política, utilize o canal de suporte via WhatsApp disponível na tela de Perfil.'
                 ]
@@ -4061,11 +4140,11 @@ ${original}`;
                 title: 'Termos de Serviço',
                 icon: 'file-text',
                 paragraphs: [
-                    'Última atualização: 29 de junho de 2026.',
+                    'Última atualização: 4 de setembro de 2026.',
                     'Ao utilizar o Monofy, você concorda com os termos descritos abaixo. Leia com atenção antes de continuar usando o aplicativo.',
                     '1. Objeto: o Monofy é uma ferramenta de criação, edição e exportação de monografias acadêmicas e apresentações de slides, oferecida em formato de aplicativo web.',
-                    '2. Conta de usuário: você é responsável por manter a confidencialidade das suas credenciais de acesso (login/senha ou login com Google) e por todas as atividades realizadas na sua conta.',
-                    '3. Uso de créditos e licenças: determinadas funcionalidades do Monofy podem exigir créditos ou uma licença paga, adquiridos através dos canais de pagamento indicados no aplicativo (Mercado Pago) ou diretamente via suporte por WhatsApp. Os créditos e licenças adquiridos não são reembolsáveis, salvo disposição legal em contrário.',
+                    '2. Acesso pessoal: você é responsável por proteger o dispositivo e a senha de acesso local ao aplicativo.',
+                    '3. O modo pessoal não possui planos, assinaturas ou cobrança de créditos.',
                     '4. Conteúdo gerado: você é o único responsável pelo conteúdo que cria, edita ou exporta usando o Monofy, incluindo a precisão, originalidade e conformidade com normas acadêmicas (ex.: regras de plágio da sua instituição). O Monofy é uma ferramenta de apoio à escrita e formatação, e não garante aprovação acadêmica do conteúdo gerado.',
                     '5. Uso aceitável: você concorda em não utilizar o Monofy para fins ilegais, para violar direitos de terceiros, ou para tentar comprometer a segurança da plataforma.',
                     '6. Disponibilidade do serviço: nos esforçamos para manter o Monofy disponível e funcional, mas não garantimos operação ininterrupta. Manutenções, atualizações ou problemas técnicos podem causar indisponibilidade temporária.',
@@ -4103,7 +4182,7 @@ ${original}`;
             const list = document.getElementById('admin-users-list');
             list.innerHTML = '<p class="p-6 text-slate-400">Carregando...</p>';
             const { data, error } = await supabaseClient
-                .from('profiles')
+                .from('monofy_profiles')
                 .select('id, email, full_name, credits, role, region')
                 .order('email');
 
@@ -4168,8 +4247,10 @@ ${original}`;
 
         async function adminSetCredits(userId) {
             const newCredits = parseInt(document.getElementById(`admin-credits-${userId}`).value, 10) || 0;
-            const { data, error } = await supabaseClient.rpc('admin_set_credits', { p_target_user_id: userId, p_new_credits: newCredits });
-            if (error || !data) { alert('Erro: ' + (error?.message || 'falha desconhecida')); return; }
+            const { data, error } = await supabaseClient.functions.invoke('monofy-admin-set-credits', {
+                body: { target_user_id: userId, new_credits: newCredits }
+            });
+            if (error || data?.error) { alert('Erro: ' + (data?.error || error?.message || 'falha desconhecida')); return; }
             alert('Créditos atualizados!');
         }
 
@@ -4180,7 +4261,7 @@ ${original}`;
             const input = document.getElementById(`admin-password-${userId}`);
             const newPassword = input.value;
             if (!newPassword || newPassword.length < 6) { alert('A senha precisa ter ao menos 6 caracteres.'); return; }
-            const { data, error } = await supabaseClient.functions.invoke('admin-update-password', {
+            const { data, error } = await supabaseClient.functions.invoke('monofy-admin-update-password', {
                 body: { target_user_id: userId, new_password: newPassword }
             });
             if (error || data?.error) { alert('Erro: ' + (data?.error || error?.message || 'falha desconhecida')); return; }
@@ -4225,8 +4306,8 @@ ${original}`;
         // seja mostrado na tela em vez de engolido — a causa de o app voltar pro login
         // sem logar.
         const _oauthParams = new URLSearchParams(window.location.search);
-        const _hasCode = _oauthParams.has('code');
-        const _hasError = _oauthParams.has('error');
+        const _hasCode = !PERSONAL_MODE && _oauthParams.has('code');
+        const _hasError = !PERSONAL_MODE && _oauthParams.has('error');
         let _oauthPending = _hasCode;
         let _oauthTimeout = null;
 
@@ -4274,9 +4355,11 @@ ${original}`;
                     _oauthPending = false;
                     if (_oauthTimeout) { clearTimeout(_oauthTimeout); _oauthTimeout = null; }
                     document.getElementById('oauth-loading-overlay')?.classList.add('hidden-state');
-                    if (!state.session || state.session.user?.id !== data.session.user?.id) {
-                        onAuthenticated(data.session);
-                    }
+                    completePasswordRecovery().then((stillPending) => {
+                        if (!stillPending && (!state.session || state.session.user?.id !== data.session.user?.id)) {
+                            onAuthenticated(data.session);
+                        }
+                    });
                 }
             }).catch((e) => {
                 history.replaceState(null, '', window.location.pathname);
@@ -4285,11 +4368,17 @@ ${original}`;
         }
 
         supabaseClient?.auth.onAuthStateChange((event, session) => {
+            if (PERSONAL_MODE) return;
             if (session) {
                 _oauthPending = false;
                 if (_oauthTimeout) { clearTimeout(_oauthTimeout); _oauthTimeout = null; }
                 document.getElementById('oauth-loading-overlay')?.classList.add('hidden-state');
-                if (!state.session || state.session.user?.id !== session.user?.id) {
+                if (event === 'PASSWORD_RECOVERY') {
+                    localStorage.setItem('monofy_password_recovery', '1');
+                    completePasswordRecovery().then((stillPending) => {
+                        if (!stillPending) onAuthenticated(session);
+                    });
+                } else if (!state.session || state.session.user?.id !== session.user?.id) {
                     // Primeira autenticação ou troca de conta
                     onAuthenticated(session);
                 } else {
@@ -4309,6 +4398,16 @@ ${original}`;
                 } else {
                     loginEl.classList.remove('opacity-0', 'pointer-events-none');
                 }
+            }
+        });
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const keyInput = document.getElementById('gemini-api-key');
+            const savedKey = localStorage.getItem(GEMINI_KEY_STORAGE) || '';
+            if (keyInput) keyInput.value = savedKey;
+            updateGeminiKeyStatus();
+            if (PERSONAL_MODE && sessionStorage.getItem(PERSONAL_SESSION_KEY) === '1') {
+                activatePersonalSession();
             }
         });
 
@@ -4332,7 +4431,7 @@ ${original}`;
 
         async function renderCreditHistory() {
             const { data } = await supabaseClient
-                .from('credit_transactions')
+                .from('monofy_credit_transactions')
                 .select('amount, reason, created_at')
                 .order('created_at', { ascending: false })
                 .limit(10);
@@ -4387,7 +4486,7 @@ ${original}`;
                 return;
             }
             const { data: sub } = await supabaseClient
-                .from('subscriptions')
+                .from('monofy_subscriptions')
                 .select('status')
                 .eq('user_id', state.session.user.id)
                 .maybeSingle();
@@ -4518,10 +4617,10 @@ ${original}`;
             }
             if (!confirm(`Remover a marca d'água "MONOFY" deste trabalho consome ${CREDITS_PER_EXPORT} créditos (saldo atual: ${state.profile.credits}). Vale só para este trabalho — se criar outro, precisa pagar de novo. Continuar?`)) return;
 
-            const { data: success, error } = await supabaseClient.rpc('consume_credits_generic', {
-                p_user_id: state.session.user.id, p_amount: CREDITS_PER_EXPORT, p_reason: 'watermark_removal'
+            const { data, error } = await supabaseClient.functions.invoke('monofy-consume-credits', {
+                body: { amount: CREDITS_PER_EXPORT, reason: 'watermark_removal' }
             });
-            if (error || !success) {
+            if (error || !data?.success) {
                 showError(`Créditos insuficientes (precisa de ${CREDITS_PER_EXPORT}). Compre créditos na aba Créditos.`);
                 return;
             }
@@ -4550,7 +4649,7 @@ ${original}`;
             btn.disabled = unlocked;
             btn.innerHTML = unlocked
                 ? `<i data-lucide="check-circle" class="w-4 h-4"></i> Marca d'água já removida deste trabalho`
-                : `<i data-lucide="droplet-off" class="w-4 h-4"></i> Remover Marca d'Água (${CREDITS_PER_EXPORT} créditos)`;
+                : `<i data-lucide="droplet-off" class="w-4 h-4"></i> Remover Marca d'Água`;
             lucide.createIcons();
         }
 
@@ -4928,7 +5027,7 @@ ${original}`;
             if (!active) { alert('Selecione um slide primeiro.'); return; }
             const base = `${active.heading || ''}\n${active.body || ''}`.trim();
             if (!base) { alert('Este slide não tem texto para melhorar.'); return; }
-            if (!await showConfirmModal('Melhorar slide com IA', `A IA vai reescrever o texto deste slide de forma mais clara e objetiva (em tópicos curtos), mantendo o sentido. Isso consome <b>${AI_COST_REFINE} créditos</b>. Continuar?`)) return;
+            if (!await showConfirmModal('Melhorar slide com IA', `A IA vai reescrever o texto deste slide de forma mais clara e objetiva (em tópicos curtos), mantendo o sentido. Continuar?`)) return;
 
             const btn = document.getElementById('btn-improve-slide');
             const orig = btn ? btn.innerHTML : '';
@@ -5124,7 +5223,7 @@ El "body" es texto simple (usa \\n para separar puntos), nunca HTML.`;
                                 <div class="flex items-center gap-3">
                                     <span class="text-2xl">📎</span>
                                     <div class="flex-1">
-                                        <div class="font-extrabold text-slate-900 dark:text-white flex items-center gap-2">Enviar um arquivo <span class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 font-bold">${AI_COST_SLIDES_FILE} créditos</span></div>
+                                        <div class="font-extrabold text-slate-900 dark:text-white flex items-center gap-2">Enviar um arquivo <span class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 font-bold">IA</span></div>
                                         <div class="text-xs text-slate-500 dark:text-slate-400">PDF, Word (.docx) ou texto — a IA lê e cria os slides do conteúdo dele.</div>
                                     </div>
                                 </div>
@@ -5133,7 +5232,7 @@ El "body" es texto simple (usa \\n para separar puntos), nunca HTML.`;
                                 <div class="flex items-center gap-3">
                                     <span class="text-2xl">📝</span>
                                     <div class="flex-1">
-                                        <div class="font-extrabold text-slate-900 dark:text-white flex items-center gap-2">Minha monografia <span class="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 font-bold">${AI_COST_SLIDES} créditos</span></div>
+                                        <div class="font-extrabold text-slate-900 dark:text-white flex items-center gap-2">Minha monografia <span class="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 font-bold">IA</span></div>
                                         <div class="text-xs text-slate-500 dark:text-slate-400">${hasProject ? 'Usa o trabalho que você escreveu no editor.' : 'Nenhum trabalho gerado ainda no editor.'}</div>
                                     </div>
                                 </div>
@@ -5227,7 +5326,7 @@ El "body" es texto simple (usa \\n para separar puntos), nunca HTML.`;
 
             const confirmed = await showConfirmModal(
                 'Gerar slides com IA',
-                `A IA vai ler ${source === 'project' ? 'a monografia já escrita' : 'o arquivo enviado'} e montar uma apresentação completa (capa, tópicos, conclusão e encerramento). Isso consome <b>${slideCost} créditos</b> do seu saldo atual de <b>${state.profile.credits}</b>. ${state.slides.length > 0 ? 'Os slides atuais serão substituídos. ' : ''}Continuar?`
+                `A IA vai ler ${source === 'project' ? 'a monografia já escrita' : 'o arquivo enviado'} e montar uma apresentação completa (capa, tópicos, conclusão e encerramento). ${state.slides.length > 0 ? 'Os slides atuais serão substituídos. ' : ''}Continuar?`
             );
             if (!confirmed) return;
 
@@ -5396,6 +5495,7 @@ El campo "body" debe ser texto simple corto (puedes usar saltos de línea con \\
         }
 
         function switchTab(tabId) {
+            if (PERSONAL_MODE && tabId === 'credits') tabId = 'settings';
             if (state.isDemo && (tabId === 'credits' || tabId === 'myprofile')) {
                 alert('Modo demonstração: crie uma conta para acessar isto.');
                 return;
@@ -5543,13 +5643,12 @@ El campo "body" debe ser texto simple corto (puedes usar saltos de línea con \\
             { target: '#dock-tab-generator', title: 'Estúdio', text: 'Aqui você escreve e vê sua monografia formatada em tempo real, com capa e paginação como um documento de verdade.' },
             { target: '#dock-toggle-data', title: 'Texto e Dados', before: () => { switchTab('generator'); ensurePanelOpenForTour('panel-left'); }, text: 'Toque para abrir o painel Dados. Cole suas notas, anexe PDFs de referência e preencha os dados da capa (universidade, título, autor...).' },
             { target: '#dock-toggle-assistant', title: 'Chat da IA', before: () => { switchTab('generator'); ensurePanelOpenForTour('panel-right'); }, text: 'Toque aqui para abrir o chat com a IA. Converse sobre seu tema antes de gerar — a conversa entra como contexto extra na hora de redigir.' },
-            { target: '#btn-generate', title: 'Gerar com IA', before: () => switchTab('generator'), text: 'Com um clique a IA redige todas as seções (Introdução, Conclusão, Referências…) a partir das suas notas. Cada seção gerada consome créditos.' },
+            { target: '#btn-generate', title: 'Gerar com IA', before: () => switchTab('generator'), text: 'Com um clique a IA redige todas as seções (Introdução, Conclusão, Referências…) a partir das suas notas.' },
             { title: 'Editar o documento', text: 'Clique (ou toque) em qualquer parágrafo para editar. Um menu flutuante aparece com formatação, citação e botão para a IA melhorar o trecho selecionado.' },
-            { target: '#dock-toggle-export', title: 'Exportar', before: () => { switchTab('generator'); ensurePanelOpenForTour('panel-export'); }, text: 'Toque para abrir Exportar. Salve em Word, PDF ou Texto. Os arquivos saem com a marca d\'água "MONOFY" — remova-a de um trabalho por 5 créditos.' },
+            { target: '#dock-toggle-export', title: 'Exportar', before: () => { switchTab('generator'); ensurePanelOpenForTour('panel-export'); }, text: 'Toque para abrir Exportar. Salve em Word, PDF ou Texto, sem marca d\'água.' },
             { target: '#dock-tab-slides', title: 'Slides', before: () => switchTab('generator'), text: 'Gere uma apresentação de slides a partir da sua monografia pronta. Exporte como PPTX para apresentar.' },
             { target: '#dock-tab-profile', title: 'Arquivo', before: () => switchTab('generator'), text: 'Todos os seus documentos ficam salvos aqui. Toque para abrir e continuar de onde parou.' },
             { target: '#dock-tab-network', title: 'Network', before: () => switchTab('generator'), text: 'Baixe modelos prontos de universidades — com logo, margens e fonte configurados. Aplique e seu documento muda de estilo na hora.' },
-            { target: '#dock-tab-credits', title: 'Créditos', before: () => switchTab('generator'), text: 'Veja seu saldo e compre créditos aqui, em pacotes que vão de 10 até 500 créditos.' },
             { target: '#dock-tab-settings', title: 'Ajustes', before: () => switchTab('generator'), text: 'Idioma da redação, norma (ABNT/APA), tema claro/escuro e modelos personalizados ficam aqui.' },
             { title: 'Pronto!', text: 'Você já conhece tudo. Precisa de ajuda? Fale pelo WhatsApp em Ajustes. Bom trabalho!' }
         ];
@@ -5785,7 +5884,7 @@ El campo "body" debe ser texto simple corto (puedes usar saltos de línea con \\
         async function fetchUniversityLogos(force) {
             if (_universityLogos && !force) return _universityLogos;
             try {
-                const { data } = await supabaseClient.from('university_logos').select('id, name, logo_base64').order('created_at', { ascending: true });
+                const { data } = await supabaseClient.from('monofy_university_logos').select('id, name, logo_base64').order('created_at', { ascending: true });
                 _universityLogos = data || [];
             } catch (e) { _universityLogos = _universityLogos || []; }
             return _universityLogos;
@@ -5814,7 +5913,7 @@ El campo "body" debe ser texto simple corto (puedes usar saltos de línea con \\
             if (!file) { alert('Escolha uma imagem.'); return; }
             try {
                 const base64 = await _imageFileToBase64(file, 300);
-                const { error } = await supabaseClient.from('university_logos').insert({ name, logo_base64: base64 });
+                const { error } = await supabaseClient.from('monofy_university_logos').insert({ name, logo_base64: base64 });
                 if (error) throw error;
                 nameEl.value = ''; fileEl.value = '';
                 const fn = document.getElementById('admin-logo-filename'); if (fn) fn.textContent = 'Escolher imagem';
@@ -5826,7 +5925,7 @@ El campo "body" debe ser texto simple corto (puedes usar saltos de línea con \\
         async function deleteUniversityLogo(id) {
             if (!confirm('Apagar este logo? Ele sairá da galeria para todos os usuários.')) return;
             try {
-                const { error } = await supabaseClient.from('university_logos').delete().eq('id', id);
+                const { error } = await supabaseClient.from('monofy_university_logos').delete().eq('id', id);
                 if (error) throw error;
                 await renderAdminLogos();
             } catch (e) { alert('Erro ao apagar: ' + (e.message || e)); }
@@ -5925,41 +6024,87 @@ El campo "body" debe ser texto simple corto (puedes usar saltos de línea con \\
         // ==========================================
         // 4. MOTOR INTELIGÊNCIA ARTIFICIAL
         // ==========================================
-        // Chama a IA através da Edge Function (chave do provedor fica segura no servidor;
-        // a cobrança de créditos é feita lá dentro, de forma atômica, antes de gerar o texto).
+        // No modo pessoal, a chave fica no localStorage deste dispositivo e segue somente
+        // no corpo de cada pedido à Edge Function. Nenhuma cobrança de créditos é realizada.
         function isOverloadError(message) {
             return /high demand|overloaded|sobrecarregad|tente.*tarde|try again later/i.test(message || '');
         }
 
+        function getGeminiApiKey() {
+            return (localStorage.getItem(GEMINI_KEY_STORAGE) || '').trim();
+        }
+
+        function updateGeminiKeyStatus(message, ok) {
+            const status = document.getElementById('gemini-key-status');
+            if (!status) return;
+            const configured = !!getGeminiApiKey();
+            status.textContent = message || (configured ? 'Chave configurada neste dispositivo.' : 'Nenhuma chave configurada.');
+            status.className = `mt-3 text-xs ${ok === false ? 'text-red-600 dark:text-red-400' : configured || ok ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'}`;
+        }
+
+        function toggleGeminiKeyVisibility() {
+            const input = document.getElementById('gemini-api-key');
+            const btn = document.getElementById('gemini-key-toggle');
+            if (!input || !btn) return;
+            const reveal = input.type === 'password';
+            input.type = reveal ? 'text' : 'password';
+            btn.title = reveal ? 'Ocultar chave' : 'Mostrar chave';
+            btn.innerHTML = `<i data-lucide="${reveal ? 'eye-off' : 'eye'}" class="w-4 h-4"></i>`;
+            lucide.createIcons();
+        }
+
+        function saveGeminiApiKey() {
+            const input = document.getElementById('gemini-api-key');
+            const key = (input?.value || '').trim();
+            if (!key) { updateGeminiKeyStatus('Cole uma chave antes de salvar.', false); return; }
+            localStorage.setItem(GEMINI_KEY_STORAGE, key);
+            updateGeminiKeyStatus('Chave salva neste dispositivo.', true);
+        }
+
+        function deleteGeminiApiKey() {
+            localStorage.removeItem(GEMINI_KEY_STORAGE);
+            const input = document.getElementById('gemini-api-key');
+            if (input) input.value = '';
+            updateGeminiKeyStatus('Chave excluída deste dispositivo.', false);
+        }
+
+        async function testGeminiApiKey() {
+            saveGeminiApiKey();
+            if (!getGeminiApiKey()) return;
+            const btn = document.getElementById('gemini-test-btn');
+            const original = btn?.textContent || 'Testar';
+            if (btn) { btn.disabled = true; btn.textContent = 'Testando…'; }
+            try {
+                await callAI('Responda apenas com a palavra OK.', 0, 'settings_test');
+                updateGeminiKeyStatus('Conexão com o Gemini confirmada.', true);
+            } catch (error) {
+                updateGeminiKeyStatus(error?.message || 'Não foi possível validar a chave.', false);
+            } finally {
+                if (btn) { btn.disabled = false; btn.textContent = original; }
+            }
+        }
+
         async function callAI(prompt, cost, reason) {
+            const apiKey = getGeminiApiKey();
+            if (!apiKey) throw new Error('Configure sua chave do Gemini em Ajustes antes de usar a IA.');
             const maxAttempts = 3;
             for (let attempt = 1; attempt <= maxAttempts; attempt++) {
                 const response = await fetch(EDGE_FN_AI, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${state.session.access_token}`
+                        'apikey': SUPABASE_ANON_KEY
                     },
-                    body: JSON.stringify({ prompt, cost, reason })
+                    body: JSON.stringify({ prompt, apiKey, reason })
                 });
                 const data = await response.json();
                 if (!response.ok || data.error) {
-                    if (response.status === 402 || data.error === 'insufficient_credits') {
-                        throw new Error(`Créditos insuficientes (precisa de ${cost}). Compre créditos na aba Créditos.`);
-                    }
-                    if (response.status === 401) {
-                        throw new Error('Sessão expirada. Faça login novamente.');
-                    }
                     const message = data.error || 'Erro ao contactar a IA.';
                     if (isOverloadError(message) && attempt < maxAttempts) {
                         await new Promise(r => setTimeout(r, attempt * 2000));
                         continue;
                     }
                     throw new Error(isOverloadError(message) ? 'A IA está sobrecarregada no momento. Tentamos algumas vezes sem sucesso — aguarde um pouco e tente de novo.' : message);
-                }
-                if (state.profile.role !== 'admin') {
-                    state.profile.credits -= cost;
-                    document.getElementById('user-credits-display').innerText = state.profile.credits;
                 }
                 return data.text;
             }
@@ -5996,7 +6141,7 @@ El campo "body" debe ser texto simple corto (puedes usar saltos de línea con \\
                     return `<button data-tier="${key}" class="tier-card group text-left w-full rounded-2xl border-2 border-slate-200 dark:border-slate-700 hover:border-primary-500 dark:hover:border-primary-500 bg-white dark:bg-slate-800 p-5 transition-all hover:shadow-xl hover:-translate-y-0.5">
                         <div class="flex items-center justify-between mb-2">
                             <span class="text-2xl">${t.emoji}</span>
-                            <span class="text-sm font-extrabold text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/30 px-3 py-1 rounded-full">${t.total} créditos</span>
+                            <span class="text-sm font-extrabold text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/30 px-3 py-1 rounded-full">Liberado</span>
                         </div>
                         <div class="font-extrabold text-slate-900 dark:text-white text-lg mb-1">${t.label}</div>
                         <div class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">${t.desc}</div>
@@ -6066,11 +6211,9 @@ El campo "body" debe ser texto simple corto (puedes usar saltos de línea con \\
             if (!tierKey) return;
             const tier = MONO_TIERS[tierKey];
             const costPlan = distributeCost(tier.total, sectionPlan.length);
-            const totalCost = tier.total + (titleNeedsAI ? AI_COST_TITLE_FROM_CHAT : 0);
-
             const confirmed = await showConfirmModal(
                 `Gerar trabalho (${tier.label})`,
-                `A IA vai redigir o documento seção por seção (${sectionPlan.map(s => s.label).join(', ')})${titleNeedsAI ? ', e antes disso vai definir o título com base na sua conversa com o Assistente' : ''}. Trabalho <b>${tier.label}</b>: <b>${tier.total} créditos</b>${titleNeedsAI ? ` + ${AI_COST_TITLE_FROM_CHAT} pelo título` : ''} (total até <b>${totalCost}</b>) — cada parte só é cobrada depois de gerada com sucesso — do seu saldo atual de <b>${state.profile.credits}</b>. Continuar?`
+                `A IA vai redigir o documento seção por seção (${sectionPlan.map(s => s.label).join(', ')})${titleNeedsAI ? ', e antes disso vai definir o título com base na sua conversa com o Assistente' : ''}. Continuar?`
             );
             if (!confirmed) return;
 
@@ -7183,7 +7326,7 @@ Responda APENAS com o título, sem aspas, sem explicações, em uma única linha
                                 <button onclick="triggerImageInsert('${section.id}', '${pageKey}')" title="Inserir Imagem" class="p-2.5 bg-slate-900 dark:bg-primary-600 text-white rounded-lg shadow-xl hover:-translate-y-0.5"><i data-lucide="image-plus" class="w-3.5 h-3.5"></i></button>
                                 <button onclick="insertHeadingInline('${section.id}', '${pageKey}')" title="Inserir Título/Subtítulo" class="p-2.5 bg-indigo-600 text-white rounded-lg shadow-xl hover:-translate-y-0.5"><i data-lucide="heading" class="w-3.5 h-3.5"></i></button>
                                 <button onclick="insertPageAfter('${section.id}')" title="Inserir Nova Página Depois Desta" class="p-2.5 bg-emerald-600 text-white rounded-lg shadow-xl hover:-translate-y-0.5"><i data-lucide="file-plus-2" class="w-3.5 h-3.5"></i></button>
-                                <button onclick="refineInline('${section.id}', '${pageKey}')" title="Refinar com IA (3 créditos)" class="p-2.5 bg-purple-600 text-white rounded-lg shadow-xl hover:-translate-y-0.5"><i data-lucide="sparkles" class="w-3.5 h-3.5"></i></button>
+                                <button onclick="refineInline('${section.id}', '${pageKey}')" title="Refinar com IA" class="p-2.5 bg-purple-600 text-white rounded-lg shadow-xl hover:-translate-y-0.5"><i data-lucide="sparkles" class="w-3.5 h-3.5"></i></button>
                             </div>
                             ${idx === 0 ? `<h1 contenteditable="true" data-section-title="${section.id}" oninput="scheduleSyncSection('${section.id}')" style="text-indent: 0; outline: none;">${section.title}</h1>` : ''}
                             <div class="apa-content${(section.id.startsWith('sec-resumo-') || section.id.startsWith('sec-abstract-')) ? ' resumo-block' : ''}" id="apa-content-${pageKey}" data-page-index="${idx}" contenteditable="true" data-section-id="${section.id}" oninput="scheduleSyncSection('${section.id}')" onblur="checkAndSplitOverflow('${section.id}')" style="outline: none; min-height: 2em;">${chunk}</div>
@@ -8494,7 +8637,7 @@ Responda APENAS com o título, sem aspas, sem explicações, em uma única linha
             renderOnboardingTemplates();
             // Tenta carregar templates de rede se ainda não foram carregados
             if (networkTemplates.length === 0 && supabaseClient) {
-                supabaseClient.from('public_templates').select('*').order('downloads', { ascending: false }).limit(50)
+                supabaseClient.from('monofy_public_templates').select('*').order('downloads', { ascending: false }).limit(50)
                     .then(({ data }) => {
                         if (data && data.length > 0) {
                             networkTemplates = data;
@@ -8626,7 +8769,7 @@ Responda APENAS com o título, sem aspas, sem explicações, em uma única linha
                     <button onclick="generateCustomModelFromFile()" id="btn-generate-custom-model" class="w-full py-3.5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white font-extrabold flex items-center justify-center gap-2 transition disabled:opacity-50">
                         <i data-lucide="wand-2" class="w-4 h-4"></i> Criar meu modelo com IA
                     </button>
-                    <p class="text-[11px] text-slate-500 mt-2 text-center">Custa 2 créditos. Depois você pode ajustar tudo na barra de ferramentas.</p>
+                    <p class="text-[11px] text-slate-500 mt-2 text-center">Depois você pode ajustar tudo na barra de ferramentas.</p>
                 </div>`;
             if (typeof lucide !== 'undefined') lucide.createIcons();
 

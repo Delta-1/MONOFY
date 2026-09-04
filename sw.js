@@ -1,4 +1,4 @@
-const CACHE_NAME = 'monofy-cache-v39';
+const CACHE_NAME = 'monofy-cache-v41';
 const ASSETS = [
   'index.html',
   'hub.js',

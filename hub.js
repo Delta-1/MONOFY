@@ -56,7 +56,7 @@
         if (typeof updateCoverPage === 'function') { try { updateCoverPage(); } catch (_) {} }
     }
 
-    // ---- Modo foco: abre UMA aba (Perfil, Slides, Créditos) como página própria,
+    // ---- Modo foco: abre UMA aba (Perfil, Slides, Ajustes) como página própria,
     // escondendo o dock e a "moldura" do editor. Um botão flutuante "Início" volta ao hub.
     function ensureBackBtn() {
         var b = el('hub-focus-back');
@@ -196,12 +196,6 @@
         if (!hub) return;
         var name = safeName();
         var greeting = name ? ('Olá, ' + name + '! 👋') : 'Olá! 👋';
-        var credits = '';
-        try {
-            var p = window.state && state.profile;
-            credits = p ? (p.role === 'admin' ? '∞' : (p.credits != null ? p.credits : '0')) : '0';
-        } catch (_) { credits = '0'; }
-
         hub.innerHTML =
         '<div class="min-h-full w-full overflow-y-auto bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-950 custom-scrollbar">' +
             // Topo
@@ -212,7 +206,7 @@
                         '<span class="font-black tracking-tight text-lg text-slate-800 dark:text-white">MONOFY</span>' +
                     '</div>' +
                     '<div class="flex items-center gap-2">' +
-                        '<button onclick="enterAppFocus(\'credits\')" class="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 text-xs font-bold hover:bg-amber-100 dark:hover:bg-amber-900/40 transition"><i data-lucide="coins" class="w-4 h-4"></i> ' + credits + '</button>' +
+                        '<button onclick="enterAppFocus(\'settings\')" title="Ajustes e chave do Gemini" class="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-400 text-xs font-bold hover:bg-primary-100 dark:hover:bg-primary-900/40 transition"><i data-lucide="settings-2" class="w-4 h-4"></i> Ajustes</button>' +
                         '<button onclick="enterAppFocus(\'myprofile\')" title="Meu perfil" class="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition"><i data-lucide="user-circle" class="w-4 h-4"></i></button>' +
                         '<button onclick="signOut()" title="Sair" class="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition"><i data-lucide="log-out" class="w-4 h-4"></i></button>' +
                     '</div>' +
