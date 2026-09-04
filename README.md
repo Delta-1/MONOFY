@@ -4,12 +4,8 @@ O Monofy funciona como um módulo isolado dentro do único projeto Supabase **WO
 
 ## Acesso pessoal
 
-- Usuário: `admin`
-- Senha: `12345678`
-- A sessão fica ativa apenas na aba/janela atual (`sessionStorage`)
+- O aplicativo abre diretamente, sem cadastro, login ou planos
 - O conteúdo, as preferências, o perfil e a chave do Gemini ficam no armazenamento local do navegador
-
-Esse acesso é uma trava de conveniência para uso pessoal. Como o frontend é estático, as credenciais fazem parte do código publicado e não substituem autenticação segura no servidor.
 
 ## Estrutura no Supabase
 

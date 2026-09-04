@@ -38,9 +38,6 @@
         // Modo pessoal: a entrada é local e os planos/creditos ficam desativados.
         // A estrutura antiga permanece no projeto para poder ser reativada no futuro.
         const PERSONAL_MODE = true;
-        const PERSONAL_USERNAME = 'admin';
-        const PERSONAL_PASSWORD = '12345678';
-        const PERSONAL_SESSION_KEY = 'monofy_personal_session';
         const GEMINI_KEY_STORAGE = 'monofy_gemini_api_key';
         const SUPABASE_URL = 'https://qaiqflcxfxygynumapyp.supabase.co';
         const SUPABASE_ANON_KEY = 'sb_publishable_jWYB2iF5sGzqmSEai4MtPw_3T-hvUwE';
@@ -647,8 +644,6 @@
     <style id="dynamic-page-size"></style>
     <!-- Estilos do módulo da tela inicial (hub) — arquivo separado -->
     <link rel="stylesheet" href="hub.css">
-    <!-- Estilos do módulo Editor de Imagem/Logos — arquivo separado -->
-    <link rel="stylesheet" href="image-editor.css">
 </head>
 <body class="bg-[#e2e8f0] dark:bg-[#0f172a] text-slate-800 dark:text-slate-100 h-[100dvh] w-screen overflow-hidden transition-colors duration-300 selection:bg-primary-500 selection:text-white">
 
@@ -659,7 +654,7 @@
         <p class="mt-5 text-white/70 text-sm font-bold tracking-[0.35em] splash-text-anim">MONOFY</p>
     </div>
 
-    <div id="login-screen" class="absolute inset-0 z-[200] flex items-center justify-center p-6 bg-slate-100 dark:bg-slate-900 transition-opacity duration-500">
+    <div id="login-screen" class="hidden-state opacity-0 pointer-events-none absolute inset-0 z-[200] flex items-center justify-center p-6 bg-slate-100 dark:bg-slate-900 transition-opacity duration-500">
         <!-- Overlay de carregamento para retorno do OAuth (Google PKCE redirect com ?code=) -->
         <div id="oauth-loading-overlay" class="hidden-state absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 bg-slate-100 dark:bg-slate-900">
             <div id="oauth-spinner" class="w-12 h-12 border-4 border-primary-500 border-t-transparent rounded-full animate-spin"></div>
@@ -680,8 +675,8 @@
 
             <div id="auth-error" class="hidden-state p-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-xl text-sm font-medium text-left"></div>
 
-            <form id="email-auth-form" class="space-y-3" onsubmit="signInPersonal(); return false;">
-                <input type="text" id="auth-email" value="admin" autocomplete="username" placeholder="Usuário" class="w-full text-sm p-3.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 focus:border-primary-500 rounded-xl outline-none">
+            <form id="email-auth-form" class="space-y-3" onsubmit="return false;">
+                <input type="text" id="auth-email" autocomplete="username" placeholder="Usuário" class="w-full text-sm p-3.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 focus:border-primary-500 rounded-xl outline-none">
                 <div class="relative">
                     <input type="password" id="auth-password" autocomplete="current-password" placeholder="Senha" class="w-full text-sm p-3.5 pr-11 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 focus:border-primary-500 rounded-xl outline-none">
                     <button type="button" onclick="toggleAuthPasswordVisibility()" id="auth-password-toggle" title="Mostrar senha" class="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition">
@@ -717,9 +712,6 @@
 
     <!-- TELA INICIAL (HUB estilo Canva) — conteúdo renderizado por hub.js (módulo separado) -->
     <div id="hub-screen" class="hidden-state opacity-0 pointer-events-none"></div>
-
-    <!-- EDITOR DE IMAGEM/LOGOS — conteúdo renderizado por image-editor.js (módulo separado) -->
-    <div id="image-editor-screen" class="hidden-state opacity-0 pointer-events-none"></div>
 
     <!-- MAIN APP WRAPPER -->
     <div id="app-screen" class="relative h-full w-full opacity-0 pointer-events-none transition-opacity duration-500">
@@ -1999,7 +1991,6 @@
             setToolbarTab(localStorage.getItem('monografia_toolbar_tab') || 'home');
             requestAnimationFrame(syncFloatingControlsPosition);
             applyWatermarkStamps();
-            document.getElementById('assistant-chat-cost').innerText = AI_COST_CHAT;
             renderAssistantChat();
 
             // Tornar painéis arrastáveis e redimensionáveis no Desktop
@@ -3813,7 +3804,7 @@ ${original}`;
         function buildPersonalProfile() {
             return {
                 id: 'local-admin',
-                email: PERSONAL_USERNAME,
+                email: 'local',
                 full_name: localStorage.getItem('monofy_personal_name') || 'Administrador',
                 avatar_url: localStorage.getItem('monofy_personal_avatar') || '',
                 credits: 0,
@@ -3824,7 +3815,7 @@ ${original}`;
 
         function activatePersonalSession() {
             state.isDemo = false;
-            state.session = { user: { id: 'local-admin', email: PERSONAL_USERNAME }, access_token: null };
+            state.session = { user: { id: 'local-admin', email: 'local' }, access_token: null };
             state.profile = buildPersonalProfile();
             const nameEl = document.getElementById('user-email-display');
             if (nameEl) nameEl.innerText = state.profile.full_name;
@@ -3837,17 +3828,6 @@ ${original}`;
             syncWatermarkRemovedClass();
             if (typeof enterHub === 'function') enterHub();
             else startApp();
-        }
-
-        function signInPersonal() {
-            const username = document.getElementById('auth-email').value.trim();
-            const password = document.getElementById('auth-password').value;
-            if (username !== PERSONAL_USERNAME || password !== PERSONAL_PASSWORD) {
-                showAuthError('Usuário ou senha incorretos.');
-                return;
-            }
-            sessionStorage.setItem(PERSONAL_SESSION_KEY, '1');
-            activatePersonalSession();
         }
 
         // Traduz erros de rede (a requisição nem chegou ao servidor) numa mensagem
@@ -3972,7 +3952,6 @@ ${original}`;
 
         async function signOut() {
             if (PERSONAL_MODE) {
-                sessionStorage.removeItem(PERSONAL_SESSION_KEY);
                 window.location.reload();
                 return;
             }
@@ -4406,7 +4385,7 @@ ${original}`;
             const savedKey = localStorage.getItem(GEMINI_KEY_STORAGE) || '';
             if (keyInput) keyInput.value = savedKey;
             updateGeminiKeyStatus();
-            if (PERSONAL_MODE && sessionStorage.getItem(PERSONAL_SESSION_KEY) === '1') {
+            if (PERSONAL_MODE) {
                 activatePersonalSession();
             }
         });
@@ -7412,7 +7391,6 @@ Responda APENAS com o título, sem aspas, sem explicações, em uma única linha
 
         function openRefineChat(sectionId, pageKey, el) {
             refineChat = { sectionId, pageKey, baseHTML: el.innerHTML, draftHTML: el.innerHTML, messages: [], busy: false };
-            document.getElementById('refine-chat-cost').innerText = AI_COST_REFINE;
             document.getElementById('refine-chat-input').value = '';
             renderRefineChatMessages();
             document.getElementById('refine-chat-modal').classList.remove('hidden-state');
@@ -8970,7 +8948,6 @@ ${text}`;
     <!-- MODULOS SEPARADOS (regra: cada modulo novo em seu proprio arquivo).
          Carregado como script classico = mesmo escopo global do app acima (sem type module). -->
     <script src="hub.js"></script>
-    <script src="image-editor.js"></script>
     <script src="drive-sync.js"></script>
 </body>
 </html>

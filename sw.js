@@ -1,10 +1,8 @@
-const CACHE_NAME = 'monofy-cache-v41';
+const CACHE_NAME = 'monofy-cache-v42';
 const ASSETS = [
   'index.html',
   'hub.js',
   'hub.css',
-  'image-editor.js',
-  'image-editor.css',
   'drive-sync.js',
   'manifest.json',
   'https://cdn.tailwindcss.com',

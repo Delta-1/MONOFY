@@ -37,8 +37,6 @@
     // Volta ao hub a partir do editor (botão "Início").
     window.goToHub = function goToHub() {
         exitFocus();
-        var imed = el('image-editor-screen');
-        if (imed) { imed.classList.add('opacity-0', 'pointer-events-none'); setTimeout(function () { imed.classList.add('hidden-state'); }, 350); }
         const app = el('app-screen');
         const hub = el('hub-screen');
         if (app) app.classList.add('opacity-0', 'pointer-events-none');
@@ -106,15 +104,6 @@
     window.hubCreateSlides = function hubCreateSlides() {
         window.enterAppFocus('slides');
         setTimeout(() => { try { if (typeof generateSlidesWithAI === 'function') generateSlidesWithAI(); } catch (_) {} }, 700);
-    };
-
-    // Card "Editor de imagem / Logos": abre o módulo image-editor.js.
-    window.hubOpenImageEditor = function hubOpenImageEditor() {
-        if (typeof window.openImageEditor === 'function') {
-            window.openImageEditor();
-        } else {
-            alert('O Editor de Imagem ainda está carregando. Tente de novo em alguns segundos.');
-        }
     };
 
     // Abre um projeto do histórico direto do hub (editor completo).
@@ -208,7 +197,6 @@
                     '<div class="flex items-center gap-2">' +
                         '<button onclick="enterAppFocus(\'settings\')" title="Ajustes e chave do Gemini" class="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-400 text-xs font-bold hover:bg-primary-100 dark:hover:bg-primary-900/40 transition"><i data-lucide="settings-2" class="w-4 h-4"></i> Ajustes</button>' +
                         '<button onclick="enterAppFocus(\'myprofile\')" title="Meu perfil" class="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition"><i data-lucide="user-circle" class="w-4 h-4"></i></button>' +
-                        '<button onclick="signOut()" title="Sair" class="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition"><i data-lucide="log-out" class="w-4 h-4"></i></button>' +
                     '</div>' +
                 '</div>' +
             '</header>' +
@@ -218,10 +206,9 @@
                 '<p class="text-slate-500 dark:text-slate-400 mb-8">O que vamos criar hoje?</p>' +
 
                 // Cards principais (estilo Canva)
-                '<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 mb-12">' +
+                '<div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5 mb-12">' +
                     hubMainCard('hubOpenEditor()', 'file-text', 'from-indigo-500 to-violet-600', 'Editor de trabalhos', 'Escreva e formate monografias, informes e trabalhos com IA — e monte os slides.') +
                     hubMainCard('hubCreateSlides()', 'presentation', 'from-sky-500 to-cyan-600', 'Criar slides', 'Envie um arquivo e a IA monta a apresentação, use sua monografia, ou faça manualmente.') +
-                    hubMainCard('hubOpenImageEditor()', 'image', 'from-fuchsia-500 to-pink-600', 'Editor de imagem / Logos', 'Crie e edite logos, remova o fundo com IA e exporte PNG transparente.') +
                 '</div>' +
 
                 // Histórico
