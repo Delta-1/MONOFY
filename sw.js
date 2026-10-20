@@ -1,21 +1,28 @@
-const CACHE_NAME = 'monofy-cache-v43';
+const CACHE_NAME = 'monofy-cache-v44';
 const ASSETS = [
   'index.html',
-  'hub.js?v=43',
+  'legacy-studio.html',
+  'hub.js?v=44',
   'hub.css',
   'drive-sync.js',
   'manifest.json',
+  'academic.css?v=44',
+  'academic-core.js?v=44',
+  'academic-export.js?v=44',
+  'academic.js?v=44',
+  'vendor/docx-9.7.1.js',
+  'vendor/mammoth-1.8.0.js',
   'https://cdn.tailwindcss.com',
   'https://unpkg.com/lucide@latest',
-  'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js',
-  'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js',
+  'vendor/pdf-6.4.299.mjs',
+  'vendor/pdf-worker-6.4.299.mjs',
   'https://fonts.googleapis.com/css2?family=Tinos:ital,wght@0,400;0,700;1,400;1,700&display=swap'
 ];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(ASSETS);
+      return Promise.allSettled(ASSETS.map(asset => cache.add(asset)));
     }).then(() => self.skipWaiting())
   );
 });
